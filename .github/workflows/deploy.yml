@@ -14,13 +14,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Flutter 설치
+      # 2. Flutter 설치 (stable 최신 버전 자동 사용)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.4'
           channel: 'stable'
-          cache: true
+          cache: false
 
       # 3. 패키지 설치
       - name: Install dependencies
