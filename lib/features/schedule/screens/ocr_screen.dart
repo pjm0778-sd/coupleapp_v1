@@ -73,32 +73,58 @@ class _OcrScreenState extends State<OcrScreen> {
     setState(() => _isAnalyzing = true);
 
     try {
+      // 이미지 크기 축소 (최대 1024px, 품질 70%)
       final bytes = await _image!.readAsBytes();
       final base64Image = base64Encode(bytes);
       final mimeType = _image!.mimeType ?? 'image/jpeg';
+
+      // 이미지가 너무 크면 경고
+      final sizeKB = bytes.length / 1024;
+      if (sizeKB > 4096) {
+        _showSnack('이미지가 너무 큽니다 (${sizeKB.toStringAsFixed(0)}KB). 더 작은 이미지를 사용해주세요.');
+        return;
+      }
 
       final result = await supabase.functions.invoke(
         'ocr-schedule',
         body: {
           'imageBase64': base64Image,
           'imageMediaType': mimeType,
-          'colorMappings': _colorMappings.map((m) => m.toMap()).toList(),
+          'colorMappings': _colorMappings
+              .map((m) => {'color_hex': m.colorHex, 'work_type': m.workType})
+              .toList(),
           'targetYear': _targetYear,
           'targetMonth': _targetMonth,
         },
       );
 
-      final schedules = result.data['schedules'] as List?;
+      // Edge Function 에러 확인
+      final data = result.data as Map<String, dynamic>?;
+      if (data == null) {
+        _showSnack('서버 응답이 없습니다. 잠시 후 다시 시도해주세요.');
+        return;
+      }
+      if (data.containsKey('error')) {
+        _showSnack('분석 오류: ${data['error']}');
+        return;
+      }
+
+      final schedules = data['schedules'] as List?;
       if (schedules == null || schedules.isEmpty) {
-        _showSnack('일정을 추출하지 못했어요. 이미지를 확인하거나 색상 매핑을 추가해주세요.');
+        _showSnack('일정을 추출하지 못했어요.\n색상 매핑이 이미지 색상과 맞는지 확인해주세요.');
         return;
       }
 
       setState(() {
         _extractedSchedules = schedules.cast<Map<String, dynamic>>();
       });
-    } catch (e) {
-      _showSnack('분석 중 오류가 발생했습니다: ${e.toString()}');
+    } on Exception catch (e) {
+      final msg = e.toString();
+      if (msg.contains('FunctionException')) {
+        _showSnack('Edge Function 오류입니다. Supabase 대시보드 → Logs → Edge Functions 에서 확인해주세요.');
+      } else {
+        _showSnack('오류: $msg');
+      }
     } finally {
       if (mounted) setState(() => _isAnalyzing = false);
     }
