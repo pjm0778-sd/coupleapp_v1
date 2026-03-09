@@ -1,15 +1,16 @@
 import 'dart:async';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'dart:html' as html show Notification;
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../features/notifications/models/notification.dart';
 import '../features/notifications/models/notification_settings.dart';
-import 'shared/models/schedule.dart';
+import '../../shared/models/schedule.dart';
 
 class NotificationManager {
   static final NotificationManager _instance = NotificationManager._internal();
   factory NotificationManager() => _instance;
   NotificationManager._internal();
 
-  final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
   NotificationSettings _settings = const NotificationSettings();
   List<AppNotification> _history = [];
   StreamController<List<AppNotification>>? _historyController;
@@ -17,33 +18,16 @@ class NotificationManager {
   List<AppNotification> get history => _history;
   NotificationSettings get settings => _settings;
 
+  bool _webPermissionGranted = false;
+  bool get webPermissionGranted => _webPermissionGranted;
+
   Stream<List<AppNotification>> get historyStream {
     _historyController ??= StreamController<List<AppNotification>>.broadcast();
     return _historyController!.stream;
   }
 
   Future<void> initialize() async {
-    await _initNotifications();
     _loadSettings();
-  }
-
-  Future<void> _initNotifications() async {
-    const AndroidInitializationSettings androidSettings = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
-    );
-
-    const DarwinInitializationSettings iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
-
-    const InitializationSettings settings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-
-    await _notifications.initialize(settings);
   }
 
   void _loadSettings() {
@@ -73,31 +57,48 @@ class NotificationManager {
     _historyController?.add(_history);
   }
 
+  Future<String> requestWebNotificationPermission() async {
+    if (!kIsWeb) return 'not_web';
+
+    try {
+      final permission = await html.Notification.requestPermission();
+      _webPermissionGranted = permission == 'granted';
+      return _webPermissionGranted ? 'granted' : 'denied';
+    } catch (e) {
+      return 'error';
+    }
+  }
+
+  Future<void> showWebNotification({
+    required String title,
+    String? body,
+  }) async {
+    if (!kIsWeb || !_webPermissionGranted) return;
+
+    try {
+      html.Notification(
+        title,
+        body: body,
+        icon: '/icon.png',
+      );
+    } catch (e) {
+      // 브라우저가 알림을 지원하지 않는 경우 무시
+    }
+  }
+
   Future<void> showLocalNotification({
     required int id,
     required String title,
     String? body,
     NotificationType? type,
   }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      'notification_channel',
-    );
+    // 웹에서는 브라우저 알림 사용
+    if (kIsWeb) {
+      await showWebNotification(title: title, body: body);
+      return;
+    }
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    await _notifications.show(
-      id,
-      title,
-      body,
-      notificationDetails: NotificationDetails(
-        android: androidDetails,
-        iOS: iosDetails,
-      ),
-    );
+    // 모바일/데스크톱에서는 향후 추가 (현재 web만 구현)
   }
 
   Future<void> checkBothOffAndSchedule({

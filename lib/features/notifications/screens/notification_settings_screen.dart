@@ -1,10 +1,24 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../models/notification_settings.dart';
 
-class NotificationSettingsScreen extends StatelessWidget {
+class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
+
+  @override
+  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+}
+
+class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+  bool _permissionGranted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _permissionGranted = NotificationManager().webPermissionGranted;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +29,9 @@ class NotificationSettingsScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('알림 설정')),
       body: ListView(
         children: [
+          _buildSectionHeader('알림 권한'),
+          if (kIsWeb) _buildPermissionCard(manager, _permissionGranted),
+          const SizedBox(height: 20),
           _buildSectionHeader('파트너 일정 알림'),
           _buildSwitchTile(
             title: '파트너 일정 추가 알림',
@@ -85,6 +102,100 @@ class NotificationSettingsScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Widget _buildPermissionCard(NotificationManager manager, bool permissionGranted) {
+    // 플랫폼별로 권한 상태 확인
+    final granted = kIsWeb ? _permissionGranted : permissionGranted;
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: permissionGranted ? AppTheme.surface : Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: permissionGranted ? AppTheme.border : Colors.amber.shade300,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  permissionGranted ? Icons.notifications_active : Icons.notifications_none,
+                  color: permissionGranted ? AppTheme.primary : Colors.orange,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        permissionGranted ? '알림 권한 허용됨' : '알림 권한 필요',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: permissionGranted ? AppTheme.textPrimary : Colors.orange.shade800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        permissionGranted
+                            ? '브라우저 알림이 활성화되어 있습니다'
+                            : '알림을 받으려면 권한을 허용해주세요',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (!permissionGranted) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => _requestPermission(manager),
+                  icon: const Icon(Icons.notifications, size: 18),
+                  label: const Text('알림 권한 허용'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _requestPermission(NotificationManager manager) async {
+    final result = await manager.requestWebNotificationPermission();
+
+    if (!mounted) return;
+
+    if (result == 'granted') {
+      setState(() {
+        _permissionGranted = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 권한이 허용되었습니다')),
+      );
+    } else if (result == 'denied') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 권한이 거부되었습니다')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')),
+      );
+    }
   }
 
   Widget _buildSwitchTile({

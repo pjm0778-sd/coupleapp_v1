@@ -395,6 +395,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 20),
 
+                // 근무형태 설정
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.border),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  ),
+                  foregroundColor: AppTheme.textPrimary,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const ShiftTypeScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.work_outline, size: 18),
+                  label: const Text('근무형태 설정'),
+                  style: TextStyle(fontWeight: FontWeight.w500)),
+
                 // 로그아웃
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
