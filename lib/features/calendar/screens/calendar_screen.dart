@@ -60,6 +60,37 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  void _showDeleteMonthDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('이번 달 일정 전체 삭제'),
+        content: Text('${_focusedDay.month}월의 모든 일정을 삭제할까요?\n삭제된 일정은 복구할 수 없습니다.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () async {
+              if (_coupleId != null) {
+                await _service.deleteMonthSchedules(_coupleId!, _focusedDay);
+                if (ctx.mounted) Navigator.pop(ctx);
+                await _loadSchedules(_focusedDay);
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red.shade700,
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddDialog(DateTime date) {
     final workTypeController = TextEditingController();
     Color selectedColor = const Color(0xFF448AFF);
@@ -194,7 +225,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final selectedEvents = _getEventsForDay(_selectedDay);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('캘린더')),
+      appBar: AppBar(
+        title: const Text('캘린더'),
+        actions: [
+          TextButton.icon(
+            onPressed: () => _showDeleteMonthDialog(),
+            icon: const Icon(Icons.delete_sweep, size: 18),
+            label: const Text('이번 달 삭제'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red.shade700,
+              textStyle: const TextStyle(fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Column(
         children: [
           // 달력
