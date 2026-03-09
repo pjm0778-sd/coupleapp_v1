@@ -61,6 +61,10 @@ class _OcrScreenState extends State<OcrScreen> {
 
   Future<void> _analyze() async {
     if (_image == null) return;
+
+    // 매핑을 분석 시작 시 항상 최신으로 재로드
+    await _loadMappings();
+
     if (_colorMappings.isEmpty) {
       _showSnack('설정에서 색상 매핑을 먼저 추가해주세요');
       return;

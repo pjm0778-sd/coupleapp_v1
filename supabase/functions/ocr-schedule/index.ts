@@ -20,16 +20,21 @@ serve(async (req) => {
 
     const prompt = `이 이미지는 ${targetYear}년 ${targetMonth}월 근무 스케줄 달력입니다.
 
-사용자 색상-근무형태 매핑:
+사용자가 등록한 색상-근무형태 매핑 (참고용 색상 코드):
 ${colorMappingText}
 
 분석 지침:
-1. 달력의 각 날짜 칸의 배경색 또는 표시 색상을 확인하세요
-2. 위 매핑표와 가장 유사한 색상을 찾아 근무형태를 결정하세요
-3. 색상이 없거나 매핑에 해당하지 않는 날짜는 제외하세요
+1. 달력의 각 날짜 칸에 표시된 색상(배경색, 텍스트 색상, 도형 색상 등)을 확인하세요.
+2. 위 매핑의 색상 코드는 정확한 값이 아닌 참고용입니다. 이미지의 색상과 시각적으로 가장 유사한 매핑을 선택하세요.
+   예) 매핑에 "#FF5252(빨강)"이 있고 이미지에서 주황빛 빨강이 보이면 → 빨강 매핑으로 처리
+3. 색상이 전혀 없는 날짜(흰색 또는 회색 빈 칸)는 제외하세요.
+4. 색상이 있지만 매핑에 가장 가까운 것을 찾을 수 없는 경우, 가장 시각적으로 유사한 매핑을 사용하세요.
+5. color_hex에는 이미지에서 실제로 보이는 색상의 근사 hex 값을 넣어주세요.
 
 반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
-[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-01","work_type":"근무형태","color_hex":"#XXXXXX"}]`
+[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]
+
+DD는 실제 날짜 숫자(01~31)로 채우세요.`
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
