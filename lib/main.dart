@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
+import 'features/auth/screens/login_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
@@ -23,8 +24,15 @@ class CoupleApp extends StatelessWidget {
     return MaterialApp(
       title: 'Couple',
       theme: AppTheme.light,
-      home: const MainShell(),
       debugShowCheckedModeBanner: false,
+      home: StreamBuilder<AuthState>(
+        stream: supabase.auth.onAuthStateChange,
+        builder: (context, snapshot) {
+          final session = snapshot.data?.session;
+          if (session != null) return const MainShell();
+          return const LoginScreen();
+        },
+      ),
     );
   }
 }
