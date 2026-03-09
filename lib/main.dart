@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
 import 'features/auth/screens/login_screen.dart';
+import 'features/couple/screens/couple_connect_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
@@ -25,14 +26,47 @@ class CoupleApp extends StatelessWidget {
       title: 'Couple',
       theme: AppTheme.light,
       debugShowCheckedModeBanner: false,
-      home: StreamBuilder<AuthState>(
-        stream: supabase.auth.onAuthStateChange,
-        builder: (context, snapshot) {
-          final session = snapshot.data?.session;
-          if (session != null) return const MainShell();
-          return const LoginScreen();
-        },
-      ),
+      initialRoute: '/',
+      routes: {'/': (_) => const AppRouter()},
+    );
+  }
+}
+
+/// 로그인 상태 + 커플 연결 상태에 따라 화면 분기
+class AppRouter extends StatelessWidget {
+  const AppRouter({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: supabase.auth.onAuthStateChange,
+      builder: (context, authSnap) {
+        final session =
+            authSnap.data?.session ?? supabase.auth.currentSession;
+
+        // 미로그인
+        if (session == null) return const LoginScreen();
+
+        // 로그인 → 커플 연결 여부 확인
+        return FutureBuilder<Map<String, dynamic>>(
+          key: ValueKey(session.user.id),
+          future: supabase
+              .from('profiles')
+              .select('couple_id')
+              .eq('id', session.user.id)
+              .single(),
+          builder: (context, profileSnap) {
+            if (!profileSnap.hasData) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final coupleId = profileSnap.data?['couple_id'];
+            if (coupleId == null) return const CoupleConnectScreen();
+            return const MainShell();
+          },
+        );
+      },
     );
   }
 }
