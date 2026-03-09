@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
+import 'core/notification_manager.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/couple/screens/couple_connect_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/schedule/screens/ocr_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
+import 'features/notifications/screens/notification_history_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,7 @@ void main() async {
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
+  await NotificationManager().initialize();
   runApp(const CoupleApp());
 }
 
@@ -86,6 +89,7 @@ class _MainShellState extends State<MainShell> {
     HomeScreen(),
     CalendarScreen(),
     OcrScreen(),
+    NotificationHistoryScreen(),
     SettingsScreen(),
   ];
 
@@ -118,6 +122,11 @@ class _MainShellState extends State<MainShell> {
               icon: Icon(Icons.document_scanner_outlined),
               activeIcon: Icon(Icons.document_scanner_rounded),
               label: '스케줄',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications_outlined),
+              activeIcon: Icon(Icons.notifications_rounded),
+              label: '알림',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_outlined),

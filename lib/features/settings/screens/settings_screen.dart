@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
+import '../../notifications/screens/notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -368,6 +369,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 32),
                 const Divider(),
+                const SizedBox(height: 20),
+
+                // 알림 설정
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.border),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: AppTheme.textPrimary,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const NotificationSettingsScreen(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_outlined, size: 18),
+                  label: const Text('알림 설정',
+                      style: TextStyle(fontWeight: FontWeight.w500)),
+                ),
+
                 const SizedBox(height: 20),
 
                 // 로그아웃

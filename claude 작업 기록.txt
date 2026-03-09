@@ -1,0 +1,270 @@
+=======================================================
+Flutter 커플 앱 (coupleapp_v1) - AI 작업 인수인계 문서
+작성일: 2026-03-09
+=======================================================
+
+## 앱 소개
+교대 근무자와 일반 직장인 커플을 위한 스케줄 공유 앱.
+핵심 기능: 근무표 이미지를 AI(GPT-4o Vision)로 분석해 자동으로 일정 등록.
+
+---
+
+## 기술 스택
+- Frontend: Flutter (Dart)
+- Backend: Supabase (Auth, DB, Edge Functions, RLS)
+- AI: OpenAI GPT-4o Vision API (Edge Function에서 호출)
+- 배포: GitHub Actions + Cloudflare Pages (웹 빌드)
+- 패키지: supabase_flutter ^2.8.4, table_calendar ^3.1.3, image_picker ^1.1.2
+
+---
+
+## 프로젝트 경로
+C:\Users\정민\Desktop\app개발\coupleapp_v1
+
+## Supabase 프로젝트
+- URL: https://kjjrpmnnyxrdeikvcjkv.supabase.co
+- Project Ref: kjjrpmnnyxrdeikvcjkv
+
+## GitHub
+- https://github.com/pjm0778-sd/coupleapp_v1.git
+
+---
+
+## 폴더 구조 (주요 파일)
+lib/
+  main.dart                          - 앱 진입점, 라우팅 (AppRouter, MainShell)
+  core/
+    supabase_client.dart             - Supabase URL/Key, 전역 supabase 접근자
+    theme.dart                       - AppTheme (화이트/그레이 모던 테마)
+  features/
+    auth/
+      screens/login_screen.dart      - 로그인 화면
+      screens/signup_screen.dart     - 회원가입 화면
+      services/auth_service.dart     - signIn, signUp, signOut
+    couple/
+      screens/couple_connect_screen.dart  - 6자리 초대코드로 커플 연결
+      services/couple_service.dart        - 커플 연결 로직 (RPC 호출)
+    home/
+      screens/home_screen.dart       - D+day, 커플 닉네임, 시작일 수정
+    calendar/
+      screens/calendar_screen.dart   - 커플 통합 달력 (TableCalendar)
+      services/schedule_service.dart - 일정 CRUD
+    schedule/
+      screens/ocr_screen.dart        - AI 스케줄 이미지 분석 화면
+    settings/
+      screens/settings_screen.dart   - 색상-근무형태 매핑 CRUD, 로그아웃
+  shared/
+    models/color_mapping.dart        - ColorMapping 모델
+
+supabase/
+  functions/
+    ocr-schedule/
+      index.ts                       - Edge Function: OpenAI GPT-4o Vision 호출
+
+---
+
+## Supabase DB 스키마 (주요 테이블)
+
+### profiles
+- id (uuid, FK → auth.users)
+- nickname (text)
+- couple_id (uuid, FK → couples, nullable)
+- created_at
+
+### couples
+- id (uuid)
+- user1_id (uuid)
+- user2_id (uuid)
+- invite_code (text, unique, 6자리)
+- started_at (date)
+- created_at
+
+### schedules
+- id (uuid)
+- user_id (uuid)
+- couple_id (uuid)
+- date (date)
+- work_type (text)
+- color_hex (text)
+- is_date (boolean, 데이트 여부)
+- created_at
+
+### color_mappings
+- id (uuid)
+- user_id (uuid)
+- color_hex (text)
+- work_type (text)
+- created_at
+
+---
+
+## DB 함수 (RPC)
+- connect_couple(invite_code text) - 초대 코드로 커플 연결
+- handle_new_user() - 회원가입 시 profiles 자동 생성 트리거
+
+---
+
+## 앱 화면 구성 (BottomNavigationBar 4탭)
+1. 홈 - D+day 카운터, 커플 닉네임, 시작일 수정
+2. 캘린더 - 나(원형 마커)/파트너(사각형 마커) 구분, 일정 추가/삭제
+3. 스케줄 - AI 이미지 분석 (OCR 기능)
+4. 설정 - 색상-근무형태 매핑 관리, 로그아웃
+
+---
+
+## OCR 기능 동작 방식
+1. 사용자가 근무표 이미지 선택 (image_picker)
+2. 년/월 지정
+3. "AI로 일정 분석" 버튼 → supabase.functions.invoke('ocr-schedule') 호출
+4. Edge Function (ocr-schedule/index.ts):
+   - imageBase64, imageMediaType, colorMappings, targetYear, targetMonth 수신
+   - OpenAI GPT-4o Vision API 호출
+   - JSON 배열 파싱 후 반환: [{date, work_type, color_hex}, ...]
+5. 추출된 일정 목록 표시 → 스와이프로 개별 제거 가능
+6. "일정 저장" 버튼 → schedules 테이블에 일괄 insert
+
+---
+
+## 현재 작업 상황 (2026-03-09 기준)
+
+### 완료된 기능
+- [완료] 로그인/회원가입
+- [완료] 커플 연결 (초대 코드)
+- [완료] 홈 화면 (D+day, 시작일 수정)
+- [완료] 커플 통합 달력
+- [완료] 색상-근무형태 매핑 설정
+- [완료] GitHub Actions + Cloudflare Pages 배포
+
+### 현재 디버깅 중인 기능: OCR (AI 스케줄 분석)
+
+#### 문제 이력
+1. 처음에 401 오류 + execution_id: null
+   → 원인: Supabase Edge Function JWT 검증이 게이트웨이에서 막음
+   → 해결: Supabase 대시보드에서 "Verify JWT" 토글 OFF
+
+2. import { serve } from 'https://deno.land/std@0.168.0/http/server.ts' 구버전 사용
+   → 해결: Deno.serve()로 변경 (index.ts 첫 줄 import 삭제, serve() → Deno.serve())
+
+3. 현재: 500 오류 발생 중 (execution_id 있음 → 함수는 실행됨)
+   → 원인 추정: OpenAI API 키 문제
+   → 조치: 기존 키 삭제 후 새 키 재등록 완료
+   → 아직 재테스트 미완료 ← 여기서 작업 중단됨
+
+#### 다음 해야 할 것
+1. 앱 실행 → 스케줄 탭 → 이미지 선택 → AI 분석 버튼 클릭
+2. 결과 확인:
+   - 성공: 추출된 일정 목록 표시됨
+   - 실패: 앱 스낵바의 "분석 오류: ..." 메시지 확인
+           OR Supabase 대시보드 → Edge Functions → ocr-schedule → Logs 탭에서
+           console.log 출력 확인 (API Key exists: / OpenAI response status: 등)
+3. OCR 정상화 후 → 전체 앱 최종 테스트
+
+---
+
+## Edge Function 현재 코드 (supabase/functions/ocr-schedule/index.ts)
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { imageBase64, imageMediaType, colorMappings, targetYear, targetMonth } =
+      await req.json()
+
+    const colorMappingText = (colorMappings as { color_hex: string; work_type: string }[])
+      .map((m) => `${m.color_hex} → ${m.work_type}`)
+      .join('\n')
+
+    const prompt = `이 이미지는 ${targetYear}년 ${targetMonth}월 근무 스케줄 달력입니다.
+
+사용자가 등록한 색상-근무형태 매핑 (참고용 색상 코드):
+${colorMappingText}
+
+분석 지침:
+1. 달력의 각 날짜 칸에 표시된 색상(배경색, 텍스트 색상, 도형 색상 등)을 확인하세요.
+2. 위 매핑의 색상 코드는 정확한 값이 아닌 참고용입니다. 이미지의 색상과 시각적으로 가장 유사한 매핑을 선택하세요.
+3. 색상이 전혀 없는 날짜(흰색 또는 회색 빈 칸)는 제외하세요.
+4. color_hex에는 이미지에서 실제로 보이는 색상의 근사 hex 값을 넣어주세요.
+
+반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
+[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]`
+
+    const apiKey = Deno.env.get('OPENAI_API_KEY') ?? ''
+    console.log('API Key exists:', apiKey.length > 0, '/ Key prefix:', apiKey.substring(0, 7))
+
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY secret이 설정되지 않았습니다')
+    }
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 2048,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image_url', image_url: { url: `data:${imageMediaType ?? 'image/jpeg'};base64,${imageBase64}`, detail: 'high' } },
+            { type: 'text', text: prompt },
+          ]
+        }],
+      }),
+    })
+
+    console.log('OpenAI response status:', response.status)
+    if (!response.ok) {
+      const errText = await response.text()
+      console.log('OpenAI error body:', errText)
+      throw new Error(`OpenAI API error ${response.status}: ${errText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content ?? '[]'
+    const match = content.match(/\[[\s\S]*\]/)
+    const schedules = match ? JSON.parse(match[0]) : []
+
+    return new Response(JSON.stringify({ schedules }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    return new Response(
+      JSON.stringify({ error: (error as Error).message }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+})
+
+---
+
+## Supabase Secrets 등록 현황
+- OPENAI_API_KEY: 등록됨 (2026-03-09 재등록)
+- SUPABASE_ANON_KEY: 등록됨
+- SUPABASE_DB_URL: 등록됨
+- SUPABASE_SERVICE_ROLE_KEY: 등록됨
+- SUPABASE_URL: 등록됨
+
+Edge Function JWT 검증: OFF (Supabase 대시보드에서 비활성화)
+
+---
+
+## 주요 해결했던 오류들 (참고)
+- sdk: ^3.11.1 vs Flutter 3.32.0 불일치 → flutter-version 고정 제거
+- CardTheme → CardThemeData 타입 오류
+- color.value deprecated → color.toARGB32()
+- is_() → isFilter() 사용
+- 회원가입 500 오류 → handle_new_user 트리거 SET search_path = public 누락
+- profile 없을 때 406 → .single() → .maybeSingle()
+- OCR 색상 매핑 로딩 안됨(IndexedStack 캐시) → _analyze() 시작 시 _loadMappings() 재호출
+- Edge Function 401 + execution_id null → JWT 검증 OFF + Deno.serve()로 변경
+
+=======================================================
