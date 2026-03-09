@@ -1,0 +1,41 @@
+name: Flutter Web → Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Flutter 설치
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.32.0'
+          channel: 'stable'
+          cache: true
+
+      # 3. 패키지 설치
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4. 웹 빌드
+      - name: Build Flutter Web
+        run: flutter build web --release --web-renderer canvaskit
+
+      # 5. Cloudflare Pages 배포
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: coupleapp-v1          # Cloudflare Pages 프로젝트 이름
+          directory: build/web
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
