@@ -29,31 +29,32 @@ ${colorMappingText}
 3. 색상이 없거나 매핑에 해당하지 않는 날짜는 제외하세요
 
 반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
-[{"date":"${targetYear}-${String(targetMonth).padLeft(2, '0')}-01","work_type":"근무형태","color_hex":"#XXXXXX"}]`
+[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-01","work_type":"근무형태","color_hex":"#XXXXXX"}]`
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY') ?? '',
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY') ?? ''}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
+        model: 'gpt-4o',
         max_tokens: 2048,
         messages: [
           {
             role: 'user',
             content: [
               {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: imageMediaType ?? 'image/jpeg',
-                  data: imageBase64,
+                type: 'image_url',
+                image_url: {
+                  url: `data:${imageMediaType ?? 'image/jpeg'};base64,${imageBase64}`,
+                  detail: 'high',
                 },
               },
-              { type: 'text', text: prompt },
+              {
+                type: 'text',
+                text: prompt,
+              },
             ],
           },
         ],
@@ -62,11 +63,11 @@ ${colorMappingText}
 
     if (!response.ok) {
       const errText = await response.text()
-      throw new Error(`Claude API error: ${errText}`)
+      throw new Error(`OpenAI API error: ${errText}`)
     }
 
     const data = await response.json()
-    const content = data.content?.[0]?.text ?? '[]'
+    const content = data.choices?.[0]?.message?.content ?? '[]'
 
     // JSON 배열 추출
     const match = content.match(/\[[\s\S]*\]/)
