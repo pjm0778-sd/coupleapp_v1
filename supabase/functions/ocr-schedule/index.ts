@@ -36,6 +36,13 @@ ${colorMappingText}
 
 DD는 실제 날짜 숫자(01~31)로 채우세요.`
 
+    const apiKey = Deno.env.get('OPENAI_API_KEY') ?? ''
+    console.log('API Key exists:', apiKey.length > 0, '/ Key prefix:', apiKey.substring(0, 7))
+
+    if (!apiKey) {
+      throw new Error('OPENAI_API_KEY secret이 설정되지 않았습니다')
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -66,9 +73,11 @@ DD는 실제 날짜 숫자(01~31)로 채우세요.`
       }),
     })
 
+    console.log('OpenAI response status:', response.status)
     if (!response.ok) {
       const errText = await response.text()
-      throw new Error(`OpenAI API error: ${errText}`)
+      console.log('OpenAI error body:', errText)
+      throw new Error(`OpenAI API error ${response.status}: ${errText}`)
     }
 
     const data = await response.json()
