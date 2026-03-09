@@ -39,6 +39,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: coupleapp-v1          # Cloudflare Pages 프로젝트 이름
+          projectName: coupleapp-v1
           directory: build/web
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Deploy ${{ github.sha }}"
