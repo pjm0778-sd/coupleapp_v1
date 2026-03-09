@@ -48,15 +48,15 @@ class AppRouter extends StatelessWidget {
         if (session == null) return const LoginScreen();
 
         // 로그인 → 커플 연결 여부 확인
-        return FutureBuilder<Map<String, dynamic>>(
+        return FutureBuilder<Map<String, dynamic>?>(
           key: ValueKey(session.user.id),
           future: supabase
               .from('profiles')
               .select('couple_id')
               .eq('id', session.user.id)
-              .single(),
+              .maybeSingle(),
           builder: (context, profileSnap) {
-            if (!profileSnap.hasData) {
+            if (profileSnap.connectionState == ConnectionState.waiting) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
