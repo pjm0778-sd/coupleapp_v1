@@ -6,6 +6,7 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/couple/screens/couple_connect_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
+import 'features/schedule/screens/ocr_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 
 void main() async {
@@ -84,6 +85,7 @@ class _MainShellState extends State<MainShell> {
   static const List<Widget> _screens = [
     HomeScreen(),
     CalendarScreen(),
+    OcrScreen(),
     SettingsScreen(),
   ];
 
@@ -111,6 +113,11 @@ class _MainShellState extends State<MainShell> {
               icon: Icon(Icons.calendar_month_outlined),
               activeIcon: Icon(Icons.calendar_month_rounded),
               label: '캘린더',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.document_scanner_outlined),
+              activeIcon: Icon(Icons.document_scanner_rounded),
+              label: '스케줄',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_outlined),
