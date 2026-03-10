@@ -2,6 +2,7 @@ import '../../../core/supabase_client.dart';
 import '../../../core/models/user_settings.dart';
 import '../../../core/models/shift_type.dart';
 
+
 class UserSettingsService {
   static final UserSettingsService _instance = UserSettingsService._internal();
   factory UserSettingsService() => _instance;
@@ -25,7 +26,7 @@ class UserSettingsService {
   }) async {
     final existing = await getUserSettings(userId);
 
-    if (existing != null) {
+    if (existing == null) {
       // 새로 생성
       await supabase.from('user_settings').insert({
         'user_id': userId,
@@ -41,7 +42,7 @@ class UserSettingsService {
             'default_shift': defaultShift,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', existing!.id);
+          .eq('id', existing.id);
     }
   }
 

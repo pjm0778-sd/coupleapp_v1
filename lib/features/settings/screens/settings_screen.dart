@@ -3,6 +3,7 @@ import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
+import '../../schedule/screens/shift_type_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -413,8 +414,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     );
                   },
                   icon: const Icon(Icons.work_outline, size: 18),
-                  label: const Text('근무형태 설정'),
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+                  label: const Text('근무형태 설정',
+                      style: TextStyle(fontWeight: FontWeight.w500)),
+                ),
 
                 // 로그아웃
                 OutlinedButton.icon(

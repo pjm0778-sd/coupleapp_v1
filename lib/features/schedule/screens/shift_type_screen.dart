@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/models/shift_type.dart';
-import '../services/user_settings_service.dart';
+import '../../../core/models/shift_type.dart';
+import '../../services/user_settings_service.dart';
 
 class ShiftTypeScreen extends StatefulWidget {
   const ShiftTypeScreen({super.key});
@@ -181,24 +182,23 @@ class _ShiftTypeScreenState extends State<ShiftTypeScreen> {
         border: Border.all(color: AppTheme.border),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedDefaultShift,
-          items: _defaultShiftOptions.map((option) {
-            return DropdownMenuItem(
-              value: option['value'] as String,
-              child: Text(option['label'] as String),
-            );
-          }).toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _selectedDefaultShift = value);
-            }
-          },
-          style: TextStyle(
-            fontSize: 16,
-            color: AppTheme.textPrimary,
-          ),
+      child: DropdownButtonHideUnderline<String>(
+        value: _selectedDefaultShift,
+        items: _defaultShiftOptions.map((option) {
+          return DropdownMenuItem(
+            value: option['value'] as String,
+            child: Text(option['label'] as String),
+          );
+        }).toList(),
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _selectedDefaultShift = value!);
+          }
+        },
+        style: TextStyle(
+          fontSize: 16,
+          color: AppTheme.textPrimary,
+        ),
         dropdownColor: Colors.transparent,
         icon: Icon(
           Icons.arrow_drop_down,
