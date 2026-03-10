@@ -402,13 +402,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: AppTheme.textPrimary,
                   ),
-                  foregroundColor: AppTheme.textPrimary,
                   onPressed: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => const ShiftTypeScreen(),
+                        builder: (_) => ShiftTypeScreen(),
                       ),
                     );
                   },

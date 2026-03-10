@@ -1,6 +1,6 @@
 import '../../../core/supabase_client.dart';
-import '../../core/models/user_settings.dart';
-import '../../core/models/shift_type.dart';
+import '../../../core/models/user_settings.dart';
+import '../../../core/models/shift_type.dart';
 
 class UserSettingsService {
   static final UserSettingsService _instance = UserSettingsService._internal();
