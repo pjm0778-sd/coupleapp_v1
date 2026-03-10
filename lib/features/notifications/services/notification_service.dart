@@ -2,14 +2,12 @@ import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/notification_manager.dart';
 import '../../../core/supabase_client.dart';
-import '../../shared/models/schedule.dart';
 import '../models/notification.dart';
 import '../models/notification_settings.dart';
 
 class NotificationService {
   final NotificationManager _manager = NotificationManager();
   RealtimeChannel? _schedulesChannel;
-  StreamSubscription? _scheduleSubscription;
 
   NotificationSettings get settings => _manager.settings;
   void updateSettings(NotificationSettings newSettings) => _manager.updateSettings(newSettings);
@@ -31,8 +29,11 @@ class NotificationService {
     // 파트너의 일정만 수신하기 위한 필터는 RLS로 처리
     _schedulesChannel = supabase.channel('public:schedules');
 
-    _schedulesChannel!.on(
-      RealtimeListenTypes.insert,
+    // Subscribe to INSERT events
+    _schedulesChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'schedules',
       callback: (payload) async {
         final record = payload.newRecord as Map<String, dynamic>?;
         if (record == null) return;
@@ -45,13 +46,13 @@ class NotificationService {
           final date = DateTime.parse(record['date'] as String);
           await _manager.showLocalNotification(
             id: DateTime.now().millisecondsSinceEpoch,
-            title: '🔵 파트너가 일정을 추가했어요',
+            title: '📅 파트너가 일정을 추가했어요',
             body: '${date.month}월 ${date.day}일 일정이 추가되었어요',
             type: NotificationType.scheduleAdded,
           );
           _manager.addToHistory(AppNotification.fromRealtime(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: '🔵 파트너가 일정을 추가했어요',
+            title: '📅 파트너가 일정을 추가했어요',
             body: '${date.month}월 ${date.day}일 일정이 추가되었어요',
             type: NotificationType.scheduleAdded,
           ));
@@ -59,8 +60,11 @@ class NotificationService {
       },
     ).subscribe();
 
-    _schedulesChannel!.on(
-      RealtimeListenTypes.delete,
+    // Subscribe to DELETE events
+    _schedulesChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.delete,
+      schema: 'public',
+      table: 'schedules',
       callback: (payload) async {
         final oldRecord = payload.oldRecord as Map<String, dynamic>?;
         if (oldRecord == null) return;
@@ -86,8 +90,11 @@ class NotificationService {
       },
     ).subscribe();
 
-    _schedulesChannel!.on(
-      RealtimeListenTypes.update,
+    // Subscribe to UPDATE events
+    _schedulesChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.update,
+      schema: 'public',
+      table: 'schedules',
       callback: (payload) async {
         final oldRecord = payload.oldRecord as Map<String, dynamic>?;
         final newRecord = payload.newRecord as Map<String, dynamic>?;
@@ -127,20 +134,6 @@ class NotificationService {
         .maybeSingle();
 
     return profile?['couple_id'] as String?;
-  }
-
-  Future<List<Schedule>> _getSchedules(String coupleId, DateTime month) async {
-    final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 0);
-
-    final data = await supabase
-        .from('schedules')
-        .select()
-        .eq('couple_id', coupleId)
-        .gte('date', start.toIso8601String().split('T')[0])
-        .lte('date', end.toIso8601String().split('T')[0]);
-
-    return (data as List).map((e) => Schedule.fromMap(e)).toList();
   }
 
   void dispose() {

@@ -3,7 +3,6 @@ import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
-import '../../schedule/screens/shift_type_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,11 +18,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   DateTime? _startedAt;
   bool _isLoading = true;
 
-  static const List<Color> _presetColors = [
-    Color(0xFFFF5252), Color(0xFFFF4081), Color(0xFFFF6D00), Color(0xFFFFCA28),
-    Color(0xFF69F0AE), Color(0xFF00BFA5), Color(0xFF448AFF), Color(0xFF3D5AFE),
-    Color(0xFFE040FB), Color(0xFF795548), Color(0xFF9E9E9E), Color(0xFF212121),
-  ];
+  static const List<Color> _presetColors = AppTheme.scheduleColors;
 
   @override
   void initState() {
@@ -395,28 +390,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const SizedBox(height: 20),
-
-                // 근무형태 설정
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppTheme.border),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                    foregroundColor: AppTheme.textPrimary,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ShiftTypeScreen(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.work_outline, size: 18),
-                  label: const Text('근무형태 설정',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
-                ),
 
                 // 로그아웃
                 OutlinedButton.icon(

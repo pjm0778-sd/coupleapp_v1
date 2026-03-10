@@ -106,7 +106,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   Widget _buildPermissionCard(NotificationManager manager, bool permissionGranted) {
     // 플랫폼별로 권한 상태 확인
-    final granted = kIsWeb ? _permissionGranted : permissionGranted;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Container(
@@ -208,7 +207,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle!) : null,
       value: value,
-      activeColor: AppTheme.primary,
+      activeTrackColor: AppTheme.primary,
       onChanged: onChanged,
     );
   }
@@ -248,7 +247,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   void _toggleAll(bool value) {
     final manager = NotificationManager();
-    final settings = manager.settings;
     manager.updateSettings(
       NotificationSettings(
         scheduleAdded: value,

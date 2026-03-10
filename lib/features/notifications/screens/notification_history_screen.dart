@@ -49,7 +49,7 @@ class NotificationHistoryScreen extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: history.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, index) {
                 final notification = history[index];
                 return _NotificationCard(notification: notification);
@@ -62,7 +62,7 @@ class NotificationHistoryScreen extends StatelessWidget {
 class _NotificationCard extends StatelessWidget {
   final AppNotification notification;
 
-  const _NotificationCard({super.key, required this.notification});
+  const _NotificationCard({required this.notification});
 
   @override
   Widget build(BuildContext context) {
@@ -79,7 +79,7 @@ class _NotificationCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: notification.type.color.withOpacity(0.3),
+              color: notification.type.color.withValues(alpha: 0.3),
               shape: BoxShape.circle,
             ),
             child: Icon(

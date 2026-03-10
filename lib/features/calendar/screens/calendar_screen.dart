@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../../core/theme.dart';
+import '../../../core/emojis.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../services/schedule_service.dart';
@@ -60,6 +61,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  String _colorToHex(Color color) {
+    final r = color.r.round().toRadixString(16).padLeft(2, '0');
+    final g = color.g.round().toRadixString(16).padLeft(2, '0');
+    final b = color.b.round().toRadixString(16).padLeft(2, '0');
+    return '#$r$g$b'.toUpperCase();
+  }
+
   void _showDeleteMonthDialog() {
     showDialog(
       context: context,
@@ -91,16 +99,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  void _showAddDialog(DateTime date) {
-    final workTypeController = TextEditingController();
-    Color selectedColor = const Color(0xFF448AFF);
-    bool isDatePlan = false;
-
-    final presetColors = [
-      const Color(0xFF448AFF), const Color(0xFFFF5252),
-      const Color(0xFF69F0AE), const Color(0xFFFFCA28),
-      const Color(0xFFE040FB), const Color(0xFF00BFA5),
-    ];
+  void _showAddDialog(DateTime date, [Schedule? existingSchedule]) {
+    final workTypeController = TextEditingController(text: existingSchedule?.workType ?? '');
+    final noteController = TextEditingController(text: existingSchedule?.note ?? '');
+    Color selectedColor = existingSchedule != null
+        ? _hexToColor(existingSchedule.colorHex)
+        : AppTheme.scheduleColors.first;
+    String selectedEmoji = existingSchedule?.emoji ?? '';
+    bool isDatePlan = existingSchedule?.isDate ?? false;
+    final customEmojiController = TextEditingController();
+    bool showCustomEmoji = false;
 
     showModalBottomSheet(
       context: context,
@@ -113,110 +121,221 @@ class _CalendarScreenState extends State<CalendarScreen> {
         builder: (ctx, setSheet) => Padding(
           padding: EdgeInsets.fromLTRB(
             24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    '${date.month}월 ${date.day}일',
-                    style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.w700,
-                      color: AppTheme.primary),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // 색상 선택
-              const Text('색상', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-              const SizedBox(height: 8),
-              Row(
-                children: presetColors.map((c) {
-                  final sel = selectedColor.toARGB32() == c.toARGB32();
-                  return GestureDetector(
-                    onTap: () => setSheet(() => selectedColor = c),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      width: 32, height: 32,
-                      decoration: BoxDecoration(
-                        color: c,
-                        shape: BoxShape.circle,
-                        border: sel ? Border.all(color: AppTheme.primary, width: 2.5) : null,
-                      ),
-                      child: sel ? const Icon(Icons.check, color: Colors.white, size: 16) : null,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      '${date.month}월 ${date.day}일',
+                      style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w700,
+                        color: AppTheme.primary),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              // 근무 형태
-              const Text('근무 형태 / 메모', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
-              const SizedBox(height: 8),
-              TextField(
-                controller: workTypeController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: '예) 나이트, 휴무, 데이트...',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: const BorderSide(color: AppTheme.border),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 12),
-              // 데이트 여부
-              Row(
-                children: [
-                  Checkbox(
-                    value: isDatePlan,
-                    activeColor: AppTheme.primary,
-                    onChanged: (v) => setSheet(() => isDatePlan = v ?? false),
-                  ),
-                  const Text('데이트 일정', style: TextStyle(fontSize: 14)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
-                  ),
-                  onPressed: () async {
-                    final hex = '#${selectedColor.r.round().toRadixString(16).padLeft(2,'0')}${selectedColor.g.round().toRadixString(16).padLeft(2,'0')}${selectedColor.b.round().toRadixString(16).padLeft(2,'0')}'.toUpperCase();
-                    final schedule = Schedule(
-                      id: '',
-                      userId: _myUserId!,
-                      coupleId: _coupleId,
-                      date: date,
-                      workType: workTypeController.text.trim().isEmpty
-                          ? null : workTypeController.text.trim(),
-                      colorHex: hex,
-                      isDate: isDatePlan,
+                const SizedBox(height: 16),
+                // 색상 선택 (4x5 그리드)
+                const Text('색상', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: AppTheme.scheduleColors.map((c) {
+                    final sel = selectedColor.toARGB32() == c.toARGB32();
+                    return GestureDetector(
+                      onTap: () => setSheet(() => selectedColor = c),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                          border: sel ? Border.all(color: AppTheme.primary, width: 3) : null,
+                        ),
+                        child: sel ? const Icon(Icons.check, color: Colors.white, size: 18) : null,
+                      ),
                     );
-                    await _service.addSchedule(schedule);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                    await _loadSchedules(_focusedDay);
-                  },
-                  child: const Text('저장', style: TextStyle(fontWeight: FontWeight.w600)),
+                  }).toList(),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                // 이모지 선택
+                const Text('이모지', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                const SizedBox(height: 8),
+                if (showCustomEmoji) ...[
+                  TextField(
+                    controller: customEmojiController,
+                    decoration: InputDecoration(
+                      hintText: '이모지 입력',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: AppTheme.border),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                    onSubmitted: (v) {
+                      if (v.isNotEmpty) {
+                        setSheet(() {
+                          selectedEmoji = v;
+                          showCustomEmoji = false;
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ] else ...[
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ...Emojis.presets.map((e) {
+                        final sel = selectedEmoji == e;
+                        return GestureDetector(
+                          onTap: () => setSheet(() => selectedEmoji = e),
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: sel ? AppTheme.primary.withAlpha(30) : AppTheme.surface,
+                              border: sel ? Border.all(color: AppTheme.primary, width: 2) : Border.all(color: AppTheme.border),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(child: Text(e, style: const TextStyle(fontSize: 20))),
+                          ),
+                        );
+                      }),
+                      // 커스텀 이모지 추가 버튼
+                      GestureDetector(
+                        onTap: () => setSheet(() => showCustomEmoji = true),
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            border: Border.all(color: AppTheme.border),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(child: Icon(Icons.add, size: 20, color: AppTheme.textSecondary)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                const SizedBox(height: 16),
+                // 메모
+                const Text('메모', style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: workTypeController,
+                  decoration: InputDecoration(
+                    hintText: '예) 나이트, 휴무, 데이트...',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: AppTheme.border),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // 데이트 여부
+                Row(
+                  children: [
+                    Checkbox(
+                      value: isDatePlan,
+                      activeColor: AppTheme.primary,
+                      onChanged: (v) => setSheet(() => isDatePlan = v ?? false),
+                    ),
+                    const Text('데이트 일정', style: TextStyle(fontSize: 14)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    onPressed: () async {
+                      final hex = _colorToHex(selectedColor);
+                      if (existingSchedule != null) {
+                        // 수정 모드
+                        await _service.updateSchedule(existingSchedule.id, {
+                          'work_type': workTypeController.text.trim().isEmpty
+                              ? null : workTypeController.text.trim(),
+                          'color_hex': hex,
+                          'emoji': selectedEmoji.isEmpty ? null : selectedEmoji,
+                          'is_date': isDatePlan,
+                          'note': noteController.text.trim().isEmpty ? null : noteController.text.trim(),
+                        });
+                      } else {
+                        // 추가 모드
+                        final schedule = Schedule(
+                          id: '',
+                          userId: _myUserId!,
+                          coupleId: _coupleId,
+                          date: date,
+                          workType: workTypeController.text.trim().isEmpty
+                              ? null : workTypeController.text.trim(),
+                          colorHex: hex,
+                          isDate: isDatePlan,
+                          emoji: selectedEmoji.isEmpty ? null : selectedEmoji,
+                          note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
+                        );
+                        await _service.addSchedule(schedule);
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      await _loadSchedules(_focusedDay);
+                    },
+                    child: Text(existingSchedule != null ? '수정' : '저장', style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  // 계단식 색상 채움 위젯
+  Widget _buildSteppedColors(List<Schedule> schedules) {
+    if (schedules.isEmpty) return const SizedBox.shrink();
+
+    return Stack(
+      children: List.generate(schedules.length, (i) {
+        final schedule = schedules[i];
+        final color = _hexToColor(schedule.colorHex);
+        // 계단식: 첫 번째는 가장 높게, 마지막은 가장 낮게
+        final heightFactor = (schedules.length - i) / schedules.length;
+        final stepHeight = 30.0 * heightFactor;
+
+        return Positioned(
+          bottom: i * 6.0,
+          left: 0,
+          right: 0,
+          height: stepHeight,
+          child: Container(
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.8),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(2)),
+            ),
+          ),
+        );
+      }),
     );
   }
 
@@ -276,6 +395,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 color: Colors.transparent,
               ),
               markersMaxCount: 4,
+              defaultDecoration: BoxDecoration(
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              weekendDecoration: BoxDecoration(
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             headerStyle: const HeaderStyle(
               formatButtonVisible: false,
@@ -287,25 +414,191 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ),
             ),
             calendarBuilders: CalendarBuilders(
-              markerBuilder: (ctx, day, events) {
-                if (events.isEmpty) return const SizedBox.shrink();
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: events.take(4).map((e) {
-                    final isMe = e.userId == _myUserId;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: e.colorHex != null
-                            ? _hexToColor(e.colorHex)
-                            : (isMe ? AppTheme.primary : AppTheme.accent),
-                        shape: isMe ? BoxShape.circle : BoxShape.rectangle,
-                        borderRadius: isMe ? null : BorderRadius.circular(2),
+              defaultBuilder: (ctx, day, focusedDay) {
+                final events = _getEventsForDay(day);
+                final hasDateSchedule = events.any((s) => s.isDate);
+                final emoji = events.isNotEmpty ? events.first.emoji : null;
+
+                return Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: hasDateSchedule
+                          ? AppTheme.dateBorderColor
+                          : AppTheme.border,
+                      width: hasDateSchedule ? 2 : 1,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // 날짜 숫자 (상단)
+                      Positioned(
+                        top: 4,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: hasDateSchedule
+                                  ? AppTheme.dateBorderColor
+                                  : AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
                       ),
-                    );
-                  }).toList(),
+                      // 이모지 (중앙)
+                      if (emoji != null && emoji.isNotEmpty)
+                        Positioned(
+                          top: 28,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      // 계단식 색상 채움 (하단)
+                      if (events.isNotEmpty)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 30,
+                          child: _buildSteppedColors(events),
+                        ),
+                    ],
+                  ),
+                );
+              },
+              todayBuilder: (ctx, day, focusedDay) {
+                final events = _getEventsForDay(day);
+                final hasDateSchedule = events.any((s) => s.isDate);
+                final emoji = events.isNotEmpty ? events.first.emoji : null;
+
+                return Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.primary.withAlpha(15),
+                    border: Border.all(
+                      color: hasDateSchedule
+                          ? AppTheme.dateBorderColor
+                          : AppTheme.primary,
+                      width: hasDateSchedule ? 2 : 1,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // 날짜 숫자 (상단)
+                      Positioned(
+                        top: 4,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 이모지 (중앙)
+                      if (emoji != null && emoji.isNotEmpty)
+                        Positioned(
+                          top: 28,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      // 계단식 색상 채움 (하단)
+                      if (events.isNotEmpty)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 30,
+                          child: _buildSteppedColors(events),
+                        ),
+                    ],
+                  ),
+                );
+              },
+              selectedBuilder: (ctx, day, focusedDay) {
+                final events = _getEventsForDay(day);
+                final hasDateSchedule = events.any((s) => s.isDate);
+                final emoji = events.isNotEmpty ? events.first.emoji : null;
+
+                return Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppTheme.primary,
+                    border: Border.all(
+                      color: hasDateSchedule
+                          ? AppTheme.dateBorderColor
+                          : AppTheme.primary,
+                      width: hasDateSchedule ? 2 : 1,
+                    ),
+                  ),
+                  child: Stack(
+                    children: [
+                      // 날짜 숫자 (상단)
+                      Positioned(
+                        top: 4,
+                        left: 0,
+                        right: 0,
+                        child: Center(
+                          child: Text(
+                            '${day.day}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 이모지 (중앙)
+                      if (emoji != null && emoji.isNotEmpty)
+                        Positioned(
+                          top: 28,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      // 계단식 색상 채움 (하단)
+                      if (events.isNotEmpty)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          height: 30,
+                          child: _buildSteppedColors(events),
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
@@ -348,33 +641,46 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             decoration: BoxDecoration(
                               color: AppTheme.surface,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppTheme.border),
+                              border: s.isDate
+                                  ? Border.all(color: AppTheme.dateBorderColor, width: 2)
+                                  : Border.all(color: AppTheme.border),
                             ),
                             child: Row(
                               children: [
-                                Container(
-                                  width: 10, height: 10,
-                                  decoration: BoxDecoration(
-                                    color: _hexToColor(s.colorHex),
-                                    shape: isMe
-                                        ? BoxShape.circle
-                                        : BoxShape.rectangle,
-                                    borderRadius: isMe
-                                        ? null
-                                        : BorderRadius.circular(2),
+                                // 이모지
+                                if (s.emoji != null && s.emoji!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 10),
+                                    child: Text(
+                                      s.emoji!,
+                                      style: const TextStyle(fontSize: 20),
+                                    ),
+                                  )
+                                else
+                                  Container(
+                                    width: 10, height: 10,
+                                    decoration: BoxDecoration(
+                                      color: _hexToColor(s.colorHex),
+                                      shape: isMe
+                                          ? BoxShape.circle
+                                          : BoxShape.rectangle,
+                                      borderRadius: isMe
+                                          ? null
+                                          : BorderRadius.circular(2),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         s.workType ?? (s.isDate ? '데이트' : '일정'),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 14,
-                                          color: AppTheme.textPrimary,
+                                          color: s.isDate
+                                              ? AppTheme.dateBorderColor
+                                              : AppTheme.textPrimary,
                                         ),
                                       ),
                                       if (s.note != null) ...[
@@ -408,13 +714,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   ),
                                 ),
                                 if (isMe)
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline,
-                                        size: 18, color: AppTheme.textSecondary),
-                                    onPressed: () async {
-                                      await _service.deleteSchedule(s.id);
-                                      await _loadSchedules(_focusedDay);
-                                    },
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit_outlined,
+                                            size: 18, color: AppTheme.textSecondary),
+                                        onPressed: () => _showAddDialog(_selectedDay, s),
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline,
+                                            size: 18, color: AppTheme.textSecondary),
+                                        onPressed: () async {
+                                          await _service.deleteSchedule(s.id);
+                                          await _loadSchedules(_focusedDay);
+                                        },
+                                      ),
+                                    ],
                                   ),
                               ],
                             ),

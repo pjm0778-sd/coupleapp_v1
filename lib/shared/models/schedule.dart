@@ -7,6 +7,7 @@ class Schedule {
   final String? colorHex;
   final String? note;
   final bool isDate;
+  final String? emoji;
 
   const Schedule({
     required this.id,
@@ -17,6 +18,7 @@ class Schedule {
     this.colorHex,
     this.note,
     this.isDate = false,
+    this.emoji,
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -28,6 +30,7 @@ class Schedule {
         colorHex: map['color_hex'] as String?,
         note: map['note'] as String?,
         isDate: map['is_date'] as bool? ?? false,
+        emoji: map['emoji'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -38,5 +41,6 @@ class Schedule {
         'color_hex': colorHex,
         'note': note,
         'is_date': isDate,
+        'emoji': emoji,
       };
 }

@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:html' as html show Notification;
 import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../features/notifications/models/notification.dart';
 import '../features/notifications/models/notification_settings.dart';
 import '../../shared/models/schedule.dart';
@@ -18,7 +16,7 @@ class NotificationManager {
   List<AppNotification> get history => _history;
   NotificationSettings get settings => _settings;
 
-  bool _webPermissionGranted = false;
+  final bool _webPermissionGranted = false;
   bool get webPermissionGranted => _webPermissionGranted;
 
   Stream<List<AppNotification>> get historyStream {
@@ -58,32 +56,21 @@ class NotificationManager {
   }
 
   Future<String> requestWebNotificationPermission() async {
+    // TODO: WebAssembly 호환 알림 구현 필요 (web package 사용)
+    // Flutter 3.22+는 dart:html 지원하지 않음
     if (!kIsWeb) return 'not_web';
 
-    try {
-      final permission = await html.Notification.requestPermission();
-      _webPermissionGranted = permission == 'granted';
-      return _webPermissionGranted ? 'granted' : 'denied';
-    } catch (e) {
-      return 'error';
-    }
+    // WebAssembly 호환 코드로 추후 구현 예정
+    return 'not_implemented';
   }
 
   Future<void> showWebNotification({
     required String title,
     String? body,
   }) async {
-    if (!kIsWeb || !_webPermissionGranted) return;
-
-    try {
-      html.Notification(
-        title,
-        body: body,
-        icon: '/icon.png',
-      );
-    } catch (e) {
-      // 브라우저가 알림을 지원하지 않는 경우 무시
-    }
+    // TODO: WebAssembly 호환 알림 구현 필요 (web package 사용)
+    // Flutter 3.22+는 dart:html 지원하지 않음
+    if (!kIsWeb) return;
   }
 
   Future<void> showLocalNotification({
@@ -92,13 +79,9 @@ class NotificationManager {
     String? body,
     NotificationType? type,
   }) async {
-    // 웹에서는 브라우저 알림 사용
-    if (kIsWeb) {
-      await showWebNotification(title: title, body: body);
-      return;
-    }
-
-    // 모바일/데스크톱에서는 향후 추가 (현재 web만 구현)
+    // TODO: Web: web package 사용
+    // TODO: Mobile: flutter_local_notifications 사용
+    // 현재는 알림 히스토리만 추가 (시스템 알림 없음)
   }
 
   Future<void> checkBothOffAndSchedule({
@@ -136,7 +119,7 @@ class NotificationManager {
 
     final datePlan = schedules.where((s) => s.isDate && s.date == tomorrow).toList();
 
-    for (final schedule in datePlan) {
+    if (datePlan.isNotEmpty) {
       await showLocalNotification(
         id: 2000 + tomorrow.day,
         title: '💕 내일 데이트',
@@ -160,7 +143,7 @@ class NotificationManager {
 
     final datePlan = schedules.where((s) => s.isDate && s.date == today).toList();
 
-    for (final schedule in datePlan) {
+    if (datePlan.isNotEmpty) {
       await showLocalNotification(
         id: 3000 + today.day,
         title: '💕 오늘 데이트',

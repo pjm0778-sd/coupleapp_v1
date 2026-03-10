@@ -27,6 +27,11 @@ class ScheduleService {
     await supabase.from('schedules').delete().eq('id', id);
   }
 
+  /// 일정 수정
+  Future<void> updateSchedule(String id, Map<String, dynamic> data) async {
+    await supabase.from('schedules').update(data).eq('id', id);
+  }
+
   /// 해당 월의 커플 전체 일정 삭제
   Future<void> deleteMonthSchedules(String coupleId, DateTime month) async {
     final start = DateTime(month.year, month.month, 1);

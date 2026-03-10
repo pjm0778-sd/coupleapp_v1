@@ -7,7 +7,6 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/couple/screens/couple_connect_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
-import 'features/schedule/screens/shift_type_screen.dart';
 import 'features/schedule/screens/ocr_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
@@ -34,7 +33,6 @@ class CoupleApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (_) => const AppRouter(),
-        '/shift_type': (_) => const ShiftTypeScreen(),
       },
     );
   }
