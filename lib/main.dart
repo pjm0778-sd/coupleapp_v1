@@ -7,9 +7,15 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/couple/screens/couple_connect_screen.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
-import 'features/schedule/screens/ocr_screen.dart';
+import 'features/schedule/screens/auto_registration_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
+
+/// 탭 전환 알림
+class TabSwitchNotification extends Notification {
+  final int tabIndex;
+  TabSwitchNotification(this.tabIndex);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -90,52 +96,58 @@ class _MainShellState extends State<MainShell> {
   static const List<Widget> _screens = [
     HomeScreen(),
     CalendarScreen(),
-    OcrScreen(),
+    AutoRegistrationScreen(),
     NotificationHistoryScreen(),
     SettingsScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: AppTheme.border)),
+    return NotificationListener<TabSwitchNotification>(
+      onNotification: (notification) {
+        setState(() => _currentIndex = notification.tabIndex);
+        return true;
+      },
+      child: Scaffold(
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _screens,
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: '홈',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_month_outlined),
-              activeIcon: Icon(Icons.calendar_month_rounded),
-              label: '캘린더',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.document_scanner_outlined),
-              activeIcon: Icon(Icons.document_scanner_rounded),
-              label: '스케줄',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_outlined),
-              activeIcon: Icon(Icons.notifications_rounded),
-              label: '알림',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: '설정',
-            ),
-          ],
+        bottomNavigationBar: Container(
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: AppTheme.border)),
+          ),
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() => _currentIndex = index),
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home_outlined),
+                activeIcon: Icon(Icons.home_rounded),
+                label: '홈',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.calendar_month_outlined),
+                activeIcon: Icon(Icons.calendar_month_rounded),
+                label: '캘린더',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.document_scanner_outlined),
+                activeIcon: Icon(Icons.document_scanner_rounded),
+                label: '일정 자동등록',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.notifications_outlined),
+                activeIcon: Icon(Icons.notifications_rounded),
+                label: '알림',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.settings_outlined),
+                activeIcon: Icon(Icons.settings_rounded),
+                label: '설정',
+              ),
+            ],
+          ),
         ),
       ),
     );

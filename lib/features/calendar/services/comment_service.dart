@@ -1,0 +1,38 @@
+import '../../../core/supabase_client.dart';
+import '../../../shared/models/schedule_comment.dart';
+
+class CommentService {
+  /// 일정 댓글 조회
+  Future<List<ScheduleComment>> getComments(String scheduleId) async {
+    final data = await supabase
+        .from('schedule_comments')
+        .select('*, user_id, profiles(user_name)')
+        .eq('schedule_id', scheduleId)
+        .order('created_at', ascending: true);
+
+    return (data as List)
+        .map((e) => ScheduleComment.fromMap(e))
+        .toList();
+  }
+
+  /// 댓글 추가
+  Future<void> addComment(
+    String scheduleId,
+    String content,
+  ) async {
+    await supabase.from('schedule_comments').insert({
+      'schedule_id': scheduleId,
+      'user_id': supabase.auth.currentUser!.id,
+      'content': content,
+    });
+  }
+
+  /// 댓글 삭제
+  Future<void> deleteComment(String id) async {
+    await supabase.from('schedule_comments').delete().eq('id', id);
+  }
+
+  /// 댓글이 현재 유저의 것인지 확인
+  bool isMine(ScheduleComment comment) =>
+      comment.userId == supabase.auth.currentUser!.id;
+}
