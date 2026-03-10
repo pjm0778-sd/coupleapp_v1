@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import 'package:collection/collection.dart';
@@ -15,17 +14,11 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
   final _formKey = GlobalKey<FormState>();
   final _colorKeys = <Color, String>{
     const Color(0xFFFF0000): '#FF0000', // 빨강
-    const Color(0xFFFF0000): '#FF0000',
     const Color(0xFFFF5200): '#FF5200', // 주황
-    const Color(0xFFFF5200): '#FF5200',
     const Color(0xFF2196F3): '#2196F3', // 파랑
-    const Color(0xFF2196F3): '#2196F3',
     const Color(0xFF4CAF50): '#4CAF50', // 녹색
-    const Color(0xFF4CAF50): '#4CAF50',
     const Color(0xFF9C27B0): '#9C27B0', // 보라
-    const Color(0xFF9C27B0): '#9C27B0',
     const Color(0xFFFF9800): '#FF9800', // 주황
-    const Color(0xFFFF9800): '#FF9800',
   };
 
   late Color _selectedColor;
@@ -248,7 +241,6 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
 
     if (selected != null && context.mounted) {
       setState(() => _startTime = selected);
-
       // 야간근무라면 종료시간을 자동 설정
       if (selected!.hour >= 18 && selected!.hour < 23) {
         setState(() => _endTime = const TimeOfDay(hour: 9, minute: 0));

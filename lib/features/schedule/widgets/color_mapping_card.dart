@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import 'dart:ui';
 import '../../../shared/models/color_mapping.dart';
 
 class ColorMappingCard extends StatelessWidget {

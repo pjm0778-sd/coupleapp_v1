@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
-import '../services/schedule_service.dart';
+import '../../../shared/models/schedule.dart';
+import '../../calendar/services/schedule_service.dart';
 
 class AutoRegistrationScreen extends StatefulWidget {
   const AutoRegistrationScreen({super.key});
@@ -12,7 +13,6 @@ class AutoRegistrationScreen extends StatefulWidget {
 }
 
 class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
-  final _scheduleService = ScheduleService();
   final _colorMappings = <ColorMapping>[];
 
   String? _myUserId;
@@ -69,15 +69,17 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     if (_myUserId == null) return;
 
     try {
-      await _scheduleService.addSchedule(Schedule(
-        id: '',
-        userId: _myUserId!,
-        coupleId: await _scheduleService.getCoupleId(),
-        date: DateTime.now(),
-        title: mapping.title,
-        startTime: mapping.startTime,
-        endTime: mapping.endTime,
-      ));
+      await supabase.from('color_mappings').insert({
+        'user_id': _myUserId,
+        'color_hex': mapping.colorHex,
+        'title': mapping.title,
+        'start_time': mapping.startTime != null
+            ? '${mapping.startTime!.hour.toString().padLeft(2, '0')}:${mapping.startTime!.minute.toString().padLeft(2, '0')}'
+            : null,
+        'end_time': mapping.endTime != null
+            ? '${mapping.endTime!.hour.toString().padLeft(2, '0')}:${mapping.endTime!.minute.toString().padLeft(2, '0')}'
+            : null,
+      });
 
       await _loadColorMappings();
       if (mounted) {

@@ -1,4 +1,4 @@
-import 'dart:ui.dart';
+import 'package:flutter/material.dart';
 
 class ColorMapping {
   final String id;

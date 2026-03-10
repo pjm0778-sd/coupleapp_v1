@@ -1,4 +1,4 @@
-import 'dart:ui' show TimeOfDay;
+import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
