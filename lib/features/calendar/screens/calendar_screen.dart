@@ -37,15 +37,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _loadSchedules(DateTime month) async {
-    if (_coupleId == null) return;
-    setState(() => _isLoading = true);
-    final list = await _service.getMonthSchedules(_coupleId!, month, filter: _filter);
-    final map = <DateTime, List<Schedule>>{};
-    for (final s in list) {
-      final key = DateTime(s.date.year, s.date.month, s.date.day);
-      map.putIfAbsent(key, () => []).add(s);
+    if (_coupleId == null) {
+      setState(() => _isLoading = false);
+      return;
     }
-    if (mounted) setState(() { _events = map; _isLoading = false; });
+    setState(() => _isLoading = true);
+    try {
+      final list = await _service.getMonthSchedules(_coupleId!, month, filter: _filter);
+      final map = <DateTime, List<Schedule>>{};
+      for (final s in list) {
+        final key = DateTime(s.date.year, s.date.month, s.date.day);
+        map.putIfAbsent(key, () => []).add(s);
+      }
+      if (mounted) setState(() { _events = map; _isLoading = false; });
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   void _onFilterChanged(ScheduleFilter filter) {
