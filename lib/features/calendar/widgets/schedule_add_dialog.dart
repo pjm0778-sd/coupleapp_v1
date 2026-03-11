@@ -147,7 +147,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                             time: _startTime,
                             onChanged: (v) {
                               if (v != null) {
-                                setState(() => _startTime = TimeOfDay(hour: v ~/ 60, minute: 0));
+                                setState(() => _startTime = v);
                               }
                             },
                           ),
@@ -159,7 +159,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                             time: _endTime,
                             onChanged: (v) {
                               if (v != null) {
-                                setState(() => _endTime = TimeOfDay(hour: v ~/ 60, minute: 0));
+                                setState(() => _endTime = v);
                               }
                             },
                           ),
@@ -275,7 +275,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                         );
                       }).toList(),
                       onChanged: (v) {
-                        if (v == '없음') {
+                        if (v == null || v == '없음') {
                           setState(() => _repeatPattern = null);
                         } else {
                           setState(() => _repeatPattern = RepeatPattern(type: v));
