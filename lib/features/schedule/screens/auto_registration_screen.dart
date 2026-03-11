@@ -24,6 +24,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
 
   bool _isLoading = false;
   bool _isUploading = false;
+  bool _useMapping = true; // 매핑참고 체크박스
   final ImagePicker _imagePicker = ImagePicker();
 
   @override
@@ -163,6 +164,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           }).toList(),
           'targetYear': now.year,
           'targetMonth': now.month,
+          'useMapping': _useMapping, // 매핑참고 여부
         },
       );
 
@@ -341,6 +343,34 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // 매핑참고 체크박스
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _useMapping,
+                  onChanged: (value) => setState(() => _useMapping = value ?? true),
+                  activeColor: AppTheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _useMapping
+                        ? '매핑을 참고하여 분석 (비슷한 색 계열 인정)'
+                        : '매핑 무시하고 사진의 색/글씨를 정확히 파악',
+                    style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
