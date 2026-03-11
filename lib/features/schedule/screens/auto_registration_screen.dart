@@ -86,9 +86,6 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         'start_time': mapping.startTime != null
             ? '${mapping.startTime!.hour.toString().padLeft(2, '0')}:${mapping.startTime!.minute.toString().padLeft(2, '0')}'
             : null,
-        'end_time': mapping.endTime != null
-            ? '${mapping.endTime!.hour.toString().padLeft(2, '0')}:${mapping.endTime!.minute.toString().padLeft(2, '0')}'
-            : null,
       });
 
       await _loadColorMappings();
