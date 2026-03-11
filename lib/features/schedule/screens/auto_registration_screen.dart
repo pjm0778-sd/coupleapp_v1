@@ -83,9 +83,6 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         'user_id': _myUserId,
         'color_hex': mapping.colorHex,
         'work_type': mapping.title,
-        'start_time': mapping.startTime != null
-            ? '${mapping.startTime!.hour.toString().padLeft(2, '0')}:${mapping.startTime!.minute.toString().padLeft(2, '0')}'
-            : null,
       });
 
       await _loadColorMappings();

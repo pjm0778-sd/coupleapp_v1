@@ -6,7 +6,7 @@ class CommentService {
   Future<List<ScheduleComment>> getComments(String scheduleId) async {
     final data = await supabase
         .from('schedule_comments')
-        .select('*, user_id, profiles(user_name)')
+        .select('*')
         .eq('schedule_id', scheduleId)
         .order('created_at', ascending: true);
 
