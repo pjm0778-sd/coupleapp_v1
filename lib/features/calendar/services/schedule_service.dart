@@ -145,8 +145,8 @@ class ScheduleService {
         .from('profiles')
         .select('couple_id')
         .eq('id', userId)
-        .single();
-    return profile['couple_id'] as String?;
+        .maybeSingle();
+    return profile?['couple_id'] as String?;
   }
 
   /// 현재 유저 ID

@@ -59,7 +59,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   void _showAddMappingDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => MappingAddDialog(),
+      builder: (ctx) => const MappingAddDialog(),
     ).then((mapping) async {
       if (mapping != null) {
         await _addMapping(mapping as ColorMapping);

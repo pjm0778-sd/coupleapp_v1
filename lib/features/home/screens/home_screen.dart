@@ -62,38 +62,49 @@ class _HomeScreenState extends State<HomeScreen> {
     TabSwitchNotification(1).dispatch(context); // 캘린더 탭 (index 1)
   }
 
-  void _onDDayTap() {
+  Future<void> _onDDayTap() async {
     // D-day 설정 화면 - 다이얼로그로 날짜 선택
     final currentStartedAt = _startedAt;
     if (currentStartedAt == null) return;
 
-    showDatePicker(
+    final date = await showDatePicker(
       context: context,
       initialDate: currentStartedAt,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-    ).then((date) async {
-      if (date != null && _coupleId != null) {
-        try {
-          await supabase
-              .from('couples')
-              .update({'started_at': date.toIso8601String().split('T')[0]})
-              .eq('id', _coupleId!);
-          if (mounted) {
-            _loadData();
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('D-day가 업데이트되었습니다')),
-            );
-          }
-        } catch (e) {
+    );
+
+    if (date != null) {
+      try {
+        // coupleId 다시 가져오기 (커플 연결 상태 확인)
+        _coupleId = await _homeService.getCoupleId();
+        if (_coupleId == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('D-day 업데이트 실패: $e')),
+              const SnackBar(content: Text('커플 연결이 필요합니다')),
             );
           }
+          return;
+        }
+
+        await supabase
+            .from('couples')
+            .update({'started_at': date.toIso8601String().split('T')[0]})
+            .eq('id', _coupleId!);
+        if (mounted) {
+          _loadData();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('D-day가 업데이트되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('D-day 업데이트 실패: $e')),
+          );
         }
       }
-    });
+    }
   }
 
   void _onNextDateTap() {

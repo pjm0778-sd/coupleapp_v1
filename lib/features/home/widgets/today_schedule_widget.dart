@@ -201,7 +201,7 @@ class _ScheduleItem extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: categoryColor.withAlpha(15),
+        color: categoryColor.withOpacity(15 / 255),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
