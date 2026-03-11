@@ -8,7 +8,6 @@ class CalendarCard extends StatelessWidget {
   final bool isToday;
   final List<Schedule> schedules;
   final void Function(Schedule) onScheduleTap;
-  final Color Function(String?) getCategoryColor;
   final IconData Function(String?) getCategoryIcon;
   final String Function(TimeOfDay?) formatTime;
   final String Function(TimeOfDay?, TimeOfDay?) formatTimeRange;
@@ -20,7 +19,6 @@ class CalendarCard extends StatelessWidget {
     required this.isToday,
     required this.schedules,
     required this.onScheduleTap,
-    required this.getCategoryColor,
     required this.getCategoryIcon,
     required this.formatTime,
     required this.formatTimeRange,
@@ -99,7 +97,6 @@ class CalendarCard extends StatelessWidget {
                   schedule: schedule,
                   isFirst: index == 0,
                   onTap: () => onScheduleTap(schedule),
-                  getCategoryColor: getCategoryColor,
                   getCategoryIcon: getCategoryIcon,
                   formatTime: formatTime,
                   formatTimeRange: formatTimeRange,
@@ -116,7 +113,6 @@ class _ScheduleItem extends StatelessWidget {
   final Schedule schedule;
   final bool isFirst;
   final VoidCallback onTap;
-  final Color Function(String?) getCategoryColor;
   final IconData Function(String?) getCategoryIcon;
   final String Function(TimeOfDay?) formatTime;
   final String Function(TimeOfDay?, TimeOfDay?) formatTimeRange;
@@ -126,17 +122,45 @@ class _ScheduleItem extends StatelessWidget {
     required this.schedule,
     required this.isFirst,
     required this.onTap,
-    required this.getCategoryColor,
     required this.getCategoryIcon,
     required this.formatTime,
     required this.formatTimeRange,
   });
 
+  /// 일정 색상 계산 (colorHex 우선, 아니면 category 기준)
+  Color _getScheduleColor(Schedule schedule) {
+    if (schedule.colorHex != null && schedule.colorHex!.isNotEmpty) {
+      try {
+        return Color(int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16));
+      } catch (_) {}
+    }
+    // category 기준 색상
+    return _getCategoryColor(schedule.category);
+  }
+
+  /// 카테고리 기준 색상
+  Color _getCategoryColor(String? category) {
+    switch (category) {
+      case '근무':
+        return const Color(0xFF4CAF50);
+      case '약속':
+        return const Color(0xFF2196F3);
+      case '여행':
+        return const Color(0xFFFF9800);
+      case '데이트':
+        return const Color(0xFFE91E63);
+      case '휴무':
+        return const Color(0xFFBDBDBD);
+      default:
+        return AppTheme.primary;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = schedule.title ?? schedule.workType ?? '일정';
     final category = schedule.category;
-    final categoryColor = getCategoryColor(category);
+    final scheduleColor = _getScheduleColor(schedule);
     final categoryIcon = getCategoryIcon(category);
     final timeRange = formatTimeRange(schedule.startTime, schedule.endTime);
     final hasLocation = schedule.location != null && schedule.location!.isNotEmpty;
@@ -147,7 +171,7 @@ class _ScheduleItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         margin: EdgeInsets.only(top: isFirst ? 0 : 8),
         decoration: BoxDecoration(
-          color: categoryColor.withAlpha(15),
+          color: scheduleColor.withAlpha(15),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -157,7 +181,7 @@ class _ScheduleItem extends StatelessWidget {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: categoryColor,
+                color: scheduleColor,
                 shape: BoxShape.circle,
               ),
               child: Icon(

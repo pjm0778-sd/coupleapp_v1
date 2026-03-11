@@ -468,7 +468,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
             isToday: isToday,
             schedules: schedules,
             onScheduleTap: _onScheduleTap,
-            getCategoryColor: _getCategoryColor,
             getCategoryIcon: _getCategoryIcon,
             formatTime: _formatTime,
             formatTimeRange: _formatTimeRange,
