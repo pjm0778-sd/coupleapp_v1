@@ -12,6 +12,9 @@ class ScheduleAddDialog extends StatefulWidget {
     this.date,
     this.existingSchedule,
   });
+
+  @override
+  State<ScheduleAddDialog> createState() => _ScheduleAddDialogState();
 }
 
 class _ScheduleAddDialogState extends State<ScheduleAddDialog> {

@@ -4,6 +4,8 @@ import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
 import '../../../shared/models/schedule.dart';
 import '../../calendar/services/schedule_service.dart';
+import '../widgets/mapping_add_dialog.dart';
+import '../widgets/color_mapping_card.dart';
 
 class AutoRegistrationScreen extends StatefulWidget {
   const AutoRegistrationScreen({super.key});
@@ -57,12 +59,12 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   void _showAddMappingDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => MappingAddDialog(
-        onAdd: (mapping) async {
-          await _addMapping(mapping);
-        },
-      ),
-    );
+      builder: (ctx) => MappingAddDialog(),
+    ).then((mapping) async {
+      if (mapping != null) {
+        await _addMapping(mapping as ColorMapping);
+      }
+    });
   }
 
   Future<void> _addMapping(ColorMapping mapping) async {
@@ -183,7 +185,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
                   ElevatedButton.icon(
                     onPressed: _isUploading ? null : _onUploadPressed,
                     icon: const Icon(Icons.cloud_upload_outlined),
-                    label: _isUploading ? '분석 중...' : '이미지 선택',
+                    label: Text(_isUploading ? '분석 중...' : '이미지 선택'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
@@ -220,7 +222,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           ElevatedButton.icon(
             onPressed: _showAddMappingDialog,
             icon: const Icon(Icons.add),
-            label: '새 매핑 추가',
+            label: const Text('새 매핑 추가'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
