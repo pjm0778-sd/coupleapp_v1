@@ -1,5 +1,5 @@
 === coupleapp_v1 작업 기록 (Claude 자동 기록) ===
-업데이트: 2026-03-11
+업데이트: 2026-03-12
 
 ## 현재 상태
 - Flutter Web app, Supabase 백엔드
@@ -68,7 +68,7 @@
      - 체크하면: 매핑에 따라 OCR 분석 (색 계열 기준으로 비슷한 색도 인정)
      - 체크 안하면: 매핑 무시, 사진 색/글씨 정확히 파악
   2. 프롬프트 개선 (센스 있고 유저 관점)
-     - 색상 계열 기준 매칭 (빨강, 파랑, 녹색 등 계열 인정)
+     - 색상 계열 기준 매칭 (빨강/파랑/녹색 등 계열 인정)
      - 매핑 무시 모드: 색상 통합 규칙 + 일정 이름 센스 있게 판단
 - 파일:
   - lib/features/schedule/screens/auto_registration_screen.dart (_useMapping 변수 추가, 체크박스 UI 추가)
@@ -92,9 +92,16 @@
   - lib/features/home/services/home_service.dart (getNextDateSchedule 구현)
   - lib/features/home/screens/home_screen.dart (nextDateDays 전달)
 
-### [10] 진행 예정 - 막대형 캘린더 색상 버그
-- 문제: 달력형은 색이 잘 표현되는데 막대형에서는 색이 안 나옴
-- 파일: lib/features/calendar/widgets/calendar_card.dart
+### [10] 완료 - 막대형 캘린더 색상 버그 수정
+- 문제: 막대형에서 색이 표현 안됨
+- 해결: colorHex 우선 사용하도록 수정
+- 수정:
+  - CalendarCard에서 getCategoryColor 파라미터 제거
+  - _ScheduleItem에 _getScheduleColor 메서드 추가
+  - colorHex가 있으면 그 색 우선 사용, 없으면 category 기준 색상
+- 파일:
+  - lib/features/calendar/widgets/calendar_card.dart
+  - lib/features/calendar/screens/calendar_screen.dart (CalendarCard 호출 수정)
 
 ### [11] 진행 예정 - 일정 추가 시작날짜/종료날짜 선택
 - 요구사항: 현재는 날짜 하나만 선택, 시작~종료 날짜 범위 선택 가능하게
@@ -133,18 +140,26 @@
 
 ## 다음 작업 시작점
 
-이슈 #7 OCR 개선부터 시작:
+이슈 #11 일정 추가 시작날짜/종료날짜 선택부터 시작:
 
-1. auto_registration_screen.dart 읽기
-2. "매핑참고" 체크박스 UI 추가
-3. OCR 호출 시 체크박스 값 전달 로직 추가
-4. ocr-schedule Edge Function 읽기
-5. 프롬프트 수정:
-   - 비슷한 색 계열 인식 로직 추가
-   - "매핑참고" 체크 여부에 따른 분석 로직 분기
-   - 유저 관점에서 센스 있는 프롬프트로 개선
+1. schedule_add_dialog.dart 읽기
+2. 날짜 선택 UI에서 범위 선택 가능하게 수정
+3. Schedule 모델에 startDate, endDate 필드 필요 여부 확인
+4. DB 스키마에 dates 컬럼이 있는지 확인
 
 ## 주의사항
 - Git 커밋 메시지 형식: "feat:" 또는 "fix:" 접두사 사용
 - 작업 완료 시 이 파일 실시간 업데이트 필수 (다른 AI 이어서 작업하기 위해)
 - 토큰 부족 시 이 파일로 다른 AI에게 인계
+
+## 빌드 오류 방지
+
+### 푸시 전 필수 체크
+```bash
+flutter analyze
+flutter build web --release
+```
+
+### 이전 오류 기록
+- 2026-03-12 - comment_service.dart 타입 오류: Stream<List<Map>> → Stream<List<ScheduleComment>> 변환 필요
+- 2026-03-11 - main.dart 문법 오류: Scaffold(` 뒤에 `{` 누락
