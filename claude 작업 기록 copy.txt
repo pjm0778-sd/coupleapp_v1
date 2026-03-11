@@ -74,20 +74,23 @@
   - lib/features/schedule/screens/auto_registration_screen.dart (_useMapping 변수 추가, 체크박스 UI 추가)
   - supabase/functions/ocr-schedule/index.ts (useMapping 파라미터, 분기 프롬프트)
 
-### [8] 진행 예정 - 댓글 실시간 업데이트
-- 문제: 새로고침하지 않으면 상대방 댓글이 안보임
-- 해결: Supabase Realtime subscription 적용
+### [8] 완료 - 댓글 실시간 업데이트
+- 해결: Supabase Realtime subscription 적용 (.asStream 사용)
+- 수정:
+  - comment_service.dart: subscribeToComments() 메서드 추가 (실시간 스트림)
+  - schedule_detail.dart: _loadComments() → _subscribeToComments()로 변경
 - 파일:
   - lib/features/calendar/services/comment_service.dart
   - lib/features/calendar/widgets/schedule_detail.dart
 
-### [9] 진행 예정 - D+day 박스 개선
-- 요구사항:
-  - 첫 줄: "우리가 만난지 D+n"
-  - 둘째 줄: "다음 데이트까지 D-n" (가장 가까운 데이트까지 남은 기간)
+### [9] 완료 - D+day 박스 개선
+- 수정 내용:
+  - 첫 줄: "파트너님과 만난지 D+n" (또는 "만난지")
+  - 둘째 줄: "다음 데이트까지 D-n" (다음 데이트 남은 기간)
 - 파일:
-  - lib/features/home/widgets/dday_widget.dart
-  - lib/features/home/services/home_service.dart
+  - lib/features/home/widgets/dday_widget.dart (nextDateDays 파라미터 추가, 두 번째 줄 표시)
+  - lib/features/home/services/home_service.dart (getNextDateSchedule 구현)
+  - lib/features/home/screens/home_screen.dart (nextDateDays 전달)
 
 ### [10] 진행 예정 - 막대형 캘린더 색상 버그
 - 문제: 달력형은 색이 잘 표현되는데 막대형에서는 색이 안 나옴

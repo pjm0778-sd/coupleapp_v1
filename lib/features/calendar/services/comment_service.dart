@@ -15,6 +15,16 @@ class CommentService {
         .toList();
   }
 
+  /// 일정 댓글 실시간 스트림 (Realtime 자동 구독)
+  Stream<List<ScheduleComment>> subscribeToComments(String scheduleId) {
+    return supabase
+        .from('schedule_comments')
+        .select('*')
+        .eq('schedule_id', scheduleId)
+        .order('created_at', ascending: true)
+        .asStream();
+  }
+
   /// 댓글 추가
   Future<void> addComment(
     String scheduleId,

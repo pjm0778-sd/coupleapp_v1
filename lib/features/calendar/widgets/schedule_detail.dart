@@ -32,24 +32,19 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   void initState() {
     super.initState();
     _currentSchedule = widget.schedule;
-    _loadComments();
+    _subscribeToComments();
   }
 
-  Future<void> _loadComments() async {
-    setState(() => _isLoadingComments = true);
-    try {
-      final comments = await _commentService.getComments(_currentSchedule.id);
+  void _subscribeToComments() {
+    // 실시간 댓글 구독
+    _commentService.subscribeToComments(_currentSchedule.id).listen((comments) {
       if (mounted) {
         setState(() {
           _comments = comments;
           _isLoadingComments = false;
         });
       }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingComments = false);
-      }
-    }
+    });
   }
 
   Future<void> _addComment() async {
@@ -59,7 +54,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     try {
       await _commentService.addComment(_currentSchedule.id, content);
       _commentController.clear();
-      await _loadComments();
+      // 실시간 구독으로 자동 업데이트됨
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('댓글 추가 실패')),
@@ -70,7 +65,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   Future<void> _deleteComment(String id) async {
     try {
       await _commentService.deleteComment(id);
-      await _loadComments();
+      // 실시간 구독으로 자동 업데이트됨
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('댓글 삭제 실패')),
