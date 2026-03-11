@@ -12,12 +12,24 @@ class MappingAddDialog extends StatefulWidget {
 class _MappingAddDialogState extends State<MappingAddDialog> {
   final _formKey = GlobalKey<FormState>();
   final _colorKeys = <Color, String>{
-    const Color(0xFFFF0000): '#FF0000', // 빨강
-    const Color(0xFFFF5200): '#FF5200', // 주황
-    const Color(0xFF2196F3): '#2196F3', // 파랑
-    const Color(0xFF4CAF50): '#4CAF50', // 녹색
+    const Color(0xFFE53935): '#E53935', // 빨강
+    const Color(0xFFE91E63): '#E91E63', // 분홍
     const Color(0xFF9C27B0): '#9C27B0', // 보라
+    const Color(0xFF673AB7): '#673AB7', // 진보라
+    const Color(0xFF3F51B5): '#3F51B5', // 남색
+    const Color(0xFF2196F3): '#2196F3', // 파랑
+    const Color(0xFF03A9F4): '#03A9F4', // 하늘
+    const Color(0xFF00BCD4): '#00BCD4', // 청록
+    const Color(0xFF009688): '#009688', // 민트
+    const Color(0xFF4CAF50): '#4CAF50', // 녹색
+    const Color(0xFF8BC34A): '#8BC34A', // 연녹
+    const Color(0xFFFFEB3B): '#FFEB3B', // 노랑
+    const Color(0xFFFFC107): '#FFC107', // 황색
     const Color(0xFFFF9800): '#FF9800', // 주황
+    const Color(0xFFFF5722): '#FF5722', // 진주황
+    const Color(0xFF795548): '#795548', // 갈색
+    const Color(0xFF607D8B): '#607D8B', // 청회
+    const Color(0xFF9E9E9E): '#9E9E9E', // 회색
   };
 
   late Color _selectedColor;
@@ -246,6 +258,7 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
     final selected = await showTimePicker(
       context: context,
       initialTime: _startTime ?? TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
     );
 
     if (selected != null && context.mounted) {

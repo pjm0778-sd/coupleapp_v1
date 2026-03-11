@@ -25,14 +25,36 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   late TimeOfDay? _endTime;
   late String _title;
   late String? _category;
+  late String? _colorHex;
   late String _location;
   late String _note;
   late int? _reminderMinutes;
   late RepeatPattern? _repeatPattern;
 
+  static const _colorPalette = <String, Color>{
+    '#E53935': Color(0xFFE53935),
+    '#E91E63': Color(0xFFE91E63),
+    '#9C27B0': Color(0xFF9C27B0),
+    '#673AB7': Color(0xFF673AB7),
+    '#3F51B5': Color(0xFF3F51B5),
+    '#2196F3': Color(0xFF2196F3),
+    '#03A9F4': Color(0xFF03A9F4),
+    '#00BCD4': Color(0xFF00BCD4),
+    '#009688': Color(0xFF009688),
+    '#4CAF50': Color(0xFF4CAF50),
+    '#8BC34A': Color(0xFF8BC34A),
+    '#FFEB3B': Color(0xFFFFEB3B),
+    '#FFC107': Color(0xFFFFC107),
+    '#FF9800': Color(0xFFFF9800),
+    '#FF5722': Color(0xFFFF5722),
+    '#795548': Color(0xFF795548),
+    '#607D8B': Color(0xFF607D8B),
+    '#9E9E9E': Color(0xFF9E9E9E),
+  };
+
   final _categories = ['근무', '약속', '여행', '데이트', '기타'];
   final _reminderOptions = ['없음', '1분 전', '5분 전', '10분 전', '30분 전', '1시간 전'];
-  final _repeatTypes = ['없음', '매일', '매주', '매월', '매년'];
+  final _repeatTypes = ['없음', '매일', '매주', '매월', '매년', '주말', '평일'];
 
   @override
   void initState() {
@@ -45,6 +67,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _endTime = s.endTime;
       _title = s.title ?? s.workType ?? '';
       _category = s.category;
+      _colorHex = s.colorHex;
       _location = s.location ?? '';
       _note = s.note ?? '';
       _reminderMinutes = s.reminderMinutes;
@@ -56,6 +79,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _endTime = null;
       _title = '';
       _category = null;
+      _colorHex = null;
       _location = '';
       _note = '';
       _reminderMinutes = null;
@@ -66,13 +90,13 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   void _onSave() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // 저장 로직 (나중에 ScheduleService 연동)
     final schedule = widget.existingSchedule != null
         ? widget.existingSchedule!.copyWith(
             title: _title.trim().isEmpty ? widget.existingSchedule!.title : _title.trim(),
             startTime: _startTime,
             endTime: _endTime,
             category: _category,
+            colorHex: _colorHex,
             location: _location.trim().isEmpty ? null : _location.trim(),
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
@@ -87,6 +111,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             startTime: _startTime,
             endTime: _endTime,
             category: _category,
+            colorHex: _colorHex,
             location: _location.trim().isEmpty ? null : _location.trim(),
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
@@ -226,6 +251,33 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // 색상
+                    _buildSectionTitle('색상'),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _colorPalette.entries.map((e) {
+                        final isSelected = _colorHex == e.key;
+                        return GestureDetector(
+                          onTap: () => setState(() => _colorHex = e.key),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: e.value,
+                              shape: BoxShape.circle,
+                              border: isSelected
+                                  ? Border.all(color: AppTheme.textPrimary, width: 2.5)
+                                  : null,
+                            ),
+                            child: isSelected
+                                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                : null,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 20),
                     // 장소
                     _buildSectionTitle('장소'),
                     TextFormField(
@@ -293,12 +345,12 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                         underline: const SizedBox.shrink(),
                         items: _repeatTypes.map((t) {
                           return DropdownMenuItem(
-                            value: t,
+                            value: t == '없음' ? null : t,
                             child: Text(t, style: const TextStyle(fontSize: 14)),
                           );
                         }).toList(),
                         onChanged: (v) {
-                          if (v == null || v == '없음') {
+                          if (v == null) {
                             setState(() => _repeatPattern = null);
                           } else {
                             setState(() => _repeatPattern = RepeatPattern(type: v));
@@ -336,15 +388,15 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                         ],
                       ),
                     ),
-              ],
-            ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -437,6 +489,7 @@ class _TimeSelector extends StatelessWidget {
     final selected = await showTimePicker(
       context: context,
       initialTime: time ?? TimeOfDay.now(),
+      initialEntryMode: TimePickerEntryMode.input,
     );
 
     if (selected != null && context.mounted) {

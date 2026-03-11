@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme.dart';
@@ -119,7 +118,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       setState(() => _isUploading = true);
 
       // 이미지를 base64로 변환
-      final bytes = await File(image.path).readAsBytes();
+      final bytes = await image.readAsBytes();
       final base64Image = base64Encode(bytes);
       final mediaType = image.mimeType ?? 'image/jpeg';
 

@@ -60,6 +60,10 @@ class RepeatPattern {
         }
         return false;
 
+      case '주말':
+        return date.weekday == 6 || date.weekday == 7;
+      case '평일':
+        return date.weekday >= 1 && date.weekday <= 5;
       default:
         return false;
     }
@@ -81,6 +85,10 @@ class RepeatPattern {
         return '매월';
       case 'yearly':
         return '매년';
+      case '주말':
+        return '주말마다';
+      case '평일':
+        return '평일마다';
       default:
         return '반복 없음';
     }
