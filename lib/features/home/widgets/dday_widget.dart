@@ -17,7 +17,7 @@ class DDayWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final displayDays = days != null ? days : 0;
     final displayDate = startedAt != null
-        ? '${startedAt.year}년 ${startedAt.month}월 ${startedAt.day}일'
+        ? '${startedAt!.year}년 ${startedAt!.month}월 ${startedAt!.day}일'
         : '날짜 미설정';
 
     return GestureDetector(

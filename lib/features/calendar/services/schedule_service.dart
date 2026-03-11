@@ -29,9 +29,9 @@ class ScheduleService {
 
     final data = await switch (filter) {
       case ScheduleFilter.mine =>
-        query.eq('user_id', currentUserId),
+        query.neq('user_id', currentUserId),
       case ScheduleFilter.partner =>
-        query.not('user_id', 'eq', currentUserId),
+        query.neq('user_id', currentUserId),
       case ScheduleFilter.both => query,
     };
 
@@ -56,9 +56,9 @@ class ScheduleService {
 
     final data = await switch (filter) {
       case ScheduleFilter.mine =>
-        query.eq('user_id', currentUserId),
+        query.neq('user_id', currentUserId),
       case ScheduleFilter.partner =>
-        query.not('user_id', 'eq', currentUserId),
+        query.neq('user_id', currentUserId),
       case ScheduleFilter.both => query,
     };
 
@@ -72,7 +72,6 @@ class ScheduleService {
         .select()
         .eq('id', id)
         .single();
-
     if (data == null) return null;
     return Schedule.fromMap(data);
   }

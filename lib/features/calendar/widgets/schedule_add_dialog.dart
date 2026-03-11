@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/repeat_pattern.dart';
@@ -13,9 +12,6 @@ class ScheduleAddDialog extends StatefulWidget {
     this.date,
     this.existingSchedule,
   });
-
-  @override
-  State<ScheduleAddDialog> createState() => _ScheduleAddDialogState();
 }
 
 class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
@@ -32,7 +28,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   late RepeatPattern? _repeatPattern;
 
   final _categories = ['근무', '약속', '여행', '데이트', '기타'];
-  final _reminderOptions = ['없음', '1분 전', '5분 전', '10분 전', '30분 전', '1시간 전', '1일 전'];
+  final _reminderOptions = ['없음', '1분 전', '5분 전', '10분 전', '30분 전', '1시간 전'];
   final _repeatTypes = ['없음', '매일', '매주', '매월', '매년'];
 
   @override
@@ -98,6 +94,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
           child: Column(
@@ -145,7 +142,11 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           child: _TimeSelector(
                             label: '시작',
                             time: _startTime,
-                            onChanged: (v) => setState(() => _startTime = v),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _startTime = TimeOfDay(hour: v ~/ 60, minute: 0));
+                              }
+                            },
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -153,7 +154,11 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           child: _TimeSelector(
                             label: '종료',
                             time: _endTime,
-                            onChanged: (v) => setState(() => _endTime = v),
+                            onChanged: (v) {
+                              if (v != null) {
+                                setState(() => _endTime = TimeOfDay(hour: v ~/ 60, minute: 0));
+                              }
+                            },
                           ),
                         ),
                       ],
@@ -244,7 +249,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       items: _reminderOptions.asMap().entries.map((e) {
                         final index = e.key;
                         return DropdownMenuItem(
-                          value: index == 0 ? null : index * 60, // 1분=60, 5분=300, 등
+                          value: index == 0 ? null : index * 60,
                           child: Text(e.value),
                         );
                       }).toList(),
@@ -274,39 +279,38 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                         }
                       },
                     ),
-                  ],
-                ),
-              ),
-              // 버튼
-              Container(
-                padding: const EdgeInsets.all(20),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('취소'),
+                    const SizedBox(height: 30),
+                    // 버튼
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.pop(context),
+                              style: OutlinedButton.styleFrom(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('취소'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: _onSave,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('저장'),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: _onSave,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('저장'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -323,8 +327,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
           fontWeight: FontWeight.w600,
           color: AppTheme.textSecondary,
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDateRow(String dateStr, String weekday) {
@@ -357,7 +360,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
 class _TimeSelector extends StatelessWidget {
   final String label;
   final TimeOfDay? time;
-  final void Function(TimeOfDay) onChanged;
+  final void Function(TimeOfDay?) onChanged;
 
   const _TimeSelector({
     super.key,
@@ -369,7 +372,7 @@ class _TimeSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final timeStr = time != null
-        ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+        ? '${time!.hour.toString().padLeft(2, '0')}:${time!.minute.toString().padLeft(2, '0')}'
         : '시간 선택';
 
     return GestureDetector(
@@ -405,8 +408,9 @@ class _TimeSelector extends StatelessWidget {
       context: context,
       initialTime: time ?? TimeOfDay.now(),
     );
+
     if (selected != null && context.mounted) {
-      onChanged(selected!);
+      onChanged(selected);
     }
   }
 }

@@ -93,6 +93,29 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   bool get _isMine => _scheduleService.isMine(widget.schedule);
 
+  Widget _buildEmptyMessage() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.chat_bubble_outline,
+            size: 64,
+            color: AppTheme.textSecondary.withOpacity(0.3),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            '댓글이 없어요',
+            style: TextStyle(
+              fontSize: 16,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = widget.schedule.title ?? widget.schedule.workType ?? '일정';
@@ -238,10 +261,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           child: _isLoadingComments
               ? const Center(child: CircularProgressIndicator())
               : _comments.isEmpty
-                  ? _EmptyState(
-                      message: '댓글이 없어요',
-                      icon: Icons.chat_bubble_outline,
-                    )
+                  ? _buildEmptyMessage()
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: _comments.length,
