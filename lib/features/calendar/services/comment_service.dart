@@ -22,7 +22,13 @@ class CommentService {
         .select('*')
         .eq('schedule_id', scheduleId)
         .order('created_at', ascending: true)
-        .asStream();
+        .asStream()
+        .map((dataList) {
+          // List<Map<String, dynamic>>를 List<ScheduleComment>로 변환
+          return (dataList as List)
+              .map((e) => ScheduleComment.fromMap(e))
+              .toList();
+        });
   }
 
   /// 댓글 추가
