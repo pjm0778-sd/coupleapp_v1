@@ -82,7 +82,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       await supabase.from('color_mappings').insert({
         'user_id': _myUserId,
         'color_hex': mapping.colorHex,
-        'title': mapping.title,
+        'work_type': mapping.title,
         'start_time': mapping.startTime != null
             ? '${mapping.startTime!.hour.toString().padLeft(2, '0')}:${mapping.startTime!.minute.toString().padLeft(2, '0')}'
             : null,
@@ -94,13 +94,13 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       await _loadColorMappings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매핑이 추가되었습니다')),
+          const SnackBar(content: Text('매핑이 추가되었습니다')),
         );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매핑 추가 실패')),
+          SnackBar(content: Text('매핑 추가 실패: $e')),
         );
       }
     }
