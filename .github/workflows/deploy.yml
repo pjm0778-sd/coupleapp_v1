@@ -33,10 +33,10 @@ jobs:
       - name: Build Flutter Web
         run: flutter build web --release
 
-      # 5. Cloudflare Pages 배포 (wrangler 사용)
+      # 5. Cloudflare Pages 배포
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=coupleapp-v1
+          command: pages deploy build/web --project-name=coupleapp-v1 --branch=main
