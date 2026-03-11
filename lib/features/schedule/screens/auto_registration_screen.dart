@@ -74,6 +74,36 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     }
   }
 
+  Future<void> _showEditMappingDialog(ColorMapping existing) async {
+    final updated = await showDialog<ColorMapping>(
+      context: context,
+      builder: (ctx) => MappingAddDialog(existingMapping: existing),
+    );
+    if (updated != null) {
+      try {
+        await supabase.from('color_mappings').update({
+          'color_hex': updated.colorHex,
+          'work_type': updated.title,
+          'start_time': updated.startTime != null
+              ? '${updated.startTime!.hour.toString().padLeft(2, '0')}:${updated.startTime!.minute.toString().padLeft(2, '0')}'
+              : null,
+        }).eq('id', existing.id);
+        await _loadColorMappings();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('매핑이 수정되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('매핑 수정 실패: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _addMapping(ColorMapping mapping) async {
     if (_myUserId == null) return;
 
@@ -402,6 +432,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         final mapping = _colorMappings[index];
         return ColorMappingCard(
           mapping: mapping,
+          onEdit: () => _showEditMappingDialog(mapping),
           onDelete: () => _deleteMapping(mapping),
         );
       },

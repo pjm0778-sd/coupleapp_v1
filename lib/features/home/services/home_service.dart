@@ -2,11 +2,11 @@ import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 
 class HomeService {
-  /// D-day 정보 조회
+  /// D-day 정보 + 파트너 닉네임 조회
   Future<Map<String, dynamic>> getDDays(String coupleId) async {
     final coupleData = await supabase
         .from('couples')
-        .select('started_at')
+        .select('started_at, user1_id, user2_id')
         .eq('id', coupleId)
         .single();
 
@@ -17,9 +17,25 @@ class HomeService {
     final now = DateTime.now();
     final diff = now.difference(startedDate);
 
+    final currentUserId = supabase.auth.currentUser!.id;
+    final partnerId = coupleData['user1_id'] == currentUserId
+        ? coupleData['user2_id']
+        : coupleData['user1_id'];
+
+    String? partnerNickname;
+    if (partnerId != null) {
+      final partner = await supabase
+          .from('profiles')
+          .select('nickname')
+          .eq('id', partnerId as String)
+          .maybeSingle();
+      partnerNickname = partner?['nickname'] as String?;
+    }
+
     return {
       'days': diff.inDays,
       'started_at': startedDate,
+      'partner_nickname': partnerNickname,
     };
   }
 
@@ -63,6 +79,36 @@ class HomeService {
     };
   }
 
+  /// 내일의 일정 요약
+  Future<Map<String, List<Schedule>>> getTomorrowSchedules(
+    String coupleId,
+  ) async {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final tomorrowStr = tomorrow.toIso8601String().split('T')[0];
+    final currentUserId = supabase.auth.currentUser!.id;
+
+    final myData = await supabase
+        .from('schedules')
+        .select()
+        .eq('user_id', currentUserId)
+        .eq('couple_id', coupleId)
+        .eq('date', tomorrowStr)
+        .order('start_time', ascending: true);
+
+    final partnerData = await supabase
+        .from('schedules')
+        .select()
+        .neq('user_id', currentUserId)
+        .eq('couple_id', coupleId)
+        .eq('date', tomorrowStr)
+        .order('start_time', ascending: true);
+
+    return {
+      'mine': (myData as List).map((e) => Schedule.fromMap(e)).toList(),
+      'partner': (partnerData as List).map((e) => Schedule.fromMap(e)).toList(),
+    };
+  }
+
   /// 다음 데이트 조회
   Future<Map<String, dynamic>?> getNextDateSchedule(
     String coupleId,
@@ -96,11 +142,13 @@ class HomeService {
   Future<Map<String, dynamic>> getHomeSummary(String coupleId) async {
     final dDays = await getDDays(coupleId);
     final todaySchedules = await getTodaySchedules(coupleId);
+    final tomorrowSchedules = await getTomorrowSchedules(coupleId);
     final nextDate = await getNextDateSchedule(coupleId);
 
     return {
       'd_days': dDays,
       'today_schedules': todaySchedules,
+      'tomorrow_schedules': tomorrowSchedules,
       'next_date': nextDate,
     };
   }

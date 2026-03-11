@@ -5,11 +5,13 @@ import '../../../shared/models/color_mapping.dart';
 class ColorMappingCard extends StatelessWidget {
   final ColorMapping mapping;
   final VoidCallback onDelete;
+  final VoidCallback? onEdit;
 
   const ColorMappingCard({
     super.key,
     required this.mapping,
     required this.onDelete,
+    this.onEdit,
   });
 
   String _formatTime(TimeOfDay? time) {
@@ -87,13 +89,19 @@ class ColorMappingCard extends StatelessWidget {
               ],
             ),
           ),
+          // 수정 버튼
+          if (onEdit != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              onPressed: onEdit,
+              style: IconButton.styleFrom(foregroundColor: AppTheme.textSecondary),
+              tooltip: '수정',
+            ),
           // 삭제 버튼
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
             onPressed: onDelete,
-            style: IconButton.styleFrom(
-              foregroundColor: AppTheme.textSecondary,
-            ),
+            style: IconButton.styleFrom(foregroundColor: AppTheme.textSecondary),
             tooltip: '삭제',
           ),
         ],

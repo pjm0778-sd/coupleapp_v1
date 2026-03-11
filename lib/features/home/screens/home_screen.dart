@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../services/home_service.dart';
 import '../widgets/dday_widget.dart';
@@ -19,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Map<String, dynamic> _data = {};
   bool _isLoading = true;
+  bool _hasLoadedOnce = false;
 
   String? _coupleId;
 
@@ -28,9 +28,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadData();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // 다른 탭(설정 등)에서 돌아올 때 데이터 갱신
+    if (_hasLoadedOnce) {
+      _loadData();
+    }
+    _hasLoadedOnce = true;
+  }
+
   Future<void> _loadData() async {
     _coupleId = await _homeService.getCoupleId();
-    if (_coupleId == null) return;
+    if (_coupleId == null) {
+      if (mounted) setState(() => _isLoading = false);
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -50,69 +63,46 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int? get _dDays => _data['d_days']?['days'] as int?;
-  DateTime? get _startedAt => _data['d_days']?['started_at'] as DateTime?;
+  String? get _partnerNickname => _data['d_days']?['partner_nickname'] as String?;
   Map<String, List<Schedule>>? get _todaySchedules =>
       _data['today_schedules'] as Map<String, List<Schedule>>?;
+  Map<String, List<Schedule>>? get _tomorrowSchedules =>
+      _data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
   Map<String, dynamic>? get _nextDate => _data['next_date'] as Map<String, dynamic>?;
 
-  Future<void> _onDDayTap() async {
-    // D-day 설정 화면 - 다이얼로그로 날짜 선택
-    final currentStartedAt = _startedAt ?? DateTime(2020, 1, 1);
-
-    final date = await showDatePicker(
-      context: context,
-      initialDate: currentStartedAt,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-
-    if (date != null) {
-      try {
-        // coupleId 다시 가져오기 (커플 연결 상태 확인)
-        _coupleId = await _homeService.getCoupleId();
-        if (_coupleId == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('커플 연결이 필요합니다')),
-            );
-          }
-          return;
-        }
-
-        await supabase
-            .from('couples')
-            .update({'started_at': date.toIso8601String().split('T')[0]})
-            .eq('id', _coupleId!);
-        if (mounted) {
-          _loadData();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('D-day가 업데이트되었습니다')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('D-day 업데이트 실패: $e')),
-          );
-        }
-      }
-    }
+  bool _hasSchedules(Map<String, List<Schedule>>? schedules) {
+    if (schedules == null) return false;
+    return (schedules['mine']?.isNotEmpty ?? false) ||
+        (schedules['partner']?.isNotEmpty ?? false);
   }
 
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
-    final weekday = ['월', '화', '수', '목', '금', '토', '일'][today.weekday - 1];
+    final tomorrow = today.add(const Duration(days: 1));
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final todayWeekday = weekdays[today.weekday - 1];
+    final tomorrowWeekday = weekdays[tomorrow.weekday - 1];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('홈'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              setState(() => _isLoading = true);
+              _loadData();
+            },
+            tooltip: '새로고침',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
               ? _buildNoCoupleState()
-              : _buildHomeContent(weekday),
+              : _buildHomeContent(todayWeekday, tomorrowWeekday),
     );
   }
 
@@ -129,37 +119,25 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 24),
           const Text(
             '커플 연결이 필요합니다',
-            style: TextStyle(
-              fontSize: 18,
-              color: AppTheme.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              // 커플 연결 화면으로 이동
-            },
-            icon: const Icon(Icons.group_add),
-            label: const Text('커플 연결'),
+            style: TextStyle(fontSize: 18, color: AppTheme.textSecondary),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHomeContent(String weekday) {
+  Widget _buildHomeContent(String todayWeekday, String tomorrowWeekday) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          // D-day 위젯
+          // D+day 위젯 (화면 1/6 크기, 탭 설정 없음)
           DDayWidget(
             days: _dDays,
-            startedAt: _startedAt,
-            onTap: _onDDayTap,
+            partnerNickname: _partnerNickname,
           ),
           const SizedBox(height: 16),
-          // 다음 데이트 위젯
+          // 다가오는 데이트
           if (_nextDate != null) ...[
             NextDateWidget(
               nextDateSchedule: _nextDate!['schedule'] as Schedule,
@@ -167,11 +145,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // 오늘 일정 위젯
+          // 오늘의 일정
           TodayScheduleWidget(
             todaySchedules: _todaySchedules ?? {},
-            weekday: weekday,
+            weekday: todayWeekday,
+            title: '오늘의 일정',
           ),
+          // 내일의 일정 (일정이 있을 때만 표시)
+          if (_hasSchedules(_tomorrowSchedules)) ...[
+            const SizedBox(height: 16),
+            TodayScheduleWidget(
+              todaySchedules: _tomorrowSchedules ?? {},
+              weekday: tomorrowWeekday,
+              title: '내일의 일정',
+            ),
+          ],
         ],
       ),
     );

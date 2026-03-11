@@ -50,6 +50,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
     '#795548': Color(0xFF795548),
     '#607D8B': Color(0xFF607D8B),
     '#9E9E9E': Color(0xFF9E9E9E),
+    '#212121': Color(0xFF212121),
   };
 
   final _categories = ['근무', '약속', '여행', '데이트', '기타'];

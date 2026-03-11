@@ -5,11 +5,13 @@ import '../../../shared/models/schedule.dart';
 class TodayScheduleWidget extends StatelessWidget {
   final Map<String, List<Schedule>> todaySchedules;
   final String weekday;
+  final String title;
 
   const TodayScheduleWidget({
     super.key,
     required this.todaySchedules,
     required this.weekday,
+    this.title = '오늘의 일정',
   });
 
   Color _getCategoryColor(String? category) {
@@ -74,9 +76,9 @@ class TodayScheduleWidget extends StatelessWidget {
             // 헤더
             Row(
               children: [
-                const Text(
-                  '오늘의 일정',
-                  style: TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppTheme.textPrimary,

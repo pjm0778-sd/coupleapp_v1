@@ -79,6 +79,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Color _getScheduleColor(Schedule s) {
+    if (s.colorHex != null && s.colorHex!.isNotEmpty) {
+      try {
+        return Color(int.parse('FF${s.colorHex!.replaceAll('#', '')}', radix: 16));
+      } catch (_) {}
+    }
+    return _getCategoryColor(s.category);
+  }
+
   IconData _getCategoryIcon(String? category) {
     switch (category) {
       case '근무': return Icons.work_outline;
@@ -212,11 +221,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
           color: AppTheme.primary.withOpacity(0.7),
           shape: BoxShape.circle,
         ),
+        markersMaxCount: 3,
         outsideDaysVisible: false,
       ),
       headerStyle: const HeaderStyle(
         formatButtonVisible: false,
         titleCentered: true,
+      ),
+      calendarBuilders: CalendarBuilders<Schedule>(
+        markerBuilder: (context, date, events) {
+          if (events.isEmpty) return null;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: events.take(3).map((s) {
+              final color = _getScheduleColor(s);
+              return Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.symmetric(horizontal: 1),
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              );
+            }).toList(),
+          );
+        },
       ),
     );
   }
@@ -276,7 +303,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final s = schedules[index];
-              final color = _getCategoryColor(s.category);
+              final color = _getScheduleColor(s);
               return GestureDetector(
                 onTap: () => _onScheduleTap(s),
                 child: Container(
