@@ -84,9 +84,6 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         await supabase.from('color_mappings').update({
           'color_hex': updated.colorHex,
           'work_type': updated.title,
-          'start_time': updated.startTime != null
-              ? '${updated.startTime!.hour.toString().padLeft(2, '0')}:${updated.startTime!.minute.toString().padLeft(2, '0')}'
-              : null,
         }).eq('id', existing.id);
         await _loadColorMappings();
         if (mounted) {

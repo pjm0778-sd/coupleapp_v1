@@ -121,6 +121,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _deleteMyMonthSchedules() async {
+    if (_myUserId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('월별 일정 전체 삭제'),
+        content: Text(
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 본인 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final count = await _service.deleteMyMonthSchedules(_focusedMonth);
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('$count개의 일정이 삭제되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('일정 삭제 실패: $e')),
+          );
+        }
+      }
+    }
+  }
+
   void _showAddDialog(DateTime? date) async {
     final result = await showDialog<Schedule>(
       context: context,
@@ -165,6 +211,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
             icon: Icon(_showCalendarGrid ? Icons.view_list : Icons.calendar_month),
             onPressed: () => setState(() => _showCalendarGrid = !_showCalendarGrid),
             tooltip: _showCalendarGrid ? '목록 보기' : '달력 보기',
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined),
+            onPressed: _deleteMyMonthSchedules,
+            tooltip: '월별 일정 전체 삭제',
+            color: Colors.red,
           ),
           IconButton(
             icon: const Icon(Icons.add),

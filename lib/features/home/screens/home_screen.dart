@@ -69,6 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, List<Schedule>>? get _tomorrowSchedules =>
       _data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
   Map<String, dynamic>? get _nextDate => _data['next_date'] as Map<String, dynamic>?;
+  int? get _nextDateDaysUntil => _data['next_date']?['days_until'] as int?;
 
   bool _hasSchedules(Map<String, List<Schedule>>? schedules) {
     if (schedules == null) return false;
@@ -102,7 +103,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
               ? _buildNoCoupleState()
-              : _buildHomeContent(todayWeekday, tomorrowWeekday),
+              : RefreshIndicator(
+                  onRefresh: _loadData,
+                  child: _buildHomeContent(todayWeekday, tomorrowWeekday),
+                ),
     );
   }
 
@@ -135,6 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
           DDayWidget(
             days: _dDays,
             partnerNickname: _partnerNickname,
+            nextDateDays: _nextDateDaysUntil,
           ),
           const SizedBox(height: 16),
           // 다가오는 데이트

@@ -26,21 +26,15 @@ class ColorMapping {
         id: map['id'] as String,
         userId: map['user_id'] as String?,
         colorHex: map['color_hex'] as String,
-        title: map['title'] as String? ?? map['work_type'] as String? ?? '일정',
-        startTime: map['start_time'] != null
-            ? _parseTime(map['start_time'] as String)
-            : null,
-        endTime: map['end_time'] != null
-            ? _parseTime(map['end_time'] as String)
-            : null,
+        title: map['work_type'] as String? ?? '일정',
+        startTime: null, // DB에 저장하지 않음 (UI 상태만)
+        endTime: null,   // DB에 저장하지 않음 (UI 상태만)
       );
 
   Map<String, dynamic> toMap() => {
         'user_id': userId,
         'color_hex': colorHex,
-        'title': title,
-        'start_time': _formatTime(startTime),
-        'end_time': _formatTime(endTime),
+        'work_type': title,
       };
 
   static TimeOfDay _parseTime(String time) {

@@ -92,6 +92,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  DateTime? _lastBackPressedTime;
 
   static const List<Widget> _screens = [
     HomeScreen(),
@@ -103,12 +104,34 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<TabSwitchNotification>(
-      onNotification: (notification) {
-        setState(() => _currentIndex = notification.tabIndex);
-        return true;
+    return PopScope(
+      canPop: _currentIndex == 0 &&
+          _lastBackPressedTime != null &&
+          DateTime.now().difference(_lastBackPressedTime!) <
+              const Duration(milliseconds: 1500),
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          if (_currentIndex != 0) {
+            // 다른 탭에서 → 홈으로 이동
+            setState(() => _currentIndex = 0);
+          } else {
+            // 홈에서 → 2회 누름 체크
+            _lastBackPressedTime = DateTime.now();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('한 번 더 누르면 앱이 종료됩니다'),
+                duration: Duration(milliseconds: 1400),
+              ),
+            );
+          }
+        }
       },
-      child: Scaffold(
+      child: NotificationListener<TabSwitchNotification>(
+        onNotification: (notification) {
+          setState(() => _currentIndex = notification.tabIndex);
+          return true;
+        },
+        child: Scaffold(
         body: IndexedStack(
           index: _currentIndex,
           children: _screens,
