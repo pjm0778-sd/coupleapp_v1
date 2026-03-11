@@ -18,7 +18,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. Flutter 설치 (stable 최신 버전 자동 사용)
+      # 2. Flutter 설치
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -33,10 +33,9 @@ jobs:
       - name: Build Flutter Web
         run: flutter build web --release
 
-      # 5. Cloudflare Pages 배포
+      # 5. Cloudflare Pages 배포 (wrangler 직접 실행)
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=coupleapp-v1 --branch=main
+        run: npx wrangler@3 pages deploy build/web --project-name=coupleapp-v1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
