@@ -13,10 +13,10 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
-    # Cloudflare Pages보다 늦게 실행되도록 딜레이 추가
+    # Cloudflare Pages보다 늦게 실행되도록 딜레이 추가 (504 방지)
     steps:
-      - name: Wait before deploy
-        run: sleep 30s
+      - name: Wait before deploy (90s to avoid 504 timeout)
+        run: sleep 90s
       # 1. 코드 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,10 +36,14 @@ jobs:
       - name: Build Flutter Web
         run: flutter build web --release
 
-      # 5. Cloudflare Pages 배포 (wrangler 사용)
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+      # 5. Cloudflare Pages 배포 (wrangler 사용 + 재시도 로직)
+      - name: Deploy to Cloudflare Pages (with retry)
+        uses: nick-fields/retry-action@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy build/web --project-name=coupleapp-v1
+          timeout_minutes: 10
+          max_attempts: 3
+          retry_wait_seconds: 60
+          command: npx wrangler pages deploy build/web --project-name=coupleapp-v1
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
