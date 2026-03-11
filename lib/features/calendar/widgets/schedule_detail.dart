@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/schedule_comment.dart';
 import '../services/schedule_service.dart';
 import '../services/comment_service.dart';
+import 'schedule_add_dialog.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   final Schedule schedule;
@@ -25,18 +25,20 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   List<ScheduleComment> _comments = [];
   bool _isLoadingComments = true;
   bool _isDeleting = false;
+  late Schedule _currentSchedule;
   final _commentController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _currentSchedule = widget.schedule;
     _loadComments();
   }
 
   Future<void> _loadComments() async {
     setState(() => _isLoadingComments = true);
     try {
-      final comments = await _commentService.getComments(widget.schedule.id);
+      final comments = await _commentService.getComments(_currentSchedule.id);
       if (mounted) {
         setState(() {
           _comments = comments;
@@ -55,7 +57,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     if (content.isEmpty) return;
 
     try {
-      await _commentService.addComment(widget.schedule.id, content);
+      await _commentService.addComment(_currentSchedule.id, content);
       _commentController.clear();
       await _loadComments();
     } catch (e) {
@@ -76,10 +78,35 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     }
   }
 
+  Future<void> _editSchedule() async {
+    final result = await showDialog<Schedule>(
+      context: context,
+      builder: (context) => ScheduleAddDialog(existingSchedule: _currentSchedule),
+    );
+    if (result != null && mounted) {
+      try {
+        await _scheduleService.updateSchedule(_currentSchedule.id, result.toMap());
+        setState(() => _currentSchedule = result.copyWith(id: _currentSchedule.id));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('일정이 수정되었습니다')),
+          );
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('일정 수정 실패: $e')),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _deleteSchedule() async {
     setState(() => _isDeleting = true);
     try {
-      await _scheduleService.deleteSchedule(widget.schedule.id);
+      await _scheduleService.deleteSchedule(_currentSchedule.id);
       if (mounted) {
         Navigator.pop(context, true); // true = deleted
       }
@@ -91,7 +118,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     }
   }
 
-  bool get _isMine => _scheduleService.isMine(widget.schedule);
+  bool get _isMine => _scheduleService.isMine(_currentSchedule);
 
   Widget _buildEmptyMessage() {
     return Center(
@@ -118,8 +145,8 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final title = widget.schedule.title ?? widget.schedule.workType ?? '일정';
-    final category = widget.schedule.category;
+    final title = _currentSchedule.title ?? _currentSchedule.workType ?? '일정';
+    final category = _currentSchedule.category;
     final categoryColor = _getCategoryColor(category);
     final categoryIcon = _getCategoryIcon(category);
 
@@ -127,12 +154,18 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
-          if (_isMine && !_isDeleting)
+          if (_isMine && !_isDeleting) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _editSchedule,
+              tooltip: '수정',
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline),
-              onPressed: () => _deleteSchedule(),
+              onPressed: _deleteSchedule,
               tooltip: '삭제',
             ),
+          ],
         ],
       ),
       body: Column(
@@ -181,7 +214,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.schedule.title ?? widget.schedule.workType ?? '일정',
+                      _currentSchedule.title ?? _currentSchedule.workType ?? '일정',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -206,18 +239,18 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           const SizedBox(height: 16),
           // 날짜/시간
           _buildInfoRow(Icons.calendar_today_outlined,
-              '${_formatDate(widget.schedule.date)}'),
+              '${_formatDate(_currentSchedule.date)}'),
           const SizedBox(height: 8),
           _buildInfoRow(Icons.access_time, _formatTimeRange()),
           const SizedBox(height: 16),
           // 장소
-          if (widget.schedule.location != null && widget.schedule.location!.isNotEmpty)
-            _buildInfoRow(Icons.location_on_outlined, widget.schedule.location!),
-          if (widget.schedule.location != null && widget.schedule.location!.isNotEmpty)
+          if (_currentSchedule.location != null && _currentSchedule.location!.isNotEmpty)
+            _buildInfoRow(Icons.location_on_outlined, _currentSchedule.location!),
+          if (_currentSchedule.location != null && _currentSchedule.location!.isNotEmpty)
             const SizedBox(height: 8),
           // 메모
-          if (widget.schedule.note != null && widget.schedule.note!.isNotEmpty)
-            _buildInfoRow(Icons.note_outlined, widget.schedule.note!),
+          if (_currentSchedule.note != null && _currentSchedule.note!.isNotEmpty)
+            _buildInfoRow(Icons.note_outlined, _currentSchedule.note!),
         ],
       ),
     );
@@ -323,11 +356,11 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   String _formatTimeRange() {
-    if (widget.schedule.startTime == null && widget.schedule.endTime == null) {
+    if (_currentSchedule.startTime == null && _currentSchedule.endTime == null) {
       return '';
     }
-    final start = _formatTime(widget.schedule.startTime);
-    final end = _formatTime(widget.schedule.endTime);
+    final start = _formatTime(_currentSchedule.startTime);
+    final end = _formatTime(_currentSchedule.endTime);
     if (end.isEmpty) return start;
     return '$start ~ $end';
   }
