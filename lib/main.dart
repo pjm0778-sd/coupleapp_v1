@@ -132,44 +132,45 @@ class _MainShellState extends State<MainShell> {
           return true;
         },
         child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
-        bottomNavigationBar: Container(
-          decoration: const BoxDecoration(
-            border: Border(top: BorderSide(color: AppTheme.border)),
+          body: IndexedStack(
+            index: _currentIndex,
+            children: _screens,
           ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home_outlined),
-                activeIcon: Icon(Icons.home_rounded),
-                label: '홈',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_month_outlined),
-                activeIcon: Icon(Icons.calendar_month_rounded),
-                label: '캘린더',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.document_scanner_outlined),
-                activeIcon: Icon(Icons.document_scanner_rounded),
-                label: '일정 자동등록',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.notifications_outlined),
-                activeIcon: Icon(Icons.notifications_rounded),
-                label: '알림',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.settings_outlined),
-                activeIcon: Icon(Icons.settings_rounded),
-                label: '설정',
-              ),
-            ],
+          bottomNavigationBar: Container(
+            decoration: const BoxDecoration(
+              border: Border(top: BorderSide(color: AppTheme.border)),
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _currentIndex,
+              onTap: (index) => setState(() => _currentIndex = index),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home_rounded),
+                  label: '홈',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.calendar_month_outlined),
+                  activeIcon: Icon(Icons.calendar_month_rounded),
+                  label: '캘린더',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.document_scanner_outlined),
+                  activeIcon: Icon(Icons.document_scanner_rounded),
+                  label: '일정 자동등록',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.notifications_outlined),
+                  activeIcon: Icon(Icons.notifications_rounded),
+                  label: '알림',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.settings_outlined),
+                  activeIcon: Icon(Icons.settings_rounded),
+                  label: '설정',
+                ),
+              ],
+            ),
           ),
         ),
       ),
