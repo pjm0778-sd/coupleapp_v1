@@ -18,49 +18,40 @@ class ScheduleService {
     final end = DateTime(month.year, month.month + 1, 0);
     final currentUserId = supabase.auth.currentUser!.id;
 
-    PostgrestFilterBuilder data;
+    dynamic data;
     switch (filter) {
       case ScheduleFilter.mine:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .eq('user_id', currentUserId)
             .gte('date', start.toIso8601String().split('T')[0])
             .lte('date', end.toIso8601String().split('T')[0])
             .order('date', ascending: true)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
       case ScheduleFilter.partner:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .not('user_id', 'eq', currentUserId)
             .gte('date', start.toIso8601String().split('T')[0])
             .lte('date', end.toIso8601String().split('T')[0])
             .order('date', ascending: true)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
       case ScheduleFilter.both:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .gte('date', start.toIso8601String().split('T')[0])
             .lte('date', end.toIso8601String().split('T')[0])
             .order('date', ascending: true)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
-      default:
-        data = supabase
-            .from('schedules')
-            .eq('couple_id', coupleId)
-            .gte('date', start.toIso8601String().split('T')[0])
-            .lte('date', end.toIso8601String().split('T')[0])
-            .order('date', ascending: true)
-            .order('start_time', ascending: true)
-            .select();
     }
 
     return (data as List).map((e) => Schedule.fromMap(e)).toList();
@@ -75,41 +66,34 @@ class ScheduleService {
     final dateStr = date.toIso8601String().split('T')[0];
     final currentUserId = supabase.auth.currentUser!.id;
 
-    PostgrestFilterBuilder data;
+    dynamic data;
     switch (filter) {
       case ScheduleFilter.mine:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .eq('user_id', currentUserId)
             .eq('date', dateStr)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
       case ScheduleFilter.partner:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .not('user_id', 'eq', currentUserId)
             .eq('date', dateStr)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
       case ScheduleFilter.both:
-        data = supabase
+        data = await supabase
             .from('schedules')
+            .select()
             .eq('couple_id', coupleId)
             .eq('date', dateStr)
-            .order('start_time', ascending: true)
-            .select();
+            .order('start_time', ascending: true);
         break;
-      default:
-        data = supabase
-            .from('schedules')
-            .eq('couple_id', coupleId)
-            .eq('date', dateStr)
-            .order('start_time', ascending: true)
-            .select();
     }
 
     return (data as List).map((e) => Schedule.fromMap(e)).toList();

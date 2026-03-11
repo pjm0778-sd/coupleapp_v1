@@ -315,10 +315,12 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
               ],
             ),
           ),
-        ),
+        ],
       ),
-    );
-  }
+    ),
+    ),
+  );
+}
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -330,7 +332,8 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
           fontWeight: FontWeight.w600,
           color: AppTheme.textSecondary,
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildDateRow(String dateStr, String weekday) {
