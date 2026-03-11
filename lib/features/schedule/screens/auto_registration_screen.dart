@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/color_mapping.dart';
@@ -18,16 +21,22 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   final _colorMappings = <ColorMapping>[];
 
   String? _myUserId;
+  String? _coupleId;
 
   bool _isLoading = false;
   bool _isUploading = false;
-  String? _ocrResult;
+  final ImagePicker _imagePicker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _myUserId = supabase.auth.currentUser?.id;
-    _loadColorMappings();
+    _init();
+  }
+
+  Future<void> _init() async {
+    _coupleId = await ScheduleService().getCoupleId();
+    await _loadColorMappings();
   }
 
   Future<void> _loadColorMappings() async {
@@ -56,15 +65,14 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     }
   }
 
-  void _showAddMappingDialog() {
-    showDialog(
+  Future<void> _showAddMappingDialog() async {
+    final mapping = await showDialog<ColorMapping>(
       context: context,
       builder: (ctx) => const MappingAddDialog(),
-    ).then((mapping) async {
-      if (mapping != null) {
-        await _addMapping(mapping as ColorMapping);
-      }
-    });
+    );
+    if (mapping != null) {
+      await _addMapping(mapping);
+    }
   }
 
   Future<void> _addMapping(ColorMapping mapping) async {
@@ -98,11 +106,170 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     }
   }
 
-  void _onUploadPressed() {
-    // OCR 이미지 업로드 기능 (나중에 구현)
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('OCR 이미지 업로드 준비 중')),
+  Future<void> _onUploadPressed() async {
+    if (_colorMappings.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('먼저 아래에서 색상 매핑을 추가해주세요')),
+      );
+      return;
+    }
+
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+      );
+
+      if (image == null) return;
+
+      setState(() => _isUploading = true);
+
+      // 이미지를 base64로 변환
+      final bytes = await File(image.path).readAsBytes();
+      final base64Image = base64Encode(bytes);
+      final mediaType = image.mimeType ?? 'image/jpeg';
+
+      final now = DateTime.now();
+
+      // Supabase Edge Function 호출
+      final response = await supabase.functions.invoke(
+        'ocr-schedule',
+        body: {
+          'imageBase64': base64Image,
+          'imageMediaType': mediaType,
+          'colorMappings': _colorMappings.map((m) => {
+            'color_hex': m.colorHex,
+            'work_type': m.title,
+          }).toList(),
+          'targetYear': now.year,
+          'targetMonth': now.month,
+        },
+      );
+
+      setState(() => _isUploading = false);
+
+      final data = response.data as Map<String, dynamic>;
+      if (data['error'] != null) {
+        throw Exception(data['error']);
+      }
+
+      final schedulesList = (data['schedules'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (schedulesList.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('스케줄을 찾지 못했습니다. 이미지를 확인해주세요')),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        _showOcrResultsDialog(schedulesList, now);
+      }
+    } catch (e) {
+      setState(() => _isUploading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('OCR 분석 실패: $e')),
+        );
+      }
+    }
+  }
+
+  void _showOcrResultsDialog(List<Map<String, dynamic>> schedules, DateTime month) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${month.month}월 스케줄 분석 결과 (${schedules.length}건)'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 300,
+          child: ListView.builder(
+            itemCount: schedules.length,
+            itemBuilder: (context, index) {
+              final s = schedules[index];
+              return ListTile(
+                dense: true,
+                leading: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: _hexToColor(s['color_hex'] as String? ?? '#000000'),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                title: Text(
+                  '${s['date']} - ${s['work_type']}',
+                  style: const TextStyle(fontSize: 13),
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _saveOcrSchedules(schedules);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('일정 저장'),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _saveOcrSchedules(List<Map<String, dynamic>> schedules) async {
+    if (_myUserId == null || _coupleId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('커플 연결이 필요합니다')),
+      );
+      return;
+    }
+
+    try {
+      final service = ScheduleService();
+      int saved = 0;
+      for (final s in schedules) {
+        final dateStr = s['date'] as String?;
+        final workType = s['work_type'] as String?;
+        final colorHex = s['color_hex'] as String?;
+        if (dateStr == null) continue;
+
+        final schedule = Schedule(
+          id: '',
+          userId: _myUserId!,
+          coupleId: _coupleId,
+          date: DateTime.parse(dateStr),
+          title: workType,
+          workType: workType,
+          colorHex: colorHex,
+          isAnniversary: false,
+        );
+        await service.addSchedule(schedule);
+        saved++;
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$saved개의 일정이 저장되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('일정 저장 실패: $e')),
+        );
+      }
+    }
   }
 
   Color _hexToColor(String hex) {

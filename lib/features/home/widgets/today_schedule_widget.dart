@@ -5,13 +5,11 @@ import '../../../shared/models/schedule.dart';
 class TodayScheduleWidget extends StatelessWidget {
   final Map<String, List<Schedule>> todaySchedules;
   final String weekday;
-  final VoidCallback onTap;
 
   const TodayScheduleWidget({
     super.key,
     required this.todaySchedules,
     required this.weekday,
-    required this.onTap,
   });
 
   Color _getCategoryColor(String? category) {
@@ -63,9 +61,7 @@ class TodayScheduleWidget extends StatelessWidget {
     final mySchedules = todaySchedules['mine'] ?? [];
     final partnerSchedules = todaySchedules['partner'] ?? [];
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
         decoration: BoxDecoration(
           color: AppTheme.surface,
@@ -129,16 +125,9 @@ class TodayScheduleWidget extends StatelessWidget {
                 _buildScheduleSection('파트너', partnerSchedules),
               ],
             ],
-            // 캘린더로 이동 화살표
-            Icon(
-              Icons.chevron_right,
-              color: AppTheme.textSecondary.withOpacity(0.5),
-              size: 20,
-            ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildScheduleSection(String title, List<Schedule> schedules) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
@@ -18,8 +19,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final _service = ScheduleService();
   ScheduleFilter _filter = ScheduleFilter.both;
   DateTime _focusedMonth = DateTime.now();
+  DateTime _selectedDay = DateTime.now();
   Map<DateTime, List<Schedule>> _events = {};
   bool _isLoading = true;
+  bool _showCalendarGrid = true; // 달력 형식 기본
 
   String? _coupleId;
   String? _myUserId;
@@ -60,37 +63,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadSchedules(_focusedMonth);
   }
 
+  List<Schedule> _getEventsForDay(DateTime day) {
+    final key = DateTime(day.year, day.month, day.day);
+    return _events[key] ?? [];
+  }
+
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '근무':
-        return const Color(0xFF4CAF50); // 녹색
-      case '약속':
-        return const Color(0xFF2196F3); // 파랑
-      case '여행':
-        return const Color(0xFFFF9800); // 주황
-      case '데이트':
-        return const Color(0xFFE91E63); // 핑크
-      case '휴무':
-        return const Color(0xFFBDBDBD); // 회색
-      default:
-        return AppTheme.primary;
+      case '근무': return const Color(0xFF4CAF50);
+      case '약속': return const Color(0xFF2196F3);
+      case '여행': return const Color(0xFFFF9800);
+      case '데이트': return const Color(0xFFE91E63);
+      case '휴무': return const Color(0xFFBDBDBD);
+      default: return AppTheme.primary;
     }
   }
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '근무':
-        return Icons.work_outline;
-      case '약속':
-        return Icons.handshake_outlined;
-      case '여행':
-        return Icons.flight_takeoff_outlined;
-      case '데이트':
-        return Icons.favorite_outline;
-      case '휴무':
-        return Icons.beach_access_outlined;
-      default:
-        return Icons.event_outlined;
+      case '근무': return Icons.work_outline;
+      case '약속': return Icons.handshake_outlined;
+      case '여행': return Icons.flight_takeoff_outlined;
+      case '데이트': return Icons.favorite_outline;
+      case '휴무': return Icons.beach_access_outlined;
+      default: return Icons.event_outlined;
     }
   }
 
@@ -111,7 +107,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
         builder: (context) => ScheduleDetailScreen(schedule: schedule),
       ),
     );
-    // 일정이 삭제되었거나 수정되었으면 새로고침
     if (result == true && mounted) {
       _loadSchedules(_focusedMonth);
     }
@@ -120,11 +115,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showAddDialog(DateTime? date) async {
     final result = await showDialog<Schedule>(
       context: context,
-      builder: (context) => ScheduleAddDialog(date: date),
+      builder: (context) => ScheduleAddDialog(date: date ?? _selectedDay),
     );
-    // 일정이 추가되었으면 새로고침
     if (result != null && mounted) {
-      _loadSchedules(_focusedMonth);
+      try {
+        if (_coupleId == null || _myUserId == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('커플 연결이 필요합니다')),
+          );
+          return;
+        }
+        final scheduleToSave = result.copyWith(
+          userId: _myUserId,
+          coupleId: _coupleId,
+        );
+        await _service.addSchedule(scheduleToSave);
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('일정이 추가되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('일정 저장 실패: $e')),
+          );
+        }
+      }
     }
   }
 
@@ -134,7 +152,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         title: Text('${_focusedMonth.year}년 ${_focusedMonth.month}월'),
         actions: [
-          // '+' 버튼
+          IconButton(
+            icon: Icon(_showCalendarGrid ? Icons.view_list : Icons.calendar_month),
+            onPressed: () => setState(() => _showCalendarGrid = !_showCalendarGrid),
+            tooltip: _showCalendarGrid ? '목록 보기' : '달력 보기',
+          ),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () => _showAddDialog(null),
@@ -144,17 +166,175 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Column(
         children: [
-          // 필터/토글
           _buildFilterBar(),
           const Divider(height: 1),
-          // 캘린더 목록
+          if (_showCalendarGrid) _buildTableCalendar(),
+          if (_showCalendarGrid) const Divider(height: 1),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : _buildCalendarList(),
+                : _showCalendarGrid
+                    ? _buildSelectedDaySchedules()
+                    : _buildCalendarList(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTableCalendar() {
+    return TableCalendar<Schedule>(
+      firstDay: DateTime(2020, 1, 1),
+      lastDay: DateTime(2030, 12, 31),
+      focusedDay: _focusedMonth,
+      selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+      eventLoader: _getEventsForDay,
+      onDaySelected: (selectedDay, focusedDay) {
+        setState(() {
+          _selectedDay = selectedDay;
+          _focusedMonth = focusedDay;
+        });
+      },
+      onPageChanged: (focusedDay) {
+        _focusedMonth = focusedDay;
+        _loadSchedules(focusedDay);
+      },
+      calendarStyle: CalendarStyle(
+        selectedDecoration: const BoxDecoration(
+          color: AppTheme.primary,
+          shape: BoxShape.circle,
+        ),
+        todayDecoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.3),
+          shape: BoxShape.circle,
+        ),
+        markerDecoration: BoxDecoration(
+          color: AppTheme.primary.withOpacity(0.7),
+          shape: BoxShape.circle,
+        ),
+        outsideDaysVisible: false,
+      ),
+      headerStyle: const HeaderStyle(
+        formatButtonVisible: false,
+        titleCentered: true,
+      ),
+    );
+  }
+
+  Widget _buildSelectedDaySchedules() {
+    final schedules = _getEventsForDay(_selectedDay);
+    final dateStr = '${_selectedDay.month}월 ${_selectedDay.day}일 (${['월','화','수','목','금','토','일'][_selectedDay.weekday - 1]})';
+
+    if (schedules.isEmpty) {
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Text(
+                  dateStr,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Expanded(
+            child: Center(
+              child: Text(
+                '일정이 없어요',
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            '$dateStr · ${schedules.length}건',
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            itemCount: schedules.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final s = schedules[index];
+              final color = _getCategoryColor(s.category);
+              return GestureDetector(
+                onTap: () => _onScheduleTap(s),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.07),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: color.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                        child: Icon(_getCategoryIcon(s.category), color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              s.title ?? s.workType ?? '일정',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            if (s.startTime != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                _formatTimeRange(s.startTime, s.endTime),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      // 내 일정 vs 파트너 일정 구분
+                      if (_myUserId != null)
+                        Icon(
+                          s.userId == _myUserId ? Icons.person : Icons.favorite,
+                          size: 16,
+                          color: s.userId == _myUserId ? AppTheme.textSecondary : AppTheme.accent,
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -225,7 +405,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final days = <DateTime>[];
 
     for (var date = firstDay;
-        date.isBefore(lastDay);
+        !date.isAfter(lastDay);
         date = date.add(const Duration(days: 1))) {
       days.add(date);
     }

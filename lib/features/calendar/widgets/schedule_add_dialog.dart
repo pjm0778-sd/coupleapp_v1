@@ -51,6 +51,15 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _repeatPattern = s.repeatPattern != null
           ? RepeatPattern.fromMap(s.repeatPattern!)
           : null;
+    } else {
+      _startTime = null;
+      _endTime = null;
+      _title = '';
+      _category = null;
+      _location = '';
+      _note = '';
+      _reminderMinutes = null;
+      _repeatPattern = null;
     }
   }
 
@@ -196,20 +205,25 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                     const SizedBox(height: 20),
                     // 종류
                     _buildSectionTitle('종류'),
-                    DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: InputDecoration(
-                        hintText: '종류 선택',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.border),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      items: _categories.map((c) {
-                        return DropdownMenuItem(
-                          value: c,
-                          child: Text(c),
-                        );
-                      }).toList(),
-                      onChanged: (v) => setState(() => _category = v),
+                      child: DropdownButton<String>(
+                        value: _category,
+                        hint: const Text('종류 선택', style: TextStyle(fontSize: 14)),
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        items: _categories.map((c) {
+                          return DropdownMenuItem(
+                            value: c,
+                            child: Text(c, style: const TextStyle(fontSize: 14)),
+                          );
+                        }).toList(),
+                        onChanged: (v) => setState(() => _category = v),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     // 장소
@@ -242,45 +256,55 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                     const SizedBox(height: 20),
                     // 알림
                     _buildSectionTitle('알림'),
-                    DropdownButtonFormField<int>(
-                      value: _reminderMinutes,
-                      decoration: InputDecoration(
-                        hintText: '알림 시간',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.border),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      items: _reminderOptions.asMap().entries.map((e) {
-                        final index = e.key;
-                        return DropdownMenuItem(
-                          value: index == 0 ? null : index * 60,
-                          child: Text(e.value),
-                        );
-                      }).toList(),
-                      onChanged: (v) => setState(() => _reminderMinutes = v),
+                      child: DropdownButton<int>(
+                        value: _reminderMinutes,
+                        hint: const Text('알림 시간', style: TextStyle(fontSize: 14)),
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        items: _reminderOptions.asMap().entries.map((e) {
+                          final index = e.key;
+                          return DropdownMenuItem(
+                            value: index == 0 ? null : index * 60,
+                            child: Text(e.value, style: const TextStyle(fontSize: 14)),
+                          );
+                        }).toList(),
+                        onChanged: (v) => setState(() => _reminderMinutes = v),
+                      ),
                     ),
                     const SizedBox(height: 20),
                     // 반복
                     _buildSectionTitle('반복'),
-                    DropdownButtonFormField<String>(
-                      value: _repeatPattern?.type,
-                      decoration: InputDecoration(
-                        hintText: '반복 설정',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppTheme.border),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      items: _repeatTypes.map((t) {
-                        return DropdownMenuItem(
-                          value: t,
-                          child: Text(t),
-                        );
-                      }).toList(),
-                      onChanged: (v) {
-                        if (v == null || v == '없음') {
-                          setState(() => _repeatPattern = null);
-                        } else {
-                          setState(() => _repeatPattern = RepeatPattern(type: v));
-                        }
-                      },
+                      child: DropdownButton<String>(
+                        value: _repeatPattern?.type,
+                        hint: const Text('반복 설정', style: TextStyle(fontSize: 14)),
+                        isExpanded: true,
+                        underline: const SizedBox.shrink(),
+                        items: _repeatTypes.map((t) {
+                          return DropdownMenuItem(
+                            value: t,
+                            child: Text(t, style: const TextStyle(fontSize: 14)),
+                          );
+                        }).toList(),
+                        onChanged: (v) {
+                          if (v == null || v == '없음') {
+                            setState(() => _repeatPattern = null);
+                          } else {
+                            setState(() => _repeatPattern = RepeatPattern(type: v));
+                          }
+                        },
+                      ),
                     ),
                     const SizedBox(height: 30),
                     // 버튼

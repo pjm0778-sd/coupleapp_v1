@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import 'package:collection/collection.dart';
 import '../../../shared/models/color_mapping.dart';
 
 class MappingAddDialog extends StatefulWidget {
@@ -38,13 +37,23 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
       _startTime != null && _endTime != null && _startTime!.hour > _endTime!.hour;
 
   void _onSave() {
-    if (!_formKey.currentState!.validate()) return;
+    // Form 유효성 검사
+    final formState = _formKey.currentState;
+    if (formState == null || !formState.validate()) return;
+
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('제목을 입력해주세요')),
+      );
+      return;
+    }
 
     final mapping = ColorMapping(
       id: '',
       userId: '',
       colorHex: _colorKeys[_selectedColor]!,
-      title: _titleController.text.trim(),
+      title: title,
       startTime: _startTime,
       endTime: _endTime,
     );

@@ -6,7 +6,6 @@ import '../services/home_service.dart';
 import '../widgets/dday_widget.dart';
 import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
-import '../../../main.dart' show TabSwitchNotification;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -22,12 +21,10 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
 
   String? _coupleId;
-  String? _myUserId;
 
   @override
   void initState() {
     super.initState();
-    _myUserId = supabase.auth.currentUser?.id;
     _loadData();
   }
 
@@ -58,14 +55,9 @@ class _HomeScreenState extends State<HomeScreen> {
       _data['today_schedules'] as Map<String, List<Schedule>>?;
   Map<String, dynamic>? get _nextDate => _data['next_date'] as Map<String, dynamic>?;
 
-  void _navigateToCalendar() {
-    TabSwitchNotification(1).dispatch(context); // 캘린더 탭 (index 1)
-  }
-
   Future<void> _onDDayTap() async {
     // D-day 설정 화면 - 다이얼로그로 날짜 선택
-    final currentStartedAt = _startedAt;
-    if (currentStartedAt == null) return;
+    final currentStartedAt = _startedAt ?? DateTime(2020, 1, 1);
 
     final date = await showDatePicker(
       context: context,
@@ -105,14 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       }
     }
-  }
-
-  void _onNextDateTap() {
-    TabSwitchNotification(1).dispatch(context); // 캘린더로 이동해서 해당 날짜 확인
-  }
-
-  void _onTodayScheduleTap() {
-    TabSwitchNotification(1).dispatch(context); // 오늘 일정을 위해 캘린더 탭으로 이동
   }
 
   @override
@@ -164,52 +148,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHomeContent(String weekday) {
-    return Column(
-      children: [
-        // D-day 위젯
-        DDayWidget(
-          days: _dDays,
-          startedAt: _startedAt,
-          onTap: _onDDayTap,
-        ),
-        const SizedBox(height: 16),
-        // 다음 데이트 위젯
-        if (_nextDate != null) ...[
-          NextDateWidget(
-            nextDateSchedule: _nextDate!['schedule'] as Schedule,
-            daysUntil: _nextDate!['days_until'] as int,
-            onTap: _onNextDateTap,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // D-day 위젯
+          DDayWidget(
+            days: _dDays,
+            startedAt: _startedAt,
+            onTap: _onDDayTap,
           ),
           const SizedBox(height: 16),
-        ],
-        // 오늘 일정 위젯
-        TodayScheduleWidget(
-          todaySchedules: _todaySchedules ?? {},
-          weekday: weekday,
-          onTap: _onTodayScheduleTap,
-        ),
-        const SizedBox(height: 16),
-        // 캘린더로 이동 버튼
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: _navigateToCalendar,
-              icon: const Icon(Icons.calendar_today),
-              label: const Text('캘린더로 이동'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.surface,
-                foregroundColor: AppTheme.primary,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                side: BorderSide(color: AppTheme.border, width: 2),
-              ),
+          // 다음 데이트 위젯
+          if (_nextDate != null) ...[
+            NextDateWidget(
+              nextDateSchedule: _nextDate!['schedule'] as Schedule,
+              daysUntil: _nextDate!['days_until'] as int,
             ),
+            const SizedBox(height: 16),
+          ],
+          // 오늘 일정 위젯
+          TodayScheduleWidget(
+            todaySchedules: _todaySchedules ?? {},
+            weekday: weekday,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

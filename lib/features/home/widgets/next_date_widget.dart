@@ -5,13 +5,11 @@ import '../../../shared/models/schedule.dart';
 class NextDateWidget extends StatelessWidget {
   final Schedule nextDateSchedule;
   final int daysUntil;
-  final VoidCallback onTap;
 
   const NextDateWidget({
     super.key,
     required this.nextDateSchedule,
     required this.daysUntil,
-    required this.onTap,
   });
 
   @override
@@ -19,9 +17,7 @@ class NextDateWidget extends StatelessWidget {
     final dateStr = '${nextDateSchedule.date.month}월 ${nextDateSchedule.date.day}일';
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'][nextDateSchedule.date.weekday - 1];
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
         decoration: BoxDecoration(
           color: AppTheme.surface,
@@ -137,11 +133,6 @@ class NextDateWidget extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                // 캘린더 아이콘
-                Icon(
-                  Icons.chevron_right,
-                  color: AppTheme.textSecondary.withOpacity(0.5),
-                ),
               ],
             ),
             // 요일 표시
@@ -165,7 +156,6 @@ class NextDateWidget extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
