@@ -13,7 +13,10 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    # Cloudflare Pages보다 늦게 실행되도록 딜레이 추가
     steps:
+      - name: Wait before deploy
+        run: sleep 30s
       # 1. 코드 체크아웃
       - name: Checkout repository
         uses: actions/checkout@v4
