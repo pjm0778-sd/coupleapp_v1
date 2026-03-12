@@ -4,6 +4,7 @@ enum NotificationType {
   scheduleAdded,
   scheduleDeleted,
   scheduleUpdated,
+  commentAdded,
   bothOff,
   dateBefore,
   dateToday,
@@ -18,6 +19,8 @@ extension NotificationTypeExtension on NotificationType {
         return 'schedule_deleted';
       case NotificationType.scheduleUpdated:
         return 'schedule_updated';
+      case NotificationType.commentAdded:
+        return 'comment_added';
       case NotificationType.bothOff:
         return 'both_off';
       case NotificationType.dateBefore:
@@ -35,6 +38,8 @@ extension NotificationTypeExtension on NotificationType {
         return '일정 삭제';
       case NotificationType.scheduleUpdated:
         return '일정 수정';
+      case NotificationType.commentAdded:
+        return '댓글 추가';
       case NotificationType.bothOff:
         return '둘 다 휴무';
       case NotificationType.dateBefore:
@@ -52,6 +57,8 @@ extension NotificationTypeExtension on NotificationType {
         return Icons.delete_outline;
       case NotificationType.scheduleUpdated:
         return Icons.mode_edit_outline;
+      case NotificationType.commentAdded:
+        return Icons.comment_outlined;
       case NotificationType.bothOff:
         return Icons.favorite_border;
       case NotificationType.dateBefore:
@@ -69,6 +76,8 @@ extension NotificationTypeExtension on NotificationType {
         return Colors.red;
       case NotificationType.scheduleUpdated:
         return Colors.orange;
+      case NotificationType.commentAdded:
+        return Colors.blue;
       case NotificationType.bothOff:
         return Colors.pink;
       case NotificationType.dateBefore:
@@ -86,6 +95,8 @@ extension NotificationTypeExtension on NotificationType {
         return NotificationType.scheduleDeleted;
       case 'schedule_updated':
         return NotificationType.scheduleUpdated;
+      case 'comment_added':
+        return NotificationType.commentAdded;
       case 'both_off':
         return NotificationType.bothOff;
       case 'date_before':

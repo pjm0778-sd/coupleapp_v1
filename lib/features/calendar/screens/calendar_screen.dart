@@ -134,6 +134,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         results.add(Schedule(
           id: 'anniv_100_$i',
           userId: 'system',
+          coupleId: _coupleId,
           date: targetDate,
           title: '${i * 100}일',
           category: '기념일',
@@ -150,6 +151,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         results.add(Schedule(
           id: 'anniv_yr_$i',
           userId: 'system',
+          coupleId: _coupleId,
           date: targetDate,
           title: '$i주년',
           category: '기념일',

@@ -2,6 +2,7 @@ class NotificationSettings {
   final bool scheduleAdded;
   final bool scheduleDeleted;
   final bool scheduleUpdated;
+  final bool commentAdded;
   final bool bothOff;
   final bool dateBefore;
   final bool dateToday;
@@ -10,6 +11,7 @@ class NotificationSettings {
     this.scheduleAdded = true,
     this.scheduleDeleted = true,
     this.scheduleUpdated = true,
+    this.commentAdded = true,
     this.bothOff = true,
     this.dateBefore = true,
     this.dateToday = true,
@@ -20,6 +22,7 @@ class NotificationSettings {
       scheduleAdded: json['schedule_added'] as bool? ?? true,
       scheduleDeleted: json['schedule_deleted'] as bool? ?? true,
       scheduleUpdated: json['schedule_updated'] as bool? ?? true,
+      commentAdded: json['comment_added'] as bool? ?? true,
       bothOff: json['both_off'] as bool? ?? true,
       dateBefore: json['date_before'] as bool? ?? true,
       dateToday: json['date_today'] as bool? ?? true,
@@ -31,6 +34,7 @@ class NotificationSettings {
       'schedule_added': scheduleAdded,
       'schedule_deleted': scheduleDeleted,
       'schedule_updated': scheduleUpdated,
+      'comment_added': commentAdded,
       'both_off': bothOff,
       'date_before': dateBefore,
       'date_today': dateToday,
@@ -41,6 +45,7 @@ class NotificationSettings {
     bool? scheduleAdded,
     bool? scheduleDeleted,
     bool? scheduleUpdated,
+    bool? commentAdded,
     bool? bothOff,
     bool? dateBefore,
     bool? dateToday,
@@ -49,6 +54,7 @@ class NotificationSettings {
       scheduleAdded: scheduleAdded ?? this.scheduleAdded,
       scheduleDeleted: scheduleDeleted ?? this.scheduleDeleted,
       scheduleUpdated: scheduleUpdated ?? this.scheduleUpdated,
+      commentAdded: commentAdded ?? this.commentAdded,
       bothOff: bothOff ?? this.bothOff,
       dateBefore: dateBefore ?? this.dateBefore,
       dateToday: dateToday ?? this.dateToday,
@@ -61,6 +67,7 @@ class NotificationSettings {
       scheduleAdded: newValue,
       scheduleDeleted: newValue,
       scheduleUpdated: newValue,
+      commentAdded: newValue,
       bothOff: newValue,
       dateBefore: newValue,
       dateToday: newValue,
