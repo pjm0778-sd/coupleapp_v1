@@ -115,6 +115,9 @@ class _OcrScreenState extends State<OcrScreen> {
       }
 
       final schedules = data['schedules'] as List?;
+      final detectedYear = data['year'] as int?;
+      final detectedMonth = data['month'] as int?;
+
       if (schedules == null || schedules.isEmpty) {
         _showSnack('일정을 추출하지 못했어요.\n색상 매핑이 이미지 색상과 맞는지 확인해주세요.');
         return;
@@ -122,7 +125,13 @@ class _OcrScreenState extends State<OcrScreen> {
 
       setState(() {
         _extractedSchedules = schedules.cast<Map<String, dynamic>>();
+        if (detectedYear != null) _targetYear = detectedYear;
+        if (detectedMonth != null) _targetMonth = detectedMonth;
       });
+
+      if (detectedYear != null || detectedMonth != null) {
+        _showSnack('AI가 ${detectedYear ?? _targetYear}년 ${detectedMonth ?? _targetMonth}월 일정을 찾았습니다.');
+      }
     } on Exception catch (e) {
       final msg = e.toString();
       if (msg.contains('FunctionException')) {

@@ -19,81 +19,36 @@ Deno.serve(async (req) => {
     let prompt: string
     if (useMapping) {
       // 매핑을 참고하는 모드 - 비슷한 색 계열도 인정
-      prompt = `이 이미지는 ${targetYear}년 ${targetMonth}월 근무 스케줄 달력입니다.
-
-사용자가 등록한 색상-근무형태 매핑 (색 계열 기준으로 비슷한 색도 인정합니다):
-${colorMappingText}
-
-[색상 계열 기준 매핑 지침]
-같은 색 계열(빨강, 파랑, 녹색, 주황, 보라, 분홍 등)은 정확히 일치하지 않아도 유사한 것으로 판단하세요.
-
+      prompt = `이 이미지는 근무 스케줄 달력입니다. 
+      
 [분석 지침]
+1. 연도 및 월 식별: 이미지 내에서 해당 달력이 어느 연도와 어느 월인지 가장 먼저 찾아내세요. 만약 이미지에서 명확한 연도/월을 찾을 수 없다면 기본값으로 ${targetYear}년 ${targetMonth}월을 사용하세요.
+2. 색상 계열 기준 매칭: 사용자가 등록한 색상-근무형태 매핑 (${colorMappingText})을 참고하되, 정확히 일치하지 않아도 같은 색 계열(빨강, 파랑, 녹색 등)이면 매핑으로 인정하세요.
+3. 주요 색상 식별: 날짜 칸의 배경색이나 칸 내부의 마커 색상을 우선으로 분석하세요.
+4. 빈 날짜 스킵: 색상 마커나 배경색이 없는 날짜는 결과에서 제외하세요.
+5. 시간 추가: 매핑에 시작/종료 시간이 있는 경우 결과에 포함하세요. (형식: "HH:mm")
 
-1. 색상 계열 기준 매칭:
-   - 매핑 색상과 완전히 동일하지 않아도 같은 계열이면 매핑으로 인정하세요
-   - 예: 매핑에 #2196F3(파랑)이 있고 이미지에서 #1565C0(진한 파랑)이면 → 매핑 사용
-   - 예: 매핑에 #FF4081(분홍)이 있고 이미지에서 #E91E63(짙은 분홍)이면 → 매핑 사용
-
-2. 주요 색상 식별:
-   - 날짜 칸의 배경색이 가장 우선
-   - 배경이 흰/회색이면 칸 내부의 마커/도형 색상
-   - 경계선, 그리드, 테두리는 무시
-
-3. 빈 날짜 스킵:
-   - 흰/회색 배경만 있거나 색상 마커가 없으면 제외
-
-4. 시간 추가:
-   - 매핑에 시작/종료 시간(start_time, end_time)이 제공된 경우, 결과 JSON에도 해당 시간을 포함하세요.
-   - 시간이 없으면 포함하지 않아도 됩니다. (형식: "HH:mm")
-
-5. 정확한 날짜 형식:
-   - 업로드 된 달력속 연도를 확인하고 있으면 해당 연도로 적용, 연도로 추측되는 것이 없다면 올해로 적용
-   - 업로드 된 달력속 월을 확인하고 있으면 해당 월로 적용, 월로 추측되는 것이 없다면 이번달로 적용
-
-반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
-[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX","start_time":"09:00","end_time":"18:00"}]
-
-DD는 실제 날짜 숫자(01~31)로 채우세요.`
+반드시 아래 JSON 형식으로만 응답하세요 (다른 설명 없이):
+{
+  "year": 연도숫자,
+  "month": 월숫자,
+  "schedules": [{"date":"YYYY-MM-DD","work_type":"근무형태","color_hex":"#XXXXXX","start_time":"HH:mm","end_time":"HH:mm"}]
+}`
     } else {
       // 매핑 무시 모드 - 사진의 색/글씨를 정확히 파악
-      prompt = `이 이미지는 ${targetYear}년 ${targetMonth}월 근무 스케줄 달력입니다.
+      prompt = `이 이미지는 근무 스케줄 달력입니다.
 
-[매핑 무시 모드 - 사진을 보고 센스 있게 분석하세요]
-미리 설정된 색상 매핑은 무시하고, 사진 속의 실제 색과 텍스트를 정확히 파악하여 일정을 만들어주세요.
+[분석 지침]
+1. 연도 및 월 식별: 이미지 내에서 해당 달력이 어느 연도와 어느 월인지 가장 먼저 찾아내세요. 만약 이미지에서 명확한 연도/월을 찾을 수 없다면 기본값으로 ${targetYear}년 ${targetMonth}월을 사용하세요.
+2. 색상/텍스트 정확 파악: 각 날짜의 실제 배경색(HEX)과 표시된 텍스트(근무명)를 정확히 파악하여 일정을 만드세요.
+3. 빈 날짜 스킵: 색상 마커나 배경색이 없는 날짜는 결과에서 제외하세요.
 
-[분석 지침 - 유저 관점]
-
-1. 색상/텍스트 정확 파악:
-   - 각 날짜의 실제 배경색을 HEX로 추출
-   - 같은 계열의 색이면 하나로 통합 (예: 연한 파랑과 진한 파랑이 섞여있으면 대표색 하나 선택)
-   - 일정 이름은 달력에 표시된 텍스트 그대로 (근무, 야근, 휴무 등)
-
-2. 색상 통합 규칙 (센스 있게):
-   - 빨강/분홍 계열: 가장 진한 빨강/분홍 선택
-   - 파랑 계열: 가장 진한 파랑 선택
-   - 녹색 계열: 가장 진한 녹색 선택
-   - 노랑/주황 계열: 가장 진한 주황/노랑 선택
-   - 보라 계열: 가장 진한 보라 선택
-   - 검정색: 검정색 선택
-
-3. 일정 이름 그대로 작성
-   - 텍스트가 있으면 그 텍스트 똑같이 작성
-
-4. 빈 날짜 스킵:
-   - 색상 마커나 배경색이 없으면 제외
-
-5. 시간 (선택):
-   - 이미지에 시간이 명시되어 있으면 추출해서 포함하세요 (형식: "HH:mm")
-   - 없으면 생략 가능.
-
-6. 정확한 날짜 형식:
-   - 업로드 된 달력속 연도를 확인하고 있으면 해당 연도로 적용, 연도로 추측되는 것이 없다면 올해로 적용
-   - 업로드 된 달력속 월을 확인하고 있으면 해당 월로 적용, 월로 추측되는 것이 없다면 이번달로 적용
-
-반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
-[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]
-
-DD는 실제 날짜 숫자(01~31)로 채우세요.`
+반드시 아래 JSON 형식으로만 응답하세요 (다른 설명 없이):
+{
+  "year": 연도숫자,
+  "month": 월숫자,
+  "schedules": [{"date":"YYYY-MM-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]
+}`
     }
 
     const apiKey = Deno.env.get('OPENAI_API_KEY') ?? ''
@@ -141,13 +96,13 @@ DD는 실제 날짜 숫자(01~31)로 채우세요.`
     }
 
     const data = await response.json()
-    const content = data.choices?.[0]?.message?.content ?? '[]'
+    const content = data.choices?.[0]?.message?.content ?? '{}'
 
-    // JSON 배열 추출
-    const match = content.match(/\[[\s\S]*\]/)
-    const schedules = match ? JSON.parse(match[0]) : []
+    // JSON 추출 (객체 형태 {year, month, schedules})
+    const match = content.match(/\{[\s\S]*\}/)
+    const resultJson = match ? JSON.parse(match[0]) : { year: targetYear, month: targetMonth, schedules: [] }
 
-    return new Response(JSON.stringify({ schedules }), {
+    return new Response(JSON.stringify(resultJson), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   } catch (error) {

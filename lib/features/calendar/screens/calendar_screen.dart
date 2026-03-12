@@ -701,7 +701,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: 'userId: partner의 일정',
+            label: '"userId: partner"의 일정',
             isSelected: _filter == ScheduleFilter.partner,
             onTap: () => _onFilterChanged(ScheduleFilter.partner),
           ),
