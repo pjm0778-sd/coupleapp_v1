@@ -74,7 +74,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // 오늘 데이트 체크
     final todaySchedules = data['today_schedules'] as Map<String, List<Schedule>>?;
     if (todaySchedules != null) {
-      final allToday = [
+      final allToday = <Schedule>[
         ...(todaySchedules['mine'] ?? []),
         ...(todaySchedules['partner'] ?? []),
       ];
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // 내일 데이트 체크
     final tomorrowSchedules = data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
     if (tomorrowSchedules != null) {
-      final allTomorrow = [
+      final allTomorrow = <Schedule>[
         ...(tomorrowSchedules['mine'] ?? []),
         ...(tomorrowSchedules['partner'] ?? []),
       ];
