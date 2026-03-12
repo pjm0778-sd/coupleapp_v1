@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme.dart';
 import '../services/couple_service.dart';
@@ -44,15 +44,15 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
   Future<void> _connect() async {
     final code = _codeController.text.trim();
     if (code.length != 6) {
-      _showSnack('6자리 코드를 입력해주세요');
+      _showSnack('6?먮━ 肄붾뱶瑜??낅젰?댁＜?몄슂');
       return;
     }
     setState(() => _isConnecting = true);
     try {
       await _coupleService.connectWithCode(code);
       if (mounted) {
-        _showSnack('커플 연결 완료!');
-        // 연결 후 앱 재시작 (AppRouter가 MainShell로 전환)
+        _showSnack('而ㅽ뵆 ?곌껐 ?꾨즺!');
+        // ?곌껐 ?????ъ떆??(AppRouter媛 MainShell濡??꾪솚)
         await Future.delayed(const Duration(milliseconds: 800));
         if (mounted) {
           Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
@@ -61,11 +61,11 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
     } on Exception catch (e) {
       final msg = e.toString();
       if (msg.contains('invalid_code')) {
-        _showSnack('유효하지 않거나 이미 사용된 코드예요');
+        _showSnack('?좏슚?섏? ?딄굅???대? ?ъ슜??肄붾뱶?덉슂');
       } else if (msg.contains('own_code')) {
-        _showSnack('자신의 코드는 사용할 수 없어요');
+        _showSnack('?먯떊??肄붾뱶???ъ슜?????놁뼱??);
       } else {
-        _showSnack('연결 중 오류가 발생했습니다');
+        _showSnack('?곌껐 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎');
       }
     } finally {
       if (mounted) setState(() => _isConnecting = false);
@@ -75,7 +75,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
   void _copyCode() {
     if (_myCode == null) return;
     Clipboard.setData(ClipboardData(text: _myCode!));
-    _showSnack('코드가 복사됐어요');
+    _showSnack('肄붾뱶媛 蹂듭궗?먯뼱??);
   }
 
   void _showSnack(String msg) {
@@ -89,12 +89,12 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('커플 연결'),
+        title: const Text('而ㅽ뵆 ?곌껐'),
         actions: [
           TextButton(
             onPressed: _authService.signOut,
             child: const Text(
-              '로그아웃',
+              '濡쒓렇?꾩썐',
               style: TextStyle(color: AppTheme.textSecondary, fontSize: 13),
             ),
           ),
@@ -106,7 +106,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '파트너와 연결하세요',
+              '?뚰듃?덉? ?곌껐?섏꽭??,
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.w700,
@@ -116,13 +116,13 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
             ),
             const SizedBox(height: 4),
             const Text(
-              '아래 코드를 파트너에게 공유하거나\n파트너의 코드를 입력해 연결하세요',
+              '?꾨옒 肄붾뱶瑜??뚰듃?덉뿉寃?怨듭쑀?섍굅??n?뚰듃?덉쓽 肄붾뱶瑜??낅젰???곌껐?섏꽭??,
               style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
             ),
             const SizedBox(height: 32),
 
-            // 내 초대 코드 섹션
-            _buildSectionTitle('내 초대 코드'),
+            // ??珥덈? 肄붾뱶 ?뱀뀡
+            _buildSectionTitle('??珥덈? 肄붾뱶'),
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
@@ -136,7 +136,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                   ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                   : Column(
                       children: [
-                        // 코드 표시
+                        // 肄붾뱶 ?쒖떆
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: (_myCode ?? '------').split('').map((c) {
@@ -174,7 +174,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                           onPressed: _copyCode,
                           icon: const Icon(Icons.copy_outlined,
                               size: 16, color: AppTheme.textPrimary),
-                          label: const Text('코드 복사',
+                          label: const Text('肄붾뱶 蹂듭궗',
                               style: TextStyle(color: AppTheme.textPrimary)),
                         ),
                       ],
@@ -183,8 +183,8 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
 
             const SizedBox(height: 28),
 
-            // 파트너 코드 입력 섹션
-            _buildSectionTitle('파트너 코드 입력'),
+            // ?뚰듃??肄붾뱶 ?낅젰 ?뱀뀡
+            _buildSectionTitle('?뚰듃??肄붾뱶 ?낅젰'),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(20),
@@ -252,7 +252,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                               child: CircularProgressIndicator(
                                   color: Colors.white, strokeWidth: 2),
                             )
-                          : const Text('연결하기',
+                          : const Text('?곌껐?섍린',
                               style: TextStyle(
                                   fontSize: 15, fontWeight: FontWeight.w600)),
                     ),

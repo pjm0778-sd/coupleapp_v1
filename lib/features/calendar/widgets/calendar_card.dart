@@ -3,7 +3,7 @@ import '../../../core/theme.dart';
 import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
 
-class CalendarCard extends StatelessWidget {
+class CalendarCard extends StatefulWidget {
   final DateTime date;
   final String weekday;
   final bool isToday;
@@ -28,107 +28,156 @@ class CalendarCard extends StatelessWidget {
   });
 
   @override
+  State<CalendarCard> createState() => _CalendarCardState();
+}
+
+class _CalendarCardState extends State<CalendarCard> {
+  bool _isExpanded = false;
+
+  Color _getScheduleColor(Schedule schedule) {
+    if (schedule.colorHex != null && schedule.colorHex!.isNotEmpty) {
+      try {
+        return Color(int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16));
+      } catch (_) {}
+    }
+    switch (schedule.category) {
+      case '근무': return const Color(0xFF4CAF50);
+      case '약속': return const Color(0xFF2196F3);
+      case '여행': return const Color(0xFFFF9800);
+      case '데이트': return const Color(0xFFE91E63);
+      case '휴무': return const Color(0xFFBDBDBD);
+      default: return AppTheme.primary;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final dateStr = '${date.month}월 ${date.day}일';
+    final dateStr = '${widget.date.month}월 ${widget.date.day}일';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isToday ? AppTheme.primary : AppTheme.border,
-          width: isToday ? 2 : 1,
+          color: widget.isToday ? AppTheme.primary : AppTheme.border,
+          width: widget.isToday ? 1.5 : 1,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 날짜 헤더
-            Row(
-              children: [
-                Text(
-                  dateStr,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: isToday ? AppTheme.primary : AppTheme.textPrimary,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          onExpansionChanged: (expanded) {
+            setState(() => _isExpanded = expanded);
+          },
+          title: Row(
+            children: [
+              Text(
+                dateStr,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: widget.isToday ? AppTheme.primary : AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (widget.isToday)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    '오늘',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-                const Spacer(),
-                if (isToday)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primary,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Text(
-                      '오늘',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Text(
+                    widget.weekday,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            // 요일 + 공휴일/기념일 태그
-            Row(
-              children: [
-                Text(
-                  weekday,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-                if (holidays.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  ...holidays.take(2).map((h) => Container(
-                        margin: const EdgeInsets.only(right: 4),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: h.color.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          '${h.emoji} ${h.name}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: h.color,
-                            fontWeight: FontWeight.w500,
+                  if (widget.holidays.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    ...widget.holidays.take(2).map((h) => Container(
+                          margin: const EdgeInsets.only(right: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: h.color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                        ),
-                      )),
+                          child: Text(
+                            '${h.emoji} ${h.name}',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: h.color,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        )),
+                  ],
                 ],
+              ),
+              if (!_isExpanded && widget.schedules.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: widget.schedules.take(5).map((s) {
+                    return Container(
+                      width: 6,
+                      height: 6,
+                      margin: const EdgeInsets.only(right: 4),
+                      decoration: BoxDecoration(
+                        color: _getScheduleColor(s),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }).toList(),
+                ),
               ],
+            ],
+          ),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Column(
+                children: widget.schedules.isEmpty
+                    ? [
+                        _EmptyState(
+                          message: widget.isToday ? '오늘 일정이 없어요' : '일정이 없어요',
+                          icon: Icons.event_note_outlined,
+                        )
+                      ]
+                    : widget.schedules.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final schedule = entry.value;
+                        return _ScheduleItem(
+                          schedule: schedule,
+                          isFirst: index == 0,
+                          onTap: () => widget.onScheduleTap(schedule),
+                          getCategoryIcon: widget.getCategoryIcon,
+                          formatTime: widget.formatTime,
+                          formatTimeRange: widget.formatTimeRange,
+                        );
+                      }).toList(),
+              ),
             ),
-            const SizedBox(height: 12),
-            // 일정 목록
-            if (schedules.isEmpty)
-              _EmptyState(
-                message: isToday ? '오늘 일정이 없어요' : '일정이 없어요',
-                icon: Icons.event_note_outlined,
-              )
-            else
-              ...schedules.asMap().entries.map((entry) {
-                final index = entry.key;
-                final schedule = entry.value;
-                return _ScheduleItem(
-                  schedule: schedule,
-                  isFirst: index == 0,
-                  onTap: () => onScheduleTap(schedule),
-                  getCategoryIcon: getCategoryIcon,
-                  formatTime: formatTime,
-                  formatTimeRange: formatTimeRange,
-                );
-              }),
           ],
         ),
       ),

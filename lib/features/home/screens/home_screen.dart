@@ -21,6 +21,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic> _data = {};
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
+  RealtimeChannel? _schedulesChannel;
+  RealtimeChannel? _couplesChannel;
 
   String? _coupleId;
 
@@ -40,6 +42,47 @@ class _HomeScreenState extends State<HomeScreen> {
     _hasLoadedOnce = true;
   }
 
+  void _setupRealtime() {
+    if (_coupleId == null) return;
+
+    _schedulesChannel ??= supabase.channel('public:schedules')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'schedules',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'couple_id',
+          value: _coupleId!,
+        ),
+        callback: (payload) {
+          if (mounted) _loadData();
+        },
+      )..subscribe();
+
+    _couplesChannel ??= supabase.channel('public:couples_home')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'couples',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'id',
+          value: _coupleId!,
+        ),
+        callback: (payload) {
+          if (mounted) _loadData();
+        },
+      )..subscribe();
+  }
+
+  @override
+  void dispose() {
+    _schedulesChannel?.unsubscribe();
+    _couplesChannel?.unsubscribe();
+    super.dispose();
+  }
+
   Future<void> _loadData() async {
     _coupleId = await _homeService.getCoupleId();
     if (_coupleId == null) {
@@ -56,6 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _data = summary;
           _isLoading = false;
         });
+        _setupRealtime();
         // 데이줌 알림 자동 체크
         _checkNotifications(summary);
       }

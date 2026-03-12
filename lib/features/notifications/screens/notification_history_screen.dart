@@ -10,25 +10,53 @@ class NotificationHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = NotificationManager();
     final history = manager.history;
+    final scheduleAlerts = history.where((n) => 
+      n.type == NotificationType.scheduleAdded ||
+      n.type == NotificationType.scheduleDeleted ||
+      n.type == NotificationType.scheduleUpdated ||
+      n.type == NotificationType.commentAdded).toList();
+
+    final generalAlerts = history.where((n) => 
+      !scheduleAlerts.contains(n)).toList();
+
     final unreadCount = history.where((n) => !n.isRead).length;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('알림${unreadCount > 0 ? ' ($unreadCount)' : ''}'),
-        actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: () {
-                manager.markAllAsRead();
-              },
-              child: const Text(
-                '모두 읽음',
-                style: TextStyle(fontSize: 13),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('알림${unreadCount > 0 ? ' ($unreadCount)' : ''}'),
+          actions: [
+            if (unreadCount > 0)
+              TextButton(
+                onPressed: () {
+                  manager.markAllAsRead();
+                },
+                child: const Text(
+                  '모두 읽음',
+                  style: TextStyle(fontSize: 13),
+                ),
               ),
-            ),
+            ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: '일반 알림'),
+              Tab(text: '이벤트 알림'),
+            ],
+          ),
+          ),
+        body: TabBarView(
+          children: [
+            _buildNotificationList(generalAlerts),
+            _buildNotificationList(scheduleAlerts),
           ],
         ),
-      body: history.isEmpty
+      ),
+    );
+  }
+
+  Widget _buildNotificationList(List<AppNotification> notifications) {
+    return notifications.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -48,14 +76,13 @@ class NotificationHistoryScreen extends StatelessWidget {
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: history.length,
+              itemCount: notifications.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
               itemBuilder: (_, index) {
-                final notification = history[index];
+                final notification = notifications[index];
                 return _NotificationCard(notification: notification);
               },
-            ),
-    );
+            );
   }
 }
 

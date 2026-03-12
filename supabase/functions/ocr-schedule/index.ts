@@ -12,8 +12,8 @@ Deno.serve(async (req) => {
     const { imageBase64, imageMediaType, colorMappings, targetYear, targetMonth, useMapping = true } =
       await req.json()
 
-    const colorMappingText = (colorMappings as { color_hex: string; work_type: string }[])
-      .map((m) => `${m.color_hex} → ${m.work_type}`)
+    const colorMappingText = (colorMappings as { color_hex: string; work_type: string; start_time?: string; end_time?: string }[])
+      .map((m) => `${m.color_hex} → ${m.work_type} (${m.start_time || ''}~${m.end_time || ''})`)
       .join('\n')
 
     let prompt: string
@@ -55,8 +55,12 @@ ${colorMappingText}
 4. 빈 날짜 스킵:
    - 흰/회색 배경만 있거나 색상 마커가 없으면 제외
 
+5. 시간 추가:
+   - 매핑에 시작/종료 시간(start_time, end_time)이 제공된 경우, 결과 JSON에도 해당 시간을 포함하세요.
+   - 시간이 없으면 포함하지 않아도 됩니다. (형식: "HH:mm")
+
 반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
-[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]
+[{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX","start_time":"09:00","end_time":"18:00"}]
 
 DD는 실제 날짜 숫자(01~31)로 채우세요.`
     } else {
@@ -92,6 +96,10 @@ DD는 실제 날짜 숫자(01~31)로 채우세요.`
 
 4. 빈 날짜 스킵:
    - 색상 마커나 배경색이 없으면 제외
+
+5. 시간 (선택):
+   - 이미지에 시간이 명시되어 있으면 추출해서 포함하세요 (형식: "HH:mm")
+   - 없으면 생략 가능.
 
 반드시 아래 JSON 배열 형식으로만 응답하세요 (다른 설명 없이):
 [{"date":"${targetYear}-${String(targetMonth).padStart(2, '0')}-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]

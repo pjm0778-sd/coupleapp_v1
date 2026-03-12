@@ -91,7 +91,12 @@ class _OcrScreenState extends State<OcrScreen> {
           'imageBase64': base64Image,
           'imageMediaType': mimeType,
           'colorMappings': _colorMappings
-              .map((m) => {'color_hex': m.colorHex, 'work_type': m.workType})
+              .map((m) => {
+                'color_hex': m.colorHex,
+                'work_type': m.workType,
+                'start_time': m.startTime != null ? '${m.startTime!.hour.toString().padLeft(2, '0')}:${m.startTime!.minute.toString().padLeft(2, '0')}' : null,
+                'end_time': m.endTime != null ? '${m.endTime!.hour.toString().padLeft(2, '0')}:${m.endTime!.minute.toString().padLeft(2, '0')}' : null,
+              })
               .toList(),
           'targetYear': _targetYear,
           'targetMonth': _targetMonth,
@@ -136,12 +141,19 @@ class _OcrScreenState extends State<OcrScreen> {
 
     try {
       final userId = supabase.auth.currentUser!.id;
-      final rows = _extractedSchedules.map((s) => {
-            'user_id': userId,
-            'couple_id': _coupleId,
-            'date': s['date'],
-            'work_type': s['work_type'],
-            'color_hex': s['color_hex'],
+      final rows = _extractedSchedules.map((s) {
+            String? startTimeStr = s['start_time'];
+            String? endTimeStr = s['end_time'];
+            return {
+              'user_id': userId,
+              'couple_id': _coupleId,
+              'date': s['date'],
+              'work_type': s['work_type'],
+              'color_hex': s['color_hex'],
+              'start_time': startTimeStr,
+              'end_time': endTimeStr,
+              'category': '근무', // 자동 추출 일정은 카테고리 근무
+            };
           }).toList();
 
       await supabase.from('schedules').insert(rows);

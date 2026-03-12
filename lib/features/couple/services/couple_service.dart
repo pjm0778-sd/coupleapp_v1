@@ -1,4 +1,4 @@
-import 'dart:math';
+﻿import 'dart:math';
 import '../../../core/supabase_client.dart';
 
 class CoupleService {
@@ -8,7 +8,7 @@ class CoupleService {
     return List.generate(6, (_) => chars[random.nextInt(chars.length)]).join();
   }
 
-  /// 내 초대 코드 가져오기 (없으면 새로 생성)
+  /// ??珥덈? 肄붾뱶 媛?몄삤湲?(?놁쑝硫??덈줈 ?앹꽦)
   Future<String> getOrCreateMyCode() async {
     final userId = supabase.auth.currentUser!.id;
 
@@ -30,7 +30,7 @@ class CoupleService {
     return code;
   }
 
-  /// 파트너 코드로 커플 연결 (DB 함수 호출)
+  /// ?뚰듃??肄붾뱶濡?而ㅽ뵆 ?곌껐 (DB ?⑥닔 ?몄텧)
   Future<void> connectWithCode(String code) async {
     await supabase.rpc(
       'connect_couple',
@@ -38,7 +38,7 @@ class CoupleService {
     );
   }
 
-  /// 현재 커플 정보 가져오기
+  /// ?꾩옱 而ㅽ뵆 ?뺣낫 媛?몄삤湲?
   Future<Map<String, dynamic>?> getCoupleInfo() async {
     final userId = supabase.auth.currentUser!.id;
     final profile = await supabase
@@ -57,7 +57,7 @@ class CoupleService {
         .single();
   }
 
-  /// 커플 사귄 날짜 업데이트
+  /// 而ㅽ뵆 ?ш톬 ?좎쭨 ?낅뜲?댄듃
   Future<void> updateStartedAt(String coupleId, DateTime date) async {
     await supabase
         .from('couples')

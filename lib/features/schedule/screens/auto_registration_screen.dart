@@ -128,7 +128,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   }
 
   Future<void> _onUploadPressed() async {
-    if (_colorMappings.isEmpty) {
+    if (_useMapping && _colorMappings.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('먼저 아래에서 색상 매핑을 추가해주세요')),
       );
@@ -161,6 +161,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           'colorMappings': _colorMappings.map((m) => {
             'color_hex': m.colorHex,
             'work_type': m.title,
+            'start_time': m.startTime != null ? '${m.startTime!.hour.toString().padLeft(2, '0')}:${m.startTime!.minute.toString().padLeft(2, '0')}' : null,
+            'end_time': m.endTime != null ? '${m.endTime!.hour.toString().padLeft(2, '0')}:${m.endTime!.minute.toString().padLeft(2, '0')}' : null,
           }).toList(),
           'targetYear': now.year,
           'targetMonth': now.month,
@@ -238,6 +240,10 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               await _saveOcrSchedules(schedules);
+              if (!_useMapping) {
+                // 매핑 무시일 경우 저장 후 캘린더 탭으로 이동 (main.dart의 인덱스 기준: 홈=0, 캘린더=1)
+                TabSwitchNotification(1).dispatch(context);
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
@@ -265,7 +271,19 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         final dateStr = s['date'] as String?;
         final workType = s['work_type'] as String?;
         final colorHex = s['color_hex'] as String?;
+        final startTimeStr = s['start_time'] as String?;
+        final endTimeStr = s['end_time'] as String?;
         if (dateStr == null) continue;
+
+        TimeOfDay? startTime, endTime;
+        if (startTimeStr != null && startTimeStr.contains(':')) {
+           final parts = startTimeStr.split(':');
+           startTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        }
+        if (endTimeStr != null && endTimeStr.contains(':')) {
+           final parts = endTimeStr.split(':');
+           endTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        }
 
         final schedule = Schedule(
           id: '',
@@ -275,7 +293,10 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           title: workType,
           workType: workType,
           colorHex: colorHex,
+          startTime: startTime,
+          endTime: endTime,
           isAnniversary: false,
+          category: '근무', // OCR 기반 등록은 기본 카테고리를 근무로 취급
         );
         await service.addSchedule(schedule);
         saved++;

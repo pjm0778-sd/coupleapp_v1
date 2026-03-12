@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
 
@@ -11,20 +11,20 @@ class TodayScheduleWidget extends StatelessWidget {
     super.key,
     required this.todaySchedules,
     required this.weekday,
-    this.title = '오늘의 일정',
+    this.title = '?ㅻ뒛???쇱젙',
   });
 
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '근무':
+      case '洹쇰Т':
         return const Color(0xFF4CAF50);
-      case '약속':
+      case '?쎌냽':
         return const Color(0xFF2196F3);
-      case '여행':
+      case '?ы뻾':
         return const Color(0xFFFF9800);
-      case '데이트':
+      case '?곗씠??:
         return const Color(0xFFE91E63);
-      case '휴무':
+      case '?대Т':
         return const Color(0xFFBDBDBD);
       default:
         return AppTheme.primary;
@@ -33,15 +33,15 @@ class TodayScheduleWidget extends StatelessWidget {
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '근무':
+      case '洹쇰Т':
         return Icons.work_outline;
-      case '약속':
+      case '?쎌냽':
         return Icons.handshake_outlined;
-      case '여행':
+      case '?ы뻾':
         return Icons.flight_takeoff_outlined;
-      case '데이트':
+      case '?곗씠??:
         return Icons.favorite_outline;
-      case '휴무':
+      case '?대Т':
         return Icons.beach_access_outlined;
       default:
         return Icons.event_outlined;
@@ -73,7 +73,7 @@ class TodayScheduleWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 헤더
+            // ?ㅻ뜑
             Row(
               children: [
                 Text(
@@ -95,7 +95,7 @@ class TodayScheduleWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // 일정 목록
+            // ?쇱젙 紐⑸줉
             if (mySchedules.isEmpty && partnerSchedules.isEmpty)
               Center(
                 child: Column(
@@ -107,7 +107,7 @@ class TodayScheduleWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      '오늘 일정이 없어요',
+                      '?ㅻ뒛 ?쇱젙???놁뼱??,
                       style: TextStyle(
                         fontSize: 14,
                         color: AppTheme.textSecondary,
@@ -117,14 +117,14 @@ class TodayScheduleWidget extends StatelessWidget {
                 ),
               )
             else ...[
-              // 내 일정
+              // ???쇱젙
               if (mySchedules.isNotEmpty) ...[
-                _buildScheduleSection('나', mySchedules),
+                _buildScheduleSection('??, mySchedules),
                 const SizedBox(height: 20),
               ],
-              // 파트너 일정
+              // ?뚰듃???쇱젙
               if (partnerSchedules.isNotEmpty) ...[
-                _buildScheduleSection('파트너', partnerSchedules),
+                _buildScheduleSection('?뚰듃??, partnerSchedules),
               ],
             ],
           ],
@@ -182,7 +182,7 @@ class _ScheduleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = schedule.title ?? schedule.workType ?? '일정';
+    final title = schedule.title ?? schedule.workType ?? '?쇱젙';
     final category = schedule.category;
     final categoryColor = getCategoryColor(category);
     final categoryIcon = getCategoryIcon(category);
@@ -197,7 +197,7 @@ class _ScheduleItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 카테고리 아이콘
+          // 移댄뀒怨좊━ ?꾩씠肄?
           Container(
             width: 36,
             height: 36,
@@ -212,7 +212,7 @@ class _ScheduleItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // 일정 정보
+          // ?쇱젙 ?뺣낫
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

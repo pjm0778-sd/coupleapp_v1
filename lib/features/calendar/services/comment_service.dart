@@ -19,10 +19,9 @@ class CommentService {
   Stream<List<ScheduleComment>> subscribeToComments(String scheduleId) {
     return supabase
         .from('schedule_comments')
-        .select('*')
+        .stream(primaryKey: ['id'])
         .eq('schedule_id', scheduleId)
         .order('created_at', ascending: true)
-        .asStream()
         .map((dataList) {
           // List<Map<String, dynamic>>를 List<ScheduleComment>로 변환
           return (dataList as List)

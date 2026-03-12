@@ -10,6 +10,9 @@ import 'features/calendar/screens/calendar_screen.dart';
 import 'features/schedule/screens/auto_registration_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
+import 'package:flutter/services.dart' as import_services;
+
+import 'package:intl/date_symbol_data_local.dart';
 
 /// 탭 전환 알림
 class TabSwitchNotification extends Notification {
@@ -19,6 +22,7 @@ class TabSwitchNotification extends Notification {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('ko_KR', null);
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
@@ -97,7 +101,7 @@ class MainShell extends StatefulWidget {
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
   DateTime? _lastBackPressedTime;
 
@@ -110,26 +114,52 @@ class _MainShellState extends State<MainShell> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    NotificationManager().clearAllNotifications();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      NotificationManager().clearAllNotifications();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: _currentIndex == 0 &&
-          _lastBackPressedTime != null &&
-          DateTime.now().difference(_lastBackPressedTime!) <
-              const Duration(milliseconds: 1500),
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
-        if (!didPop) {
-          if (_currentIndex != 0) {
-            // 다른 탭에서 → 홈으로 이동
-            setState(() => _currentIndex = 0);
-          } else {
-            // 홈에서 → 2회 누름 체크
-            _lastBackPressedTime = DateTime.now();
+        if (didPop) return;
+
+        if (_currentIndex != 0) {
+          // 다른 탭에서 홈으로 이동
+          setState(() => _currentIndex = 0);
+        } else {
+          // 홈에서 앱 종료 확인
+          final now = DateTime.now();
+          if (_lastBackPressedTime == null ||
+              now.difference(_lastBackPressedTime!) >
+                  const Duration(milliseconds: 1500)) {
+            _lastBackPressedTime = now;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('한 번 더 누르면 앱이 종료됩니다'),
-                duration: Duration(milliseconds: 1400),
+                duration: Duration(milliseconds: 1500),
               ),
             );
+          } else {
+            // 두 번 누름: 앱 종료 허용 (시스템에 백엔드/스택 팝 요청)
+            // 안드로이드에서는 SystemNavigator.pop()을 호출하는 방식 사용
+            import_services.SystemNavigator.pop();
           }
         }
       },
