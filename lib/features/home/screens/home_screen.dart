@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
+import '../../../core/notification_manager.dart';
+import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
 import '../services/home_service.dart';
 import '../widgets/dday_widget.dart';
@@ -54,11 +56,50 @@ class _HomeScreenState extends State<HomeScreen> {
           _data = summary;
           _isLoading = false;
         });
+        // 데이줌 알림 자동 체크
+        _checkNotifications(summary);
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  Future<void> _checkNotifications(Map<String, dynamic> data) async {
+    final today = DateTime.now();
+    final tomorrow = today.add(const Duration(days: 1));
+    final nm = NotificationManager();
+
+    // 오늘 데이트 체크
+    final todaySchedules = data['today_schedules'] as Map<String, List<Schedule>>?;
+    if (todaySchedules != null) {
+      final allToday = [
+        ...(todaySchedules['mine'] ?? []),
+        ...(todaySchedules['partner'] ?? []),
+      ];
+      await nm.checkDateToday(schedules: allToday, today: today);
+
+      // 불무 체크
+      final myOff = (todaySchedules['mine'] ?? []).where((s) => s.category == '휴무').toList();
+      final partnerOff = (todaySchedules['partner'] ?? []).where((s) => s.category == '휴무').toList();
+      if (myOff.isNotEmpty && partnerOff.isNotEmpty) {
+        await nm.checkBothOffAndSchedule(
+          mySchedules: myOff,
+          partnerSchedules: partnerOff,
+          today: today,
+        );
+      }
+    }
+
+    // 내일 데이트 체크
+    final tomorrowSchedules = data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
+    if (tomorrowSchedules != null) {
+      final allTomorrow = [
+        ...(tomorrowSchedules['mine'] ?? []),
+        ...(tomorrowSchedules['partner'] ?? []),
+      ];
+      await nm.checkDateBefore(schedules: allTomorrow, tomorrow: tomorrow);
     }
   }
 
@@ -84,10 +125,29 @@ class _HomeScreenState extends State<HomeScreen> {
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
     final todayWeekday = weekdays[today.weekday - 1];
     final tomorrowWeekday = weekdays[tomorrow.weekday - 1];
+    final todayHolidays = HolidayService().getHolidays(today);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('홈'),
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              '우리의 이야기',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              todayHolidays.isNotEmpty
+                  ? '${today.month}월 ${today.day}일 ($todayWeekday)  ·  ${todayHolidays.first.emoji} ${todayHolidays.first.name}'
+                  : '${today.month}월 ${today.day}일 ($todayWeekday)',
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.textSecondary,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),

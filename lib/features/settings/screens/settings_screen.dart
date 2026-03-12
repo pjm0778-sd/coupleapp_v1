@@ -47,7 +47,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       try {
         await supabase
             .from('couples')
-            .update({'started_at': date!.toIso8601String().split('T')[0]})
+            .update({'started_at': date.toIso8601String().split('T')[0]})
             .eq('id', _coupleId!);
         if (mounted) {
           setState(() => _startedAt = date);

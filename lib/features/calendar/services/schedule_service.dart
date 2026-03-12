@@ -1,5 +1,7 @@
+import 'dart:math';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
+import '../../../shared/models/repeat_pattern.dart';
 
 enum ScheduleFilter {
   mine,        // 나만
@@ -110,9 +112,143 @@ class ScheduleService {
     return Schedule.fromMap(data);
   }
 
-  /// 일정 추가
+  /// 일정 추가 (반복 패턴이 있으면 자동으로 여러 날짜에 생성)
   Future<void> addSchedule(Schedule schedule) async {
-    await supabase.from('schedules').insert(schedule.toMap());
+    final repeatMap = schedule.repeatPattern;
+
+    if (repeatMap == null) {
+      // 단일 일정
+      await supabase.from('schedules').insert(schedule.toMap());
+      return;
+    }
+
+    // 반복 일정: 그룹 ID로 묶기
+    final rp = RepeatPattern.fromMap(repeatMap);
+    final groupId = _generateGroupId();
+
+    final dates = _generateRepeatDates(
+      pattern: rp,
+      startDate: schedule.date,
+      maxMonths: 12, // 최대 12개월치 생성
+    );
+
+    if (dates.isEmpty) {
+      // 날짜 생성 실패 시 단일 저장
+      await supabase.from('schedules').insert(schedule.toMap());
+      return;
+    }
+
+    // bulk insert
+    final rows = dates.map((d) {
+      final map = schedule.toMap();
+      map['date'] = d.toIso8601String().split('T')[0];
+      map['repeat_group_id'] = groupId;
+      return map;
+    }).toList();
+
+    // Supabase insert는 list 지원
+    await supabase.from('schedules').insert(rows);
+  }
+
+  /// 반복 일정 그룹 전체 삭제
+  Future<void> deleteRepeatGroup(String groupId) async {
+    await supabase
+        .from('schedules')
+        .delete()
+        .eq('repeat_group_id', groupId);
+  }
+
+  /// 특정 날짜 이후 반복 일정 삭제
+  Future<void> deleteRepeatGroupFrom(String groupId, DateTime from) async {
+    await supabase
+        .from('schedules')
+        .delete()
+        .eq('repeat_group_id', groupId)
+        .gte('date', from.toIso8601String().split('T')[0]);
+  }
+
+  /// 반복 패턴에 따라 날짜 목록 생성
+  List<DateTime> _generateRepeatDates({
+    required RepeatPattern pattern,
+    required DateTime startDate,
+    int maxMonths = 12,
+  }) {
+    final endDate = pattern.endDate ??
+        DateTime(startDate.year, startDate.month + maxMonths, startDate.day);
+    final dates = <DateTime>[];
+
+    switch (pattern.type) {
+      case 'daily':
+        var d = startDate;
+        final interval = pattern.interval ?? 1;
+        while (!d.isAfter(endDate)) {
+          dates.add(d);
+          d = d.add(Duration(days: interval));
+          if (dates.length > 500) break; // 안전장치
+        }
+
+      case 'weekly':
+        if (pattern.days == null || pattern.days!.isEmpty) break;
+        var d = startDate;
+        while (!d.isAfter(endDate)) {
+          if (pattern.days!.contains(d.weekday)) {
+            dates.add(d);
+          }
+          d = d.add(const Duration(days: 1));
+          if (dates.length > 500) break;
+        }
+
+      case 'monthly':
+        var year = startDate.year;
+        var month = startDate.month;
+        final day = startDate.day;
+        while (true) {
+          final lastDay = DateTime(year, month + 1, 0).day;
+          final d = DateTime(year, month, min(day, lastDay));
+          if (d.isAfter(endDate)) break;
+          if (!d.isBefore(startDate)) dates.add(d);
+          month++;
+          if (month > 12) { month = 1; year++; }
+          if (dates.length > 120) break;
+        }
+
+      case 'yearly':
+        var year = startDate.year;
+        while (true) {
+          final d = DateTime(year, startDate.month, startDate.day);
+          if (d.isAfter(endDate)) break;
+          if (!d.isBefore(startDate)) dates.add(d);
+          year++;
+          if (dates.length > 20) break;
+        }
+
+      case '주말':
+        var d = startDate;
+        while (!d.isAfter(endDate)) {
+          if (d.weekday == DateTime.saturday || d.weekday == DateTime.sunday) {
+            dates.add(d);
+          }
+          d = d.add(const Duration(days: 1));
+          if (dates.length > 500) break;
+        }
+
+      case '평일':
+        var d = startDate;
+        while (!d.isAfter(endDate)) {
+          if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) {
+            dates.add(d);
+          }
+          d = d.add(const Duration(days: 1));
+          if (dates.length > 500) break;
+        }
+    }
+
+    return dates;
+  }
+
+  String _generateGroupId() {
+    final rand = Random().nextInt(999999999);
+    return 'repeat_${DateTime.now().millisecondsSinceEpoch}_$rand';
   }
 
   /// 일정 삭제

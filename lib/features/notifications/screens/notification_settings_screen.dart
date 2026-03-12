@@ -8,16 +8,59 @@ class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
   bool _permissionGranted = false;
+  bool _checkingPermission = false;
 
   @override
   void initState() {
     super.initState();
     _permissionGranted = NotificationManager().webPermissionGranted;
+  }
+
+  Future<void> _requestPermission() async {
+    setState(() => _checkingPermission = true);
+    try {
+      if (kIsWeb) {
+        final result =
+            await NotificationManager().requestWebNotificationPermission();
+        if (mounted) {
+          setState(() => _permissionGranted = result == 'granted');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result == 'granted'
+                  ? '알림 권한이 허용되었습니다'
+                  : '알림 권한이 거부되었습니다'),
+            ),
+          );
+        }
+      } else {
+        final granted = await NotificationManager().requestPermission();
+        if (mounted) {
+          setState(() => _permissionGranted = granted);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(granted
+                  ? '알림 권한이 허용되었습니다 ✅'
+                  : '알림 권한이 거부되었습니다. 설정 앱에서 직접 허용해주세요.'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _checkingPermission = false);
+    }
   }
 
   @override
@@ -29,60 +72,61 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       appBar: AppBar(title: const Text('알림 설정')),
       body: ListView(
         children: [
+          // ── 권한 카드 (모바일/Web 공통) ──
           _buildSectionHeader('알림 권한'),
-          if (kIsWeb) _buildPermissionCard(manager, _permissionGranted),
-          const SizedBox(height: 20),
+          _buildPermissionCard(),
+          const SizedBox(height: 8),
+
+          // ── 파트너 일정 알림 ──
           _buildSectionHeader('파트너 일정 알림'),
           _buildSwitchTile(
             title: '파트너 일정 추가 알림',
             subtitle: '파트너가 일정을 추가하면 알림',
             value: settings.scheduleAdded,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(scheduleAdded: value),
-            ),
+            onChanged: (value) =>
+                manager.updateSettings(settings.copyWith(scheduleAdded: value)),
           ),
           _buildSwitchTile(
             title: '파트너 일정 삭제 알림',
             subtitle: '파트너가 일정을 삭제하면 알림',
             value: settings.scheduleDeleted,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(scheduleDeleted: value),
-            ),
+            onChanged: (value) => manager
+                .updateSettings(settings.copyWith(scheduleDeleted: value)),
           ),
           _buildSwitchTile(
             title: '파트너 일정 수정 알림',
             subtitle: '파트너가 일정을 수정하면 알림',
             value: settings.scheduleUpdated,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(scheduleUpdated: value),
-            ),
+            onChanged: (value) => manager
+                .updateSettings(settings.copyWith(scheduleUpdated: value)),
           ),
-          const SizedBox(height: 20),
+
+          const SizedBox(height: 8),
+
+          // ── 스케줄링 알림 ──
           _buildSectionHeader('스케줄링 알림'),
           _buildSwitchTile(
             title: '둘 다 휴무 알림',
-            subtitle: '둘 다 쉬는 날 오전 9시에 알림',
+            subtitle: '둘 다 쉬는 날 홈 화면 진입 시 알림',
             value: settings.bothOff,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(bothOff: value),
-            ),
+            onChanged: (value) =>
+                manager.updateSettings(settings.copyWith(bothOff: value)),
           ),
           _buildSwitchTile(
             title: '데이트 하루 전 알림',
-            subtitle: '데이트 하루 전 오전 9시에 알림',
+            subtitle: '데이트 하루 전 홈 화면 진입 시 알림',
             value: settings.dateBefore,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(dateBefore: value),
-            ),
+            onChanged: (value) =>
+                manager.updateSettings(settings.copyWith(dateBefore: value)),
           ),
           _buildSwitchTile(
             title: '데이트 당일 알림',
-            subtitle: '데이트 당일 오전 9시에 알림',
+            subtitle: '데이트 당일 홈 화면 진입 시 알림',
             value: settings.dateToday,
-            onChanged: (value) => manager.updateSettings(
-              settings.copyWith(dateToday: value),
-            ),
+            onChanged: (value) =>
+                manager.updateSettings(settings.copyWith(dateToday: value)),
           ),
+
           const SizedBox(height: 20),
           _buildActionButtons(context),
         ],
@@ -104,17 +148,20 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     );
   }
 
-  Widget _buildPermissionCard(NotificationManager manager, bool permissionGranted) {
-    // 플랫폼별로 권한 상태 확인
+  Widget _buildPermissionCard() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: permissionGranted ? AppTheme.surface : Colors.amber.shade50,
+          color: _permissionGranted
+              ? AppTheme.surface
+              : Colors.amber.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: permissionGranted ? AppTheme.border : Colors.amber.shade300,
+            color: _permissionGranted
+                ? AppTheme.border
+                : Colors.amber.shade300,
           ),
         ),
         child: Column(
@@ -123,8 +170,10 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             Row(
               children: [
                 Icon(
-                  permissionGranted ? Icons.notifications_active : Icons.notifications_none,
-                  color: permissionGranted ? AppTheme.primary : Colors.orange,
+                  _permissionGranted
+                      ? Icons.notifications_active
+                      : Icons.notifications_none,
+                  color: _permissionGranted ? AppTheme.primary : Colors.orange,
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -132,16 +181,18 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        permissionGranted ? '알림 권한 허용됨' : '알림 권한 필요',
+                        _permissionGranted ? '알림 권한 허용됨' : '알림 권한 필요',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          color: permissionGranted ? AppTheme.textPrimary : Colors.orange.shade800,
+                          color: _permissionGranted
+                              ? AppTheme.textPrimary
+                              : Colors.orange.shade800,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        permissionGranted
-                            ? '브라우저 알림이 활성화되어 있습니다'
+                        _permissionGranted
+                            ? '시스템 알림이 활성화되어 있습니다'
                             : '알림을 받으려면 권한을 허용해주세요',
                         style: const TextStyle(
                           fontSize: 12,
@@ -153,14 +204,21 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 ),
               ],
             ),
-            if (!permissionGranted) ...[
+            if (!_permissionGranted) ...[
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: () => _requestPermission(manager),
-                  icon: const Icon(Icons.notifications, size: 18),
-                  label: const Text('알림 권한 허용'),
+                  onPressed: _checkingPermission ? null : _requestPermission,
+                  icon: _checkingPermission
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.notifications, size: 18),
+                  label: Text(_checkingPermission ? '요청 중...' : '알림 권한 허용'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
@@ -174,29 +232,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     );
   }
 
-  Future<void> _requestPermission(NotificationManager manager) async {
-    final result = await manager.requestWebNotificationPermission();
-
-    if (!mounted) return;
-
-    if (result == 'granted') {
-      setState(() {
-        _permissionGranted = true;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('알림 권한이 허용되었습니다')),
-      );
-    } else if (result == 'denied') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('알림 권한이 거부되었습니다')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')),
-      );
-    }
-  }
-
   Widget _buildSwitchTile({
     required String title,
     String? subtitle,
@@ -205,7 +240,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   }) {
     return SwitchListTile(
       title: Text(title),
-      subtitle: subtitle != null ? Text(subtitle!) : null,
+      subtitle: subtitle != null ? Text(subtitle) : null,
       value: value,
       activeTrackColor: AppTheme.primary,
       onChanged: onChanged,
@@ -224,7 +259,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               label: const Text('모두 끄기'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.textSecondary,
-                side: BorderSide(color: AppTheme.border),
+                side: const BorderSide(color: AppTheme.border),
               ),
             ),
           ),
@@ -247,15 +282,14 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   void _toggleAll(bool value) {
     final manager = NotificationManager();
-    manager.updateSettings(
-      NotificationSettings(
-        scheduleAdded: value,
-        scheduleDeleted: value,
-        scheduleUpdated: value,
-        bothOff: value,
-        dateBefore: value,
-        dateToday: value,
-      ),
-    );
+    manager.updateSettings(NotificationSettings(
+      scheduleAdded: value,
+      scheduleDeleted: value,
+      scheduleUpdated: value,
+      bothOff: value,
+      dateBefore: value,
+      dateToday: value,
+    ));
+    setState(() {});
   }
 }

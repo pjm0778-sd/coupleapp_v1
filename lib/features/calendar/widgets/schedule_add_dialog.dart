@@ -20,7 +20,8 @@ class ScheduleAddDialog extends StatefulWidget {
 class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   final _formKey = GlobalKey<FormState>();
 
-  late DateTime _selectedDate;
+  late DateTime _startDate;
+  late DateTime _endDate;
   late TimeOfDay? _startTime;
   late TimeOfDay? _endTime;
   late String _title;
@@ -30,6 +31,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   late String _note;
   late int? _reminderMinutes;
   late RepeatPattern? _repeatPattern;
+
+  // 반복 요일 (주간 반복용): 1=월 ~ 7=일
+  final Set<int> _selectedWeekdays = {};
 
   static const _colorPalette = <String, Color>{
     '#E53935': Color(0xFFE53935),
@@ -54,13 +58,37 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   };
 
   final _categories = ['근무', '약속', '여행', '데이트', '기타'];
-  final _reminderOptions = ['없음', '1분 전', '5분 전', '10분 전', '30분 전', '1시간 전'];
-  final _repeatTypes = ['없음', '매일', '매주', '매월', '매년', '주말', '평일'];
+
+  // 반복 타입 (표시 이름 → 내부 key 매핑)
+  static const _repeatOptions = <String, String?>{
+    '없음': null,
+    '매일': 'daily',
+    '매주': 'weekly',
+    '매월': 'monthly',
+    '매년': 'yearly',
+    '주말마다': '주말',
+    '평일마다': '평일',
+  };
+
+  String? _selectedRepeatKey; // null = 없음
+
+  // 알림 옵션 (표시 이름 → 분)
+  static const _reminderOptions = <String, int?>{
+    '없음': null,
+    '1분 전': 1,
+    '5분 전': 5,
+    '10분 전': 10,
+    '30분 전': 30,
+    '1시간 전': 60,
+    '2시간 전': 120,
+  };
 
   @override
   void initState() {
     super.initState();
-    _selectedDate = widget.date ?? DateTime.now();
+    final now = DateTime.now();
+    _startDate = widget.date ?? now;
+    _endDate = widget.date ?? now;
 
     if (widget.existingSchedule != null) {
       final s = widget.existingSchedule!;
@@ -72,9 +100,14 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _location = s.location ?? '';
       _note = s.note ?? '';
       _reminderMinutes = s.reminderMinutes;
-      _repeatPattern = s.repeatPattern != null
-          ? RepeatPattern.fromMap(s.repeatPattern!)
-          : null;
+      if (s.repeatPattern != null) {
+        final rp = RepeatPattern.fromMap(s.repeatPattern!);
+        _selectedRepeatKey = rp.type;
+        _repeatPattern = rp;
+        if (rp.days != null) _selectedWeekdays.addAll(rp.days!);
+      } else {
+        _repeatPattern = null;
+      }
     } else {
       _startTime = null;
       _endTime = null;
@@ -88,12 +121,48 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
     }
   }
 
-  void _onSave() async {
+  void _onRepeatChanged(String? key) {
+    setState(() {
+      _selectedRepeatKey = key;
+      if (key == null) {
+        _repeatPattern = null;
+      } else if (key == 'weekly') {
+        _repeatPattern = RepeatPattern(
+          type: key,
+          days: _selectedWeekdays.toList()..sort(),
+          startDate: _startDate,
+        );
+      } else {
+        _repeatPattern = RepeatPattern(type: key, startDate: _startDate);
+      }
+    });
+  }
+
+  void _onWeekdayToggle(int day) {
+    setState(() {
+      if (_selectedWeekdays.contains(day)) {
+        _selectedWeekdays.remove(day);
+      } else {
+        _selectedWeekdays.add(day);
+      }
+      if (_selectedRepeatKey == 'weekly') {
+        _repeatPattern = RepeatPattern(
+          type: 'weekly',
+          days: _selectedWeekdays.toList()..sort(),
+          startDate: _startDate,
+        );
+      }
+    });
+  }
+
+  void _onSave() {
     if (!_formKey.currentState!.validate()) return;
 
     final schedule = widget.existingSchedule != null
         ? widget.existingSchedule!.copyWith(
-            title: _title.trim().isEmpty ? widget.existingSchedule!.title : _title.trim(),
+            title: _title.trim().isEmpty
+                ? widget.existingSchedule!.title
+                : _title.trim(),
             startTime: _startTime,
             endTime: _endTime,
             category: _category,
@@ -107,7 +176,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             id: '',
             userId: '',
             coupleId: '',
-            date: _selectedDate,
+            date: _startDate,
+            startDate: _startDate,
+            endDate: _endDate != _startDate ? _endDate : null,
             title: _title.trim(),
             startTime: _startTime,
             endTime: _endTime,
@@ -125,100 +196,101 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final dateStr = '${_selectedDate.year}년 ${_selectedDate.month}월 ${_selectedDate.day}일';
-    final weekday = ['월', '화', '수', '목', '금', '토', '일'][_selectedDate.weekday - 1];
-
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 400),
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 헤더
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Row(
-                  children: [
-                    Text(
-                      widget.existingSchedule != null ? '일정 수정' : '일정 추가',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── 헤더 ──
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 8, 20),
+              decoration: const BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius:
+                    BorderRadius.vertical(top: Radius.circular(20)),
               ),
-              // 내용
-              Expanded(
+              child: Row(
+                children: [
+                  Text(
+                    widget.existingSchedule != null ? '일정 수정' : '일정 추가',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── 내용 ──
+            Flexible(
+              child: Form(
+                key: _formKey,
                 child: ListView(
                   padding: const EdgeInsets.all(20),
                   children: [
                     // 날짜
                     _buildSectionTitle('날짜'),
-                    _buildDateRow(dateStr, weekday),
-                    const SizedBox(height: 20),
-                    // 시간
-                    _buildSectionTitle('시간'),
                     Row(
                       children: [
                         Expanded(
-                          child: _TimeSelector(
-                            label: '시작',
-                            time: _startTime,
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _startTime = v);
-                              }
-                            },
+                          child: _DateButton(
+                            label: '시작일',
+                            date: _startDate,
+                            onChanged: (d) => setState(() => _startDate = d),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: _TimeSelector(
-                            label: '종료',
-                            time: _endTime,
-                            onChanged: (v) {
-                              if (v != null) {
-                                setState(() => _endTime = v);
-                              }
-                            },
+                          child: _DateButton(
+                            label: '종료일',
+                            date: _endDate,
+                            onChanged: (d) => setState(() => _endDate = d),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 20),
+
+                    // 시간
+                    _buildSectionTitle('시간'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _TimeButton(
+                            label: '시작',
+                            time: _startTime,
+                            onChanged: (v) => setState(() => _startTime = v),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _TimeButton(
+                            label: '종료',
+                            time: _endTime,
+                            onChanged: (v) => setState(() => _endTime = v),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
                     // 제목
                     _buildSectionTitle('제목 *'),
                     TextFormField(
                       initialValue: _title,
-                      decoration: InputDecoration(
-                        hintText: '일정 제목을 입력하세요',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppTheme.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppTheme.primary, width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
+                      decoration: _inputDecoration('일정 제목을 입력하세요'),
                       style: const TextStyle(fontSize: 14),
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) {
@@ -229,29 +301,20 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       onChanged: (v) => setState(() => _title = v),
                     ),
                     const SizedBox(height: 20),
+
                     // 종류
                     _buildSectionTitle('종류'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DropdownButton<String>(
-                        value: _category,
-                        hint: const Text('종류 선택', style: TextStyle(fontSize: 14)),
-                        isExpanded: true,
-                        underline: const SizedBox.shrink(),
-                        items: _categories.map((c) {
-                          return DropdownMenuItem(
-                            value: c,
-                            child: Text(c, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (v) => setState(() => _category = v),
-                      ),
+                    _buildDropdown<String>(
+                      value: _category,
+                      hint: '종류 선택',
+                      items: _categories
+                          .map((c) =>
+                              DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (v) => setState(() => _category = v),
                     ),
                     const SizedBox(height: 20),
+
                     // 색상
                     _buildSectionTitle('색상'),
                     Wrap(
@@ -260,7 +323,8 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       children: _colorPalette.entries.map((e) {
                         final isSelected = _colorHex == e.key;
                         return GestureDetector(
-                          onTap: () => setState(() => _colorHex = e.key),
+                          onTap: () =>
+                              setState(() => _colorHex = e.key),
                           child: Container(
                             width: 36,
                             height: 36,
@@ -268,132 +332,147 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                               color: e.value,
                               shape: BoxShape.circle,
                               border: isSelected
-                                  ? Border.all(color: AppTheme.textPrimary, width: 2.5)
+                                  ? Border.all(
+                                      color: AppTheme.textPrimary,
+                                      width: 2.5)
                                   : null,
                             ),
                             child: isSelected
-                                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                                ? const Icon(Icons.check,
+                                    color: Colors.white, size: 18)
                                 : null,
                           ),
                         );
                       }).toList(),
                     ),
                     const SizedBox(height: 20),
+
                     // 장소
                     _buildSectionTitle('장소'),
                     TextFormField(
                       initialValue: _location,
-                      decoration: InputDecoration(
-                        hintText: '장소 입력',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
+                      decoration: _inputDecoration('장소 입력',
+                          prefixIcon: Icons.location_on_outlined),
                       style: const TextStyle(fontSize: 14),
                       onChanged: (v) => setState(() => _location = v),
                     ),
                     const SizedBox(height: 20),
+
                     // 메모
                     _buildSectionTitle('메모'),
                     TextFormField(
                       initialValue: _note,
                       maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText: '메모 입력',
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
+                      decoration: _inputDecoration('메모 입력'),
                       style: const TextStyle(fontSize: 14),
                       onChanged: (v) => setState(() => _note = v),
                     ),
                     const SizedBox(height: 20),
+
                     // 알림
                     _buildSectionTitle('알림'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DropdownButton<int>(
-                        value: _reminderMinutes,
-                        hint: const Text('알림 시간', style: TextStyle(fontSize: 14)),
-                        isExpanded: true,
-                        underline: const SizedBox.shrink(),
-                        items: _reminderOptions.asMap().entries.map((e) {
-                          final index = e.key;
-                          return DropdownMenuItem(
-                            value: index == 0 ? null : index * 60,
-                            child: Text(e.value, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (v) => setState(() => _reminderMinutes = v),
-                      ),
+                    _buildDropdown<int>(
+                      value: _reminderMinutes,
+                      hint: '알림 없음',
+                      items: _reminderOptions.entries
+                          .map((e) => DropdownMenuItem(
+                                value: e.value,
+                                child: Text(e.key),
+                              ))
+                          .toList(),
+                      onChanged: (v) =>
+                          setState(() => _reminderMinutes = v),
                     ),
                     const SizedBox(height: 20),
-                    // 반복
+
+                    // ── 반복 ──
                     _buildSectionTitle('반복'),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: DropdownButton<String>(
-                        value: _repeatPattern?.type,
-                        hint: const Text('반복 설정', style: TextStyle(fontSize: 14)),
-                        isExpanded: true,
-                        underline: const SizedBox.shrink(),
-                        items: _repeatTypes.map((t) {
-                          return DropdownMenuItem(
-                            value: t == '없음' ? null : t,
-                            child: Text(t, style: const TextStyle(fontSize: 14)),
-                          );
-                        }).toList(),
-                        onChanged: (v) {
-                          if (v == null) {
-                            setState(() => _repeatPattern = null);
-                          } else {
-                            setState(() => _repeatPattern = RepeatPattern(type: v));
-                          }
+                    _buildDropdown<String>(
+                      value: _selectedRepeatKey,
+                      hint: '반복 없음',
+                      items: _repeatOptions.entries
+                          .map((e) => DropdownMenuItem(
+                                value: e.value,
+                                child: Text(e.key),
+                              ))
+                          .toList(),
+                      onChanged: _onRepeatChanged,
+                    ),
+
+                    // 매주 선택 시 요일 체크박스 표시
+                    if (_selectedRepeatKey == 'weekly') ...[
+                      const SizedBox(height: 12),
+                      _buildSectionTitle('반복 요일'),
+                      _buildWeekdaySelector(),
+                    ],
+
+                    // 반복 종료일
+                    if (_selectedRepeatKey != null) ...[
+                      const SizedBox(height: 12),
+                      _buildSectionTitle('반복 종료일 (선택)'),
+                      _DateButton(
+                        label: _repeatPattern?.endDate != null
+                            ? '${_repeatPattern!.endDate!.year}년 ${_repeatPattern!.endDate!.month}월 ${_repeatPattern!.endDate!.day}일'
+                            : '종료일 없음',
+                        date: _repeatPattern?.endDate ?? _startDate,
+                        onChanged: (d) {
+                          setState(() {
+                            _repeatPattern = RepeatPattern(
+                              type: _selectedRepeatKey!,
+                              days:
+                                  _selectedWeekdays.isNotEmpty
+                                      ? (_selectedWeekdays.toList()..sort())
+                                      : null,
+                              startDate: _startDate,
+                              endDate: d,
+                            );
+                          });
                         },
                       ),
-                    ),
-                    const SizedBox(height: 30),
+                    ],
+
+                    const SizedBox(height: 24),
+
                     // 버튼
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => Navigator.pop(context),
-                              style: OutlinedButton.styleFrom(
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('취소'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: OutlinedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('취소'),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _onSave,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text(
+                              '저장',
+                              style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _onSave,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primary,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('저장'),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -413,40 +492,157 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
     );
   }
 
-  Widget _buildDateRow(String dateStr, String weekday) {
+  Widget _buildDropdown<T>({
+    required T? value,
+    required String hint,
+    required List<DropdownMenuItem<T>> items,
+    required void Function(T?) onChanged,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.calendar_today_outlined, size: 20, color: AppTheme.textSecondary),
-          const SizedBox(width: 12),
-          Text(
-            dateStr,
-            style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+      child: DropdownButton<T>(
+        value: value,
+        hint: Text(hint, style: const TextStyle(fontSize: 14)),
+        isExpanded: true,
+        underline: const SizedBox.shrink(),
+        style: const TextStyle(
+            fontSize: 14, color: AppTheme.textPrimary),
+        items: items,
+        onChanged: onChanged,
+      ),
+    );
+  }
+
+  Widget _buildWeekdaySelector() {
+    const days = ['월', '화', '수', '목', '금', '토', '일'];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: List.generate(7, (i) {
+        final day = i + 1;
+        final isSelected = _selectedWeekdays.contains(day);
+        return GestureDetector(
+          onTap: () => _onWeekdayToggle(day),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: isSelected ? AppTheme.primary : AppTheme.background,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isSelected ? AppTheme.primary : AppTheme.border,
+              ),
+            ),
+            child: Center(
+              child: Text(
+                days[i],
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : AppTheme.textPrimary,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(width: 8),
-          Text(
-            weekday,
-            style: const TextStyle(fontSize: 14, color: AppTheme.textSecondary),
-          ),
-        ],
+        );
+      }),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint,
+      {IconData? prefixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(
+          color: AppTheme.textSecondary, fontSize: 14),
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, size: 20, color: AppTheme.textSecondary)
+          : null,
+      filled: true,
+      fillColor: AppTheme.surface,
+      border:
+          OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppTheme.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide:
+            const BorderSide(color: AppTheme.primary, width: 1.5),
+      ),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+}
+
+// ───────────────────────────────────────────────────────
+// Helper Widgets
+// ───────────────────────────────────────────────────────
+
+class _DateButton extends StatelessWidget {
+  final String label;
+  final DateTime date;
+  final void Function(DateTime) onChanged;
+
+  const _DateButton({
+    required this.label,
+    required this.date,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr =
+        '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+    return GestureDetector(
+      onTap: () async {
+        final selected = await showDatePicker(
+          context: context,
+          initialDate: date,
+          firstDate: DateTime(2020, 1, 1),
+          lastDate: DateTime(2035, 12, 31),
+        );
+        if (selected != null && context.mounted) {
+          onChanged(selected);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.calendar_today_outlined,
+                size: 16, color: AppTheme.textSecondary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                label.length < 5 ? '$label\n$dateStr' : dateStr,
+                style: const TextStyle(
+                    fontSize: 13, color: AppTheme.textPrimary),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _TimeSelector extends StatelessWidget {
+class _TimeButton extends StatelessWidget {
   final String label;
   final TimeOfDay? time;
   final void Function(TimeOfDay?) onChanged;
 
-  const _TimeSelector({
-    super.key,
+  const _TimeButton({
     required this.label,
     required this.time,
     required this.onChanged,
@@ -457,11 +653,19 @@ class _TimeSelector extends StatelessWidget {
     final timeStr = time != null
         ? '${time!.hour.toString().padLeft(2, '0')}:${time!.minute.toString().padLeft(2, '0')}'
         : '시간 선택';
-
     return GestureDetector(
-      onTap: () => _selectTime(context),
+      onTap: () async {
+        final selected = await showTimePicker(
+          context: context,
+          initialTime: time ?? TimeOfDay.now(),
+          initialEntryMode: TimePickerEntryMode.input,
+        );
+        if (selected != null && context.mounted) {
+          onChanged(selected);
+        }
+      },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(10),
@@ -471,30 +675,21 @@ class _TimeSelector extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+              style: const TextStyle(
+                  fontSize: 13, color: AppTheme.textSecondary),
             ),
             const Spacer(),
             Text(
               timeStr,
-              style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+              style: const TextStyle(
+                  fontSize: 14, color: AppTheme.textPrimary),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.access_time, size: 18, color: AppTheme.textSecondary),
+            const SizedBox(width: 4),
+            const Icon(Icons.access_time,
+                size: 16, color: AppTheme.textSecondary),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _selectTime(BuildContext context) async {
-    final selected = await showTimePicker(
-      context: context,
-      initialTime: time ?? TimeOfDay.now(),
-      initialEntryMode: TimePickerEntryMode.input,
-    );
-
-    if (selected != null && context.mounted) {
-      onChanged(selected);
-    }
   }
 }

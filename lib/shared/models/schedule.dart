@@ -6,8 +6,10 @@ class Schedule {
   final String? coupleId;
   final DateTime date;
 
-  // 공유 캘린더 확장 필드
+  // 공통 캘린더 확장 필드
   final String? title;
+  final DateTime? startDate; // 시작 날짜 (범위 일정용)
+  final DateTime? endDate;   // 종료 날짜 (범위 일정용)
   final TimeOfDay? startTime;
   final TimeOfDay? endTime;
   final String? category; // '근무', '약속', '여행', '데이트', '기타'
@@ -22,6 +24,7 @@ class Schedule {
   final String? colorHex;
   final bool isDate;
   final String? emoji;
+  final String? repeatGroupId; // 반복 일정 그룹 ID
 
   const Schedule({
     required this.id,
@@ -29,6 +32,8 @@ class Schedule {
     required this.coupleId,
     required this.date,
     this.title,
+    this.startDate,
+    this.endDate,
     this.startTime,
     this.endTime,
     this.category,
@@ -41,6 +46,7 @@ class Schedule {
     this.colorHex,
     this.isDate = false,
     this.emoji,
+    this.repeatGroupId,
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -49,6 +55,12 @@ class Schedule {
         coupleId: map['couple_id'] as String?,
         date: DateTime.parse(map['date'] as String),
         title: map['title'] as String?,
+        startDate: map['start_date'] != null
+            ? DateTime.parse(map['start_date'] as String)
+            : null,
+        endDate: map['end_date'] != null
+            ? DateTime.parse(map['end_date'] as String)
+            : null,
         startTime: map['start_time'] != null
             ? _parseTime(map['start_time'] as String)
             : null,
@@ -60,13 +72,14 @@ class Schedule {
         note: map['note'] as String?,
         reminderMinutes: map['reminder_minutes'] as int?,
         repeatPattern: map['repeat_pattern'] != null
-            ? map['repeat_pattern'] as Map<String, dynamic>
+            ? (map['repeat_pattern'] as Map<String, dynamic>)
             : null,
         isAnniversary: map['is_anniversary'] as bool? ?? false,
         workType: map['work_type'] as String?,
         colorHex: map['color_hex'] as String?,
         isDate: map['is_date'] as bool? ?? false,
         emoji: map['emoji'] as String?,
+        repeatGroupId: map['repeat_group_id'] as String?,
       );
 
   Map<String, dynamic> toMap() => {
@@ -74,6 +87,8 @@ class Schedule {
         'couple_id': coupleId,
         'date': date.toIso8601String().split('T')[0],
         'title': title,
+        'start_date': startDate?.toIso8601String().split('T')[0],
+        'end_date': endDate?.toIso8601String().split('T')[0],
         'start_time': _formatTime(startTime),
         'end_time': _formatTime(endTime),
         'category': category,
@@ -86,6 +101,7 @@ class Schedule {
         'color_hex': colorHex,
         'is_date': isDate,
         'emoji': emoji,
+        'repeat_group_id': repeatGroupId,
       };
 
   static TimeOfDay _parseTime(String time) {
@@ -107,6 +123,8 @@ class Schedule {
     String? coupleId,
     DateTime? date,
     String? title,
+    DateTime? startDate,
+    DateTime? endDate,
     TimeOfDay? startTime,
     TimeOfDay? endTime,
     String? category,
@@ -119,6 +137,7 @@ class Schedule {
     String? colorHex,
     bool? isDate,
     String? emoji,
+    String? repeatGroupId,
   }) {
     return Schedule(
       id: id ?? this.id,
@@ -126,6 +145,8 @@ class Schedule {
       coupleId: coupleId ?? this.coupleId,
       date: date ?? this.date,
       title: title ?? this.title,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
       startTime: startTime ?? this.startTime,
       endTime: endTime ?? this.endTime,
       category: category ?? this.category,
@@ -138,6 +159,7 @@ class Schedule {
       colorHex: colorHex ?? this.colorHex,
       isDate: isDate ?? this.isDate,
       emoji: emoji ?? this.emoji,
+      repeatGroupId: repeatGroupId ?? this.repeatGroupId,
     );
   }
 }

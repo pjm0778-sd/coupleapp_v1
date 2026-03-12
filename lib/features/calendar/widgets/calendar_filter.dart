@@ -62,7 +62,6 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _FilterChip({
-    super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,

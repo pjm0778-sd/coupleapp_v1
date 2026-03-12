@@ -41,7 +41,7 @@ class ScheduleCommentsWidget extends StatelessWidget {
         Expanded(
           child: ListView.separated(
             padding: const EdgeInsets.all(16),
-            separatorBuilder: (_, __) => const SizedBox(height: 1),
+            separatorBuilder: (_, _) => const SizedBox(height: 1),
             itemCount: comments.length,
             itemBuilder: (context, index) {
               final comment = comments[index];
@@ -63,7 +63,6 @@ class _CommentItem extends StatelessWidget {
   final bool isMine;
 
   const _CommentItem({
-    super.key,
     required this.comment,
     required this.isMine,
   });
@@ -142,7 +141,6 @@ class _Avatar extends StatelessWidget {
   final String initial;
 
   const _Avatar({
-    super.key,
     required this.initial,
   });
 
@@ -174,7 +172,6 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
 
   const _EmptyState({
-    super.key,
     required this.message,
     required this.icon,
   });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
+import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
 
 class CalendarCard extends StatelessWidget {
@@ -7,6 +8,7 @@ class CalendarCard extends StatelessWidget {
   final String weekday;
   final bool isToday;
   final List<Schedule> schedules;
+  final List<Holiday> holidays;
   final void Function(Schedule) onScheduleTap;
   final IconData Function(String?) getCategoryIcon;
   final String Function(TimeOfDay?) formatTime;
@@ -18,6 +20,7 @@ class CalendarCard extends StatelessWidget {
     required this.weekday,
     required this.isToday,
     required this.schedules,
+    this.holidays = const [],
     required this.onScheduleTap,
     required this.getCategoryIcon,
     required this.formatTime,
@@ -73,14 +76,38 @@ class CalendarCard extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 8),
-            // 요일 표시
-            Text(
-              weekday,
-              style: TextStyle(
-                fontSize: 12,
-                color: AppTheme.textSecondary,
-              ),
+            const SizedBox(height: 4),
+            // 요일 + 공휴일/기념일 태그
+            Row(
+              children: [
+                Text(
+                  weekday,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                if (holidays.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  ...holidays.take(2).map((h) => Container(
+                        margin: const EdgeInsets.only(right: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: h.color.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${h.emoji} ${h.name}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: h.color,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      )),
+                ],
+              ],
             ),
             const SizedBox(height: 12),
             // 일정 목록

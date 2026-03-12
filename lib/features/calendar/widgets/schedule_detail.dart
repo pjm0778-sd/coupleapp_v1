@@ -99,6 +99,66 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   Future<void> _deleteSchedule() async {
+    // 반복 일정이면 삭제 옵션 선택
+    if (_currentSchedule.repeatGroupId != null) {
+      final option = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('반복 일정 삭제'),
+          content: const Text('어떤 일정을 삭제할까요?'),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'this'),
+              child: const Text('이 일정만'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'from'),
+              child: const Text('이 날부터 전체'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'all'),
+              style:
+                  TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('모든 반복 일정'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('취소'),
+            ),
+          ],
+        ),
+      );
+
+      if (option == null || !mounted) return;
+
+      setState(() => _isDeleting = true);
+      try {
+        if (option == 'this') {
+          await _scheduleService.deleteSchedule(_currentSchedule.id);
+        } else if (option == 'from') {
+          await _scheduleService.deleteRepeatGroupFrom(
+            _currentSchedule.repeatGroupId!,
+            _currentSchedule.date,
+          );
+        } else {
+          await _scheduleService
+              .deleteRepeatGroup(_currentSchedule.repeatGroupId!);
+        }
+        if (mounted) Navigator.pop(context, true);
+      } catch (e) {
+        setState(() => _isDeleting = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('일정 삭제 실패')),
+          );
+        }
+      }
+      return;
+    }
+
+    // 단일 일정 삭제
     setState(() => _isDeleting = true);
     try {
       await _scheduleService.deleteSchedule(_currentSchedule.id);
@@ -108,7 +168,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     } catch (e) {
       setState(() => _isDeleting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('일정 삭제 실패')),
+        const SnackBar(content: Text('일정 삭제 실패')),
       );
     }
   }

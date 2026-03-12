@@ -1,6 +1,4 @@
-import 'package:collection/collection.dart';
 import '../../../core/supabase_client.dart';
-import '../../../shared/models/schedule.dart';
 
 class DateOptimalService {
   /// 데이트 최적일 조회
