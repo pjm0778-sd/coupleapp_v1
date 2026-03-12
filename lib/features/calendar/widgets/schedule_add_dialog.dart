@@ -31,6 +31,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   late String _note;
   late int? _reminderMinutes;
   late RepeatPattern? _repeatPattern;
+  late bool _isDate;
 
   // 반복 요일 (주간 반복용): 1=월 ~ 7=일
   final Set<int> _selectedWeekdays = {};
@@ -100,6 +101,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _location = s.location ?? '';
       _note = s.note ?? '';
       _reminderMinutes = s.reminderMinutes;
+      _isDate = s.isDate;
       if (s.repeatPattern != null) {
         final rp = RepeatPattern.fromMap(s.repeatPattern!);
         _selectedRepeatKey = rp.type;
@@ -118,6 +120,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _note = '';
       _reminderMinutes = null;
       _repeatPattern = null;
+      _isDate = false;
     }
   }
 
@@ -171,6 +174,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
             repeatPattern: _repeatPattern?.toMap(),
+            isDate: _isDate,
           )
         : Schedule(
             id: '',
@@ -188,6 +192,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
             repeatPattern: _repeatPattern?.toMap(),
+            isDate: _isDate,
             isAnniversary: false,
           );
 
@@ -311,9 +316,25 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           .map((c) =>
                               DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
-                      onChanged: (v) => setState(() => _category = v),
+                      onChanged: (v) {
+                        setState(() {
+                          _category = v;
+                          if (v == '데이트') {
+                            _isDate = true;
+                          }
+                        });
+                      },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
+                    SwitchListTile(
+                      title: const Text('데이트 일정으로 표시', style: TextStyle(fontSize: 14)),
+                      subtitle: const Text('홈 화면의 다음 데이트 D-day에 반영됩니다', style: TextStyle(fontSize: 12)),
+                      value: _isDate,
+                      activeColor: AppTheme.primary,
+                      onChanged: (v) => setState(() => _isDate = v),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 12),
 
                     // 색상
                     _buildSectionTitle('색상'),

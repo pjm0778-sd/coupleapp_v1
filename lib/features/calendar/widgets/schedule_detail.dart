@@ -276,14 +276,37 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                         color: AppTheme.textPrimary,
                       ),
                     ),
-                    if (category != null) ...[
+                    if (category != null || _currentSchedule.isDate) ...[
                       const SizedBox(height: 4),
-                      Text(
-                        category!,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.textSecondary,
-                        ),
+                      Row(
+                        children: [
+                          if (category != null)
+                            Text(
+                              category!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          if (category != null && _currentSchedule.isDate)
+                            const SizedBox(width: 8),
+                          if (_currentSchedule.isDate)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primary.withAlpha(25),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                '데이트',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ],

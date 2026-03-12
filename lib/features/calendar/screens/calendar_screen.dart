@@ -695,19 +695,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         children: [
           _FilterChip(
-            label: '나만',
+            label: '나의 일정',
             isSelected: _filter == ScheduleFilter.mine,
             onTap: () => _onFilterChanged(ScheduleFilter.mine),
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: '내 애인만',
+            label: 'userId: partner의 일정',
             isSelected: _filter == ScheduleFilter.partner,
             onTap: () => _onFilterChanged(ScheduleFilter.partner),
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: '전체',
+            label: '우리의 일정',
             isSelected: _filter == ScheduleFilter.both,
             onTap: () => _onFilterChanged(ScheduleFilter.both),
           ),

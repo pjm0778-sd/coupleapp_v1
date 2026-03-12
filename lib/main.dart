@@ -189,7 +189,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 BottomNavigationBarItem(
                   icon: Icon(Icons.calendar_month_outlined),
                   activeIcon: Icon(Icons.calendar_month_rounded),
-                  label: '캘린더',
+                  label: '우리의 달력',
                 ),
                 BottomNavigationBarItem(
                   icon: Icon(Icons.document_scanner_outlined),

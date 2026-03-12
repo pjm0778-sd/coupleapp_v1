@@ -46,7 +46,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void _setupRealtime() {
     if (_coupleId == null) return;
 
-    _schedulesChannel ??= Supabase.instance.client.channel('public:schedules')
+    // 이미 채널이 있으면 리스너만 재확인하거나 무시 (중복 방지)
+    if (_schedulesChannel != null) return;
+
+    _schedulesChannel = Supabase.instance.client.channel('public:schedules_home')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -57,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
           value: _coupleId!,
         ),
         callback: (payload) {
+          debugPrint('Realtime change detected: ${payload.eventType}');
           if (mounted) _loadData();
         },
       )..subscribe();

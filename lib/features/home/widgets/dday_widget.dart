@@ -20,7 +20,7 @@ class DDayWidget extends StatelessWidget {
     final displayDays = days != null ? days! + 1 : 0;
     final label = partnerNickname != null
         ? '$partnerNickname과 함께한 지'
-        : '함께한 지';
+        : '우리가 함께한 지';
 
     // 오늘 공휴일/기념일 확인
     final today = DateTime.now();
