@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
 
@@ -11,20 +11,20 @@ class TodayScheduleWidget extends StatelessWidget {
     super.key,
     required this.todaySchedules,
     required this.weekday,
-    this.title = '?ㅻ뒛???쇱젙',
+    this.title = '오늘의 일정',
   });
 
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '洹쇰Т':
+      case '근무':
         return const Color(0xFF4CAF50);
-      case '?쎌냽':
+      case '약속':
         return const Color(0xFF2196F3);
-      case '?ы뻾':
+      case '여행':
         return const Color(0xFFFF9800);
-      case '?곗씠??:
+      case '데이트':
         return const Color(0xFFE91E63);
-      case '?대Т':
+      case '휴무':
         return const Color(0xFFBDBDBD);
       default:
         return AppTheme.primary;
@@ -33,15 +33,15 @@ class TodayScheduleWidget extends StatelessWidget {
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '洹쇰Т':
+      case '근무':
         return Icons.work_outline;
-      case '?쎌냽':
+      case '약속':
         return Icons.handshake_outlined;
-      case '?ы뻾':
+      case '여행':
         return Icons.flight_takeoff_outlined;
-      case '?곗씠??:
+      case '데이트':
         return Icons.favorite_outline;
-      case '?대Т':
+      case '휴무':
         return Icons.beach_access_outlined;
       default:
         return Icons.event_outlined;
@@ -73,7 +73,7 @@ class TodayScheduleWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ?ㅻ뜑
+            // 헤더
             Row(
               children: [
                 Text(
@@ -87,7 +87,7 @@ class TodayScheduleWidget extends StatelessWidget {
                 const Spacer(),
                 Text(
                   weekday,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppTheme.textSecondary,
                   ),
@@ -95,7 +95,7 @@ class TodayScheduleWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // ?쇱젙 紐⑸줉
+            // 일정 목록
             if (mySchedules.isEmpty && partnerSchedules.isEmpty)
               Center(
                 child: Column(
@@ -107,7 +107,7 @@ class TodayScheduleWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      '?ㅻ뒛 ?쇱젙???놁뼱??,
+                      '오늘 일정이 없어요',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppTheme.textSecondary,
@@ -117,14 +117,14 @@ class TodayScheduleWidget extends StatelessWidget {
                 ),
               )
             else ...[
-              // ???쇱젙
+              // 내 일정
               if (mySchedules.isNotEmpty) ...[
-                _buildScheduleSection('??, mySchedules),
+                _buildScheduleSection('나', mySchedules),
                 const SizedBox(height: 20),
               ],
-              // ?뚰듃???쇱젙
+              // 내 애인 일정
               if (partnerSchedules.isNotEmpty) ...[
-                _buildScheduleSection('?뚰듃??, partnerSchedules),
+                _buildScheduleSection('내 애인', partnerSchedules),
               ],
             ],
           ],
@@ -138,7 +138,7 @@ class TodayScheduleWidget extends StatelessWidget {
       children: [
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: AppTheme.textSecondary,
@@ -182,7 +182,7 @@ class _ScheduleItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = schedule.title ?? schedule.workType ?? '?쇱젙';
+    final title = schedule.title ?? schedule.workType ?? '일정';
     final category = schedule.category;
     final categoryColor = getCategoryColor(category);
     final categoryIcon = getCategoryIcon(category);
@@ -197,7 +197,7 @@ class _ScheduleItem extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // 移댄뀒怨좊━ ?꾩씠肄?
+          // 카테고리 아이콘
           Container(
             width: 36,
             height: 36,
@@ -212,7 +212,7 @@ class _ScheduleItem extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          // ?쇱젙 ?뺣낫
+          // 일정 정보
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +239,7 @@ class _ScheduleItem extends StatelessWidget {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                           Icons.location_on_outlined,
                           size: 14,
                           color: AppTheme.textSecondary,

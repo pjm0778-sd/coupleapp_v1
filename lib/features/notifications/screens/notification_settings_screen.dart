@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
@@ -34,8 +34,8 @@ class _NotificationSettingsScreenState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(result == 'granted'
-                  ? '?뚮┝ 沅뚰븳???덉슜?섏뿀?듬땲??
-                  : '?뚮┝ 沅뚰븳??嫄곕??섏뿀?듬땲??),
+                  ? '알림 권한을 허용했습니다.'
+                  : '알림 권한을 거부했습니다.'),
             ),
           );
         }
@@ -46,8 +46,8 @@ class _NotificationSettingsScreenState
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(granted
-                  ? '?뚮┝ 沅뚰븳???덉슜?섏뿀?듬땲????
-                  : '?뚮┝ 沅뚰븳??嫄곕??섏뿀?듬땲?? ?ㅼ젙 ?깆뿉??吏곸젒 ?덉슜?댁＜?몄슂.'),
+                  ? '알림 권한을 허용했습니다.'
+                  : '알림 권한을 거부했습니다. 설정 앱에서 직접 허용해주세요.'),
             ),
           );
         }
@@ -55,7 +55,7 @@ class _NotificationSettingsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('?뚮┝ 沅뚰븳 ?붿껌 以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎')),
+          const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')),
         );
       }
     } finally {
@@ -69,33 +69,33 @@ class _NotificationSettingsScreenState
     final settings = manager.settings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('?뚮┝ ?ㅼ젙')),
+      appBar: AppBar(title: const Text('알림 설정')),
       body: ListView(
         children: [
-          // ?? 沅뚰븳 移대뱶 (紐⑤컮??Web 怨듯넻) ??
-          _buildSectionHeader('?뚮┝ 沅뚰븳'),
+          // 알림 권한 카드
+          _buildSectionHeader('알림 권한'),
           _buildPermissionCard(),
           const SizedBox(height: 8),
 
-          // ?? ?뚰듃???쇱젙 ?뚮┝ ??
-          _buildSectionHeader('?뚰듃???쇱젙 ?뚮┝'),
+          // 일정 알림
+          _buildSectionHeader('내 애인 일정 알림'),
           _buildSwitchTile(
-            title: '?뚰듃???쇱젙 異붽? ?뚮┝',
-            subtitle: '?뚰듃?덇? ?쇱젙??異붽??섎㈃ ?뚮┝',
+            title: '내 애인 일정 추가 알림',
+            subtitle: '내 애인이 일정을 추가하면 알림',
             value: settings.scheduleAdded,
             onChanged: (value) =>
                 manager.updateSettings(settings.copyWith(scheduleAdded: value)),
           ),
           _buildSwitchTile(
-            title: '?뚰듃???쇱젙 ??젣 ?뚮┝',
-            subtitle: '?뚰듃?덇? ?쇱젙????젣?섎㈃ ?뚮┝',
+            title: '내 애인 일정 삭제 알림',
+            subtitle: '내 애인이 일정을 삭제하면 알림',
             value: settings.scheduleDeleted,
             onChanged: (value) => manager
                 .updateSettings(settings.copyWith(scheduleDeleted: value)),
           ),
           _buildSwitchTile(
-            title: '?뚰듃???쇱젙 ?섏젙 ?뚮┝',
-            subtitle: '?뚰듃?덇? ?쇱젙???섏젙?섎㈃ ?뚮┝',
+            title: '내 애인 일정 수정 알림',
+            subtitle: '내 애인이 일정을 수정하면 알림',
             value: settings.scheduleUpdated,
             onChanged: (value) => manager
                 .updateSettings(settings.copyWith(scheduleUpdated: value)),
@@ -103,25 +103,25 @@ class _NotificationSettingsScreenState
 
           const SizedBox(height: 8),
 
-          // ?? ?ㅼ?以꾨쭅 ?뚮┝ ??
-          _buildSectionHeader('?ㅼ?以꾨쭅 ?뚮┝'),
+          // 스케줄링 알림
+          _buildSectionHeader('스케줄링 알림'),
           _buildSwitchTile(
-            title: '?????대Т ?뚮┝',
-            subtitle: '?????щ뒗 ?????붾㈃ 吏꾩엯 ???뚮┝',
+            title: '둘 다 휴무 알림',
+            subtitle: '둘 다 쉬는 날에 앱 화면 진입 시 알림',
             value: settings.bothOff,
             onChanged: (value) =>
                 manager.updateSettings(settings.copyWith(bothOff: value)),
           ),
           _buildSwitchTile(
-            title: '?곗씠???섎（ ???뚮┝',
-            subtitle: '?곗씠???섎（ ?????붾㈃ 吏꾩엯 ???뚮┝',
+            title: '데이트 하루 전 알림',
+            subtitle: '데이트 하루 전에 앱 화면 진입 시 알림',
             value: settings.dateBefore,
             onChanged: (value) =>
                 manager.updateSettings(settings.copyWith(dateBefore: value)),
           ),
           _buildSwitchTile(
-            title: '?곗씠???뱀씪 ?뚮┝',
-            subtitle: '?곗씠???뱀씪 ???붾㈃ 吏꾩엯 ???뚮┝',
+            title: '데이트 당일 알림',
+            subtitle: '데이트 당일에 앱 화면 진입 시 알림',
             value: settings.dateToday,
             onChanged: (value) =>
                 manager.updateSettings(settings.copyWith(dateToday: value)),
@@ -181,7 +181,7 @@ class _NotificationSettingsScreenState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        _permissionGranted ? '?뚮┝ 沅뚰븳 ?덉슜?? : '?뚮┝ 沅뚰븳 ?꾩슂',
+                        _permissionGranted ? '알림 권한 허용됨' : '알림 권한 필요',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: _permissionGranted
@@ -192,8 +192,8 @@ class _NotificationSettingsScreenState
                       const SizedBox(height: 4),
                       Text(
                         _permissionGranted
-                            ? '?쒖뒪???뚮┝???쒖꽦?붾릺???덉뒿?덈떎'
-                            : '?뚮┝??諛쏆쑝?ㅻ㈃ 沅뚰븳???덉슜?댁＜?몄슂',
+                            ? '시스템 알림이 활성화되어 있습니다'
+                            : '알림을 받으려면 권한을 허용해주세요',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondary,
@@ -218,7 +218,7 @@ class _NotificationSettingsScreenState
                               strokeWidth: 2, color: Colors.white),
                         )
                       : const Icon(Icons.notifications, size: 18),
-                  label: Text(_checkingPermission ? '?붿껌 以?..' : '?뚮┝ 沅뚰븳 ?덉슜'),
+                  label: Text(_checkingPermission ? '요청 중...' : '알림 권한 허용'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primary,
                     foregroundColor: Colors.white,
@@ -256,7 +256,7 @@ class _NotificationSettingsScreenState
             child: OutlinedButton.icon(
               onPressed: () => _toggleAll(false),
               icon: const Icon(Icons.notifications_off_outlined, size: 18),
-              label: const Text('紐⑤몢 ?꾧린'),
+              label: const Text('모두 끄기'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.textSecondary,
                 side: const BorderSide(color: AppTheme.border),
@@ -268,7 +268,7 @@ class _NotificationSettingsScreenState
             child: ElevatedButton.icon(
               onPressed: () => _toggleAll(true),
               icon: const Icon(Icons.notifications_active, size: 18),
-              label: const Text('紐⑤몢 耳쒓린'),
+              label: const Text('모두 켜기'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,

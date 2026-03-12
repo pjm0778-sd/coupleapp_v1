@@ -8,6 +8,7 @@ import '../../../shared/models/schedule.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../widgets/mapping_add_dialog.dart';
 import '../widgets/color_mapping_card.dart';
+import '../../../main.dart';
 
 class AutoRegistrationScreen extends StatefulWidget {
   const AutoRegistrationScreen({super.key});

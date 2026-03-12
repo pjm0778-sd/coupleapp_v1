@@ -22,7 +22,7 @@ class NotificationManager {
   List<AppNotification> get history => _history;
   NotificationSettings get settings => _settings;
 
-  // Web 沅뚰븳 (Web ?꾩슜)
+  // Web 권한 (Web 전용)
   bool _webPermissionGranted = false;
   bool get webPermissionGranted => _webPermissionGranted;
 
@@ -32,12 +32,13 @@ class NotificationManager {
     return _historyController!.stream;
   }
 
-  // ????????????????????????????????????????????????
-  // 珥덇린??  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 초기화
+  // ---------------------------------------------------------------------------
   Future<void> initialize() async {
     await _loadSettings();
 
-    if (kIsWeb) return; // Web? ?쒖뒪???뚮┝ 誘몄???
+    if (kIsWeb) return; // Web은 시스템 알림 미지원
     const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
     const darwinInit = DarwinInitializationSettings(
       requestAlertPermission: false,
@@ -52,16 +53,17 @@ class NotificationManager {
     await _plugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (details) {
-        // ?뚮┝ ???몃뱾??(?꾩슂 ???뺤옣)
+        // 알림 클릭 핸들링(필요 시 확장)
       },
     );
   }
 
-  // ????????????????????????????????????????????????
-  // 沅뚰븳 ?붿껌
-  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 권한 요청
+  // ---------------------------------------------------------------------------
 
-  /// Android 13+ / iOS ?뚮┝ 沅뚰븳 ?붿껌. true = ?덉슜??  Future<bool> requestPermission() async {
+  /// Android 13+ / iOS 알림 권한 요청. true = 허용
+  Future<bool> requestPermission() async {
     if (kIsWeb) return false;
 
     if (defaultTargetPlatform == TargetPlatform.android) {
@@ -84,7 +86,7 @@ class NotificationManager {
     return false;
   }
 
-  // Web??(湲곗〈 ?명꽣?섏씠???명솚)
+  // Web용 (기존 인터페이스 호환)
   Future<String> requestWebNotificationPermission() async {
     if (!kIsWeb) return 'not_web';
     return 'not_implemented';
@@ -97,16 +99,16 @@ class NotificationManager {
     if (!kIsWeb) return;
   }
 
-  // ????????????????????????????????????????????????
-  // ?뚮┝ 諛쒖넚
-  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 알림 발송
+  // ---------------------------------------------------------------------------
   Future<void> showLocalNotification({
     required int id,
     required String title,
     String? body,
     NotificationType? type,
   }) async {
-    // ?????덉뒪?좊━??異붽?
+    // 내부 히스토리 추가
     if (type != null) {
       addToHistory(AppNotification.fromRealtime(
         id: '${id}_${DateTime.now().millisecondsSinceEpoch}',
@@ -116,11 +118,11 @@ class NotificationManager {
       ));
     }
 
-    if (kIsWeb) return; // Web? ?쒖뒪???뚮┝ 誘몄???
+    if (kIsWeb) return; // Web은 시스템 알림 미지원
     const androidDetails = AndroidNotificationDetails(
       'couple_app_channel',
-      '而ㅽ뵆 ???뚮┝',
-      channelDescription: '而ㅽ뵆 ?깆쓽 ?쇱젙 諛??뚮┝',
+      '커플 앱 알림',
+      channelDescription: '커플 앱의 일정 및 알림',
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
@@ -144,8 +146,9 @@ class NotificationManager {
     }
   }
 
-  // ????????????????????????????????????????????????
-  // ?덉뒪?좊━ 愿由?  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 히스토리 관리
+  // ---------------------------------------------------------------------------
   void addToHistory(AppNotification notification) {
     _history.insert(0, notification);
     _historyController?.add(_history);
@@ -159,9 +162,9 @@ class NotificationManager {
     _historyController?.add(_history);
   }
 
-  // ????????????????????????????????????????????????
-  // ?ㅼ젙 ???濡쒕뱶 (SharedPreferences)
-  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 설정 저장/로드 (SharedPreferences)
+  // ---------------------------------------------------------------------------
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -191,9 +194,9 @@ class NotificationManager {
     _saveSettings();
   }
 
-  // ????????????????????????????????????????????????
-  // ?ㅼ?以?湲곕컲 ?뚮┝ 泥댄겕
-  // ????????????????????????????????????????????????
+  // ---------------------------------------------------------------------------
+  // 일정 기반 알림 체크
+  // ---------------------------------------------------------------------------
   Future<void> checkBothOffAndSchedule({
     required List<Schedule> mySchedules,
     required List<Schedule> partnerSchedules,
@@ -208,8 +211,8 @@ class NotificationManager {
     if (commonOffDates.contains(today)) {
       await showLocalNotification(
         id: 1001,
-        title: '?뮇 ?????щ뒗 ??',
-        body: '?ㅻ뒛 ?????대Т?ㅼ슂 ?곗씠???섏떆寃좎뼱??',
+        title: '둘 다 쉬는 날',
+        body: '오늘 둘 다 휴무예요. 데이트 하시겠어요?',
         type: NotificationType.bothOff,
       );
     }
@@ -227,8 +230,8 @@ class NotificationManager {
     if (datePlan.isNotEmpty) {
       await showLocalNotification(
         id: 2000 + tomorrow.day,
-        title: '?뮆 ?댁씪 ?곗씠??,
-        body: '?댁씪 ${tomorrow.month}??${tomorrow.day}???곗씠???덉젙?댁뿉??',
+        title: '내일 데이트',
+        body: '내일 ${tomorrow.month}월 ${tomorrow.day}일 데이트 예정이에요.',
         type: NotificationType.dateBefore,
       );
     }
@@ -246,14 +249,14 @@ class NotificationManager {
     if (datePlan.isNotEmpty) {
       await showLocalNotification(
         id: 3000 + today.day,
-        title: '?뮆 ?ㅻ뒛 ?곗씠??,
-        body: '?ㅻ뒛 ${today.month}??${today.day}???곗씠???좎씠?먯슂!',
+        title: '오늘 데이트',
+        body: '오늘 ${today.month}월 ${today.day}일 데이트 날이에요!',
         type: NotificationType.dateToday,
       );
     }
   }
 
-  /// ?뚰듃???쇱젙 蹂寃??뚮┝ (?쇱젙 異붽?/?섏젙/??젣 ???몄텧)
+  /// 내 애인 일정 변경 알림 (일정 추가/수정/삭제 시 호출)
   Future<void> notifyScheduleChanged({
     required NotificationType type,
     required String scheduleTitle,
@@ -267,16 +270,16 @@ class NotificationManager {
     if (!enabled) return;
 
     final actionLabel = switch (type) {
-      NotificationType.scheduleAdded => '異붽??덉뼱??,
-      NotificationType.scheduleDeleted => '??젣?덉뼱??,
-      NotificationType.scheduleUpdated => '?섏젙?덉뼱??,
-      _ => '蹂寃쏀뻽?댁슂',
+      NotificationType.scheduleAdded => '추가되었어요',
+      NotificationType.scheduleDeleted => '삭제되었어요',
+      NotificationType.scheduleUpdated => '수정되었어요',
+      _ => '변경했어요',
     };
 
     await showLocalNotification(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title: '?뱟 ?뚰듃???쇱젙 ?뚮┝',
-      body: '?뚰듃?덇? "$scheduleTitle" ?쇱젙??$actionLabel',
+      title: '내 애인 일정 알림',
+      body: '내 애인이 "$scheduleTitle" 일정을 $actionLabel',
       type: type,
     );
   }

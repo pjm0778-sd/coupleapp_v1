@@ -1,8 +1,8 @@
-﻿import '../../../core/supabase_client.dart';
+import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 
 class HomeService {
-  /// D-day ?뺣낫 + ?뚰듃???됰꽕??議고쉶
+  /// D-day 정보 + 내 애인 닉네임 조회
   Future<Map<String, dynamic>> getDDays(String coupleId) async {
     final coupleData = await supabase
         .from('couples')
@@ -39,7 +39,7 @@ class HomeService {
     };
   }
 
-  /// ?ㅻ뒛???쇱젙 ?붿빟
+  /// 오늘의 일정 요약
   Future<Map<String, List<Schedule>>> getTodaySchedules(
     String coupleId,
   ) async {
@@ -47,7 +47,7 @@ class HomeService {
     final todayStr = today.toIso8601String().split('T')[0];
     final currentUserId = supabase.auth.currentUser!.id;
 
-    // ???ㅻ뒛 ?쇱젙
+    // 내 오늘 일정
     final myData = await supabase
         .from('schedules')
         .select()
@@ -60,7 +60,7 @@ class HomeService {
         .map((e) => Schedule.fromMap(e))
         .toList();
 
-    // ?뚰듃???ㅻ뒛 ?쇱젙
+    // 내 애인 오늘 일정
     final partnerData = await supabase
         .from('schedules')
         .select()
@@ -79,7 +79,7 @@ class HomeService {
     };
   }
 
-  /// ?댁씪???쇱젙 ?붿빟
+  /// 내일의 일정 요약
   Future<Map<String, List<Schedule>>> getTomorrowSchedules(
     String coupleId,
   ) async {
@@ -109,18 +109,18 @@ class HomeService {
     };
   }
 
-  /// ?ㅼ쓬 ?곗씠??議고쉶
+  /// 다음 데이트 조회
   Future<Map<String, dynamic>?> getNextDateSchedule(
     String coupleId,
   ) async {
     final now = DateTime.now();
 
-    // ?ㅼ쓬 ?곗씠???쇱젙 議고쉶
+    // 다음 데이트 일정 조회
     final result = await supabase
         .from('schedules')
         .select()
         .eq('couple_id', coupleId)
-        .eq('category', '?곗씠??)
+        .eq('category', '데이트')
         .gt('date', now.toIso8601String().split('T')[0])
         .order('date', ascending: true)
         .limit(1)
@@ -138,7 +138,7 @@ class HomeService {
     };
   }
 
-  /// ???붾㈃ ?붿빟 ?곗씠??
+  /// 홈 화면 요약 데이터
   Future<Map<String, dynamic>> getHomeSummary(String coupleId) async {
     final dDays = await getDDays(coupleId);
     final todaySchedules = await getTodaySchedules(coupleId);
@@ -153,7 +153,7 @@ class HomeService {
     };
   }
 
-  /// ?꾩옱 ?좎???coupleId 媛?몄삤湲?
+  /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
     final userId = supabase.auth.currentUser!.id;
     final profile = await supabase

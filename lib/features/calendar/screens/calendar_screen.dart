@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/holiday_service.dart';
@@ -37,7 +38,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   void initState() {
     super.initState();
-    _myUserId = supabase.auth.currentUser?.id;
+    _myUserId = Supabase.instance.client.auth.currentUser?.id;
     _init();
   }
 
@@ -61,7 +62,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _setupRealtime() {
     if (_coupleId == null) return;
 
-    _schedulesChannel ??= supabase.channel('public:schedules_calendar')
+    _schedulesChannel ??= Supabase.instance.client.channel('public:schedules_calendar')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -98,7 +99,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final list = await _service.getMonthSchedules(_coupleId!, month,
           filter: _filter);
           
-      // 湲곕뀗??怨꾩궛 (100?? 200?? 1二쇰뀈 ??
+      // 기념일 계산 (100일, 200일, 1주년 등)
       final anniversaries = _generateAnniversaries(month);
       list.addAll(anniversaries);
           
@@ -125,7 +126,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
 
-    // 100???⑥쐞 湲곕뀗??(1000?쇨퉴吏 ?뺤씤)
+    // 100일 단위 기념일 (1000일까지 확인)
     for (int i = 1; i <= 10; i++) {
       final targetDate = _startedAt!.add(Duration(days: (i * 100) - 1));
       if (targetDate.isAfter(start.subtract(const Duration(days: 1))) && 
@@ -134,15 +135,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
           id: 'anniv_100_$i',
           userId: 'system',
           date: targetDate,
-          title: '${i * 100}??,
-          category: '湲곕뀗??,
+          title: '${i * 100}일',
+          category: '기념일',
           colorHex: '#FF4081',
           isAnniversary: true,
         ));
       }
     }
 
-    // 1???⑥쐞 湲곕뀗??(10二쇰뀈源뚯? ?뺤씤)
+    // 1년 단위 기념일 (10주년까지 확인)
     for (int i = 1; i <= 10; i++) {
       final targetDate = DateTime(_startedAt!.year + i, _startedAt!.month, _startedAt!.day);
       if (targetDate.year == month.year && targetDate.month == month.month) {
@@ -150,8 +151,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
           id: 'anniv_yr_$i',
           userId: 'system',
           date: targetDate,
-          title: '$i二쇰뀈',
-          category: '湲곕뀗??,
+          title: '$i주년',
+          category: '기념일',
           colorHex: '#FF4081',
           isAnniversary: true,
         ));
@@ -173,12 +174,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '洹쇰Т': return const Color(0xFF4CAF50);
-      case '?쎌냽': return const Color(0xFF2196F3);
-      case '?ы뻾': return const Color(0xFFFF9800);
-      case '?곗씠??: return const Color(0xFFE91E63);
-      case '?대Т': return const Color(0xFFBDBDBD);
-      case '湲곕뀗??: return const Color(0xFFFF4081);
+      case '근무': return const Color(0xFF4CAF50);
+      case '약속': return const Color(0xFF2196F3);
+      case '여행': return const Color(0xFFFF9800);
+      case '데이트': return const Color(0xFFE91E63);
+      case '휴무': return const Color(0xFFBDBDBD);
+      case '기념일': return const Color(0xFFFF4081);
       default: return AppTheme.primary;
     }
   }
@@ -195,12 +196,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '洹쇰Т': return Icons.work_outline;
-      case '?쎌냽': return Icons.handshake_outlined;
-      case '?ы뻾': return Icons.flight_takeoff_outlined;
-      case '?곗씠??: return Icons.favorite_outline;
-      case '?대Т': return Icons.beach_access_outlined;
-      case '湲곕뀗??: return Icons.cake_outlined;
+      case '근무': return Icons.work_outline;
+      case '약속': return Icons.handshake_outlined;
+      case '여행': return Icons.flight_takeoff_outlined;
+      case '데이트': return Icons.favorite_outline;
+      case '휴무': return Icons.beach_access_outlined;
+      case '기념일': return Icons.cake_outlined;
       default: return Icons.event_outlined;
     }
   }
@@ -216,7 +217,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   void _onScheduleTap(Schedule schedule) async {
-    if (schedule.isAnniversary) return; // 湲곕뀗?쇱? ?대┃ 諛⑹?
+    if (schedule.isAnniversary) return; // 기념일은 클릭 불가
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -233,14 +234,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('?붾퀎 ?쇱젙 ?꾩껜 ??젣'),
+        title: const Text('월별 일정 전체 삭제'),
         content: Text(
-          '${_focusedMonth.year}??${_focusedMonth.month}?붿쓽 蹂몄씤 ?쇱젙??紐⑤몢 ??젣?섏떆寃좎뒿?덇퉴?\n???묒뾽? ?섎룎由????놁뒿?덈떎.',
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 본인 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('痍⑥냼'),
+            child: const Text('취소'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -248,7 +249,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('??젣'),
+            child: const Text('삭제'),
           ),
         ],
       ),
@@ -260,13 +261,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$count媛쒖쓽 ?쇱젙????젣?섏뿀?듬땲??)),
+            SnackBar(content: Text('$count개의 일정을 삭제했습니다.')),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('?쇱젙 ??젣 ?ㅽ뙣: $e')),
+            SnackBar(content: Text('일정 삭제 실패: $e')),
           );
         }
       }
@@ -282,7 +283,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       try {
         if (_coupleId == null || _myUserId == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('而ㅽ뵆 ?곌껐???꾩슂?⑸땲??)),
+            const SnackBar(content: Text('커플 연결이 필요합니다.')),
           );
           return;
         }
@@ -292,13 +293,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('?쇱젙??異붽??섏뿀?듬땲??)),
+            const SnackBar(content: Text('일정을 추가했습니다.')),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('?쇱젙 ????ㅽ뙣: $e')),
+            SnackBar(content: Text('일정 추가 실패: $e')),
           );
         }
       }
@@ -310,7 +311,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('?곕룄 ?좏깮'),
+          title: const Text('연도 선택'),
           content: SizedBox(
             width: 300,
             height: 300,
@@ -344,7 +345,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${_focusedMonth.year}??${_focusedMonth.month}??,
+                '${_focusedMonth.year}년 ${_focusedMonth.month}월',
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(width: 4),
@@ -356,7 +357,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
-            tooltip: '?대떖?????쇱젙 ?꾩껜 ??젣',
+            tooltip: '이달의 내 일정 전체 삭제',
             onPressed: _deleteMyMonthSchedules,
           ),
         ],
@@ -397,9 +398,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectedDay = selectedDay;
           _focusedMonth = focusedDay;
         });
-        // 怨듯쑕??湲곕뀗???뺣낫 ?ㅻ궢諛?        final holidays = _getHolidaysForDay(selectedDay);
+        // 공휴일/기념일 정보 스낵바
+        final holidays = _getHolidaysForDay(selectedDay);
         if (holidays.isNotEmpty) {
-          final names = holidays.map((h) => '${h.emoji} ${h.name}').join(' 쨌 ');
+          final names = holidays.map((h) => '${h.emoji} ${h.name}').join(' · ');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(names),
@@ -431,7 +433,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         markersMaxCount: 3,
         outsideDaysVisible: false,
-        // 二쇰쭚 ?됱긽
+        // 주말 색상
         weekendTextStyle: const TextStyle(color: Color(0xFFE53935)),
       ),
       headerStyle: const HeaderStyle(
@@ -439,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         titleCentered: true,
       ),
       calendarBuilders: CalendarBuilders<Schedule>(
-        // ?좎쭨 ? 而ㅼ뒪? 鍮뚮뜑 (怨듯쑕???대쫫 + ?쇱젙 留덉빱)
+        // 날짜 셀 커스텀 빌더
         defaultBuilder: (context, day, focusedDay) {
           return _buildDayCell(day, isSelected: false, isToday: false);
         },
@@ -457,7 +459,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // ?쇱젙 留덉빱
+                // 일정 마커
                 ...events.take(3).map((s) {
                   final color = _getScheduleColor(s);
                   return Container(
@@ -467,7 +469,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                   );
                 }),
-                // 怨듯쑕??湲곕뀗??留덉빱
+                // 공휴일/기념일 마커
                 if (holidays.isNotEmpty)
                   Container(
                     width: 5,
@@ -528,7 +530,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
             ),
           ),
-          // 怨듯쑕???대쫫 (吏㏐쾶)
+          // 공휴일 이름 (짧게)
           if (holidays.isNotEmpty)
             Text(
               holidays.first.name.length > 3
@@ -550,19 +552,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final schedules = _getEventsForDay(_selectedDay);
     final holidays = _getHolidaysForDay(_selectedDay);
     final dateStr =
-        '${_selectedDay.month}??${_selectedDay.day}??(${['??, '??, '??, '紐?, '湲?, '??, '??][_selectedDay.weekday - 1]})';
+        '${_selectedDay.month}월 ${_selectedDay.day}일 (${['월', '화', '수', '목', '금', '토', '일'][_selectedDay.weekday - 1]})';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // ?좎쭨 ?ㅻ뜑 + 怨듯쑕??諛곕꼫
+        // 날짜 헤더 + 공휴일 배너
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$dateStr 쨌 ${schedules.length}嫄?,
+                '$dateStr · ${schedules.length}건',
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -605,8 +607,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               ? Center(
                   child: Text(
                     holidays.isNotEmpty
-                        ? '?쇱젙???놁뼱???럦'
-                        : '?쇱젙???놁뼱??,
+                        ? '일정이 없어요 🥲'
+                        : '일정이 없어요',
                     style: const TextStyle(
                         color: AppTheme.textSecondary, fontSize: 14),
                   ),
@@ -643,7 +645,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    s.title ?? s.workType ?? '?쇱젙',
+                                    s.title ?? s.workType ?? '일정',
                                     style: const TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
@@ -691,24 +693,24 @@ class _CalendarScreenState extends State<CalendarScreen> {
       child: Row(
         children: [
           _FilterChip(
-            label: '?섎쭔',
+            label: '나만',
             isSelected: _filter == ScheduleFilter.mine,
             onTap: () => _onFilterChanged(ScheduleFilter.mine),
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: '?뚰듃?덈쭔',
+            label: '내 애인만',
             isSelected: _filter == ScheduleFilter.partner,
             onTap: () => _onFilterChanged(ScheduleFilter.partner),
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: '????,
+            label: '전체',
             isSelected: _filter == ScheduleFilter.both,
             onTap: () => _onFilterChanged(ScheduleFilter.both),
           ),
           const Spacer(),
-          // 酉??꾪솚 踰꾪듉
+          // 뷰 전환 버튼
           GestureDetector(
             onTap: () => setState(() => _showCalendarGrid = !_showCalendarGrid),
             child: Container(
@@ -748,7 +750,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final isToday = date.year == today.year &&
             date.month == today.month &&
             date.day == today.day;
-        final weekday = ['??, '??, '??, '紐?, '湲?, '??, '??][date.weekday - 1];
+        final weekday = ['월', '화', '수', '목', '금', '토', '일'][date.weekday - 1];
 
         return GestureDetector(
           onLongPress: () => _showAddDialog(date),

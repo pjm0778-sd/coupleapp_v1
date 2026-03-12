@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../../../core/holiday_service.dart';
@@ -45,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _setupRealtime() {
     if (_coupleId == null) return;
 
-    _schedulesChannel ??= supabase.channel('public:schedules')
+    _schedulesChannel ??= Supabase.instance.client.channel('public:schedules')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -60,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       )..subscribe();
 
-    _couplesChannel ??= supabase.channel('public:couples_home')
+    _couplesChannel ??= Supabase.instance.client.channel('public:couples_home')
       .onPostgresChanges(
         event: PostgresChangeEvent.update,
         schema: 'public',
@@ -100,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
         _setupRealtime();
-        // 데이줌 알림 자동 체크
+        // 데이트 알림 자동 체크
         _checkNotifications(summary);
       }
     } catch (e) {
@@ -124,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
       await nm.checkDateToday(schedules: allToday, today: today);
 
-      // 불무 체크
+      // 둘 다 휴무 체크
       final myOff = (todaySchedules['mine'] ?? []).where((s) => s.category == '휴무').toList();
       final partnerOff = (todaySchedules['partner'] ?? []).where((s) => s.category == '휴무').toList();
       if (myOff.isNotEmpty && partnerOff.isNotEmpty) {
