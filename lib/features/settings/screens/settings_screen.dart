@@ -295,25 +295,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onTap: _coupleId != null ? _changeStartedAt : null,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _startedAt != null
-                                      ? 'D+${DateTime.now().difference(_startedAt!).inDays + 1}'
-                                      : '날짜 설정',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: _startedAt != null
-                                          ? AppTheme.primary
-                                          : AppTheme.textSecondary,
-                                      fontWeight: FontWeight.w500),
-                                ),
-                                const SizedBox(width: 4),
-                                Icon(
-                                  Icons.edit_outlined,
-                                  size: 14,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ],
                             ),
                           ),
                         ],
