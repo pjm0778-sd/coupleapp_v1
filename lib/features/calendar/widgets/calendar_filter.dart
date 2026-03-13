@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../features/calendar/services/schedule_service.dart';
 
@@ -21,7 +21,7 @@ class CalendarFilterWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '?꾪꽣',
+            '필터',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -34,17 +34,17 @@ class CalendarFilterWidget extends StatelessWidget {
             runSpacing: 8,
             children: [
               _FilterChip(
-                label: '?섎쭔',
+                label: '나만',
                 isSelected: currentFilter == ScheduleFilter.mine,
                 onTap: () => onFilterChanged(ScheduleFilter.mine),
               ),
               _FilterChip(
-                label: '?뚰듃?덈쭔',
+                label: '파트너만',
                 isSelected: currentFilter == ScheduleFilter.partner,
                 onTap: () => onFilterChanged(ScheduleFilter.partner),
               ),
               _FilterChip(
-                label: '????,
+                label: '둘 다',
                 isSelected: currentFilter == ScheduleFilter.both,
                 onTap: () => onFilterChanged(ScheduleFilter.both),
               ),

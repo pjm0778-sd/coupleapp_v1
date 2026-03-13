@@ -1,10 +1,10 @@
-﻿import '../../../core/supabase_client.dart';
+import '../../../core/supabase_client.dart';
 
 class DateOptimalService {
-  /// ?곗씠??理쒖쟻??議고쉶
+  /// 데이트 최적일 조회
   ///
-  /// ?묒そ ??鍮꾧굅???щ뒗 ?좎쓣 諛섑솚
-  /// started_at??湲곗??쇰줈 100???⑥쐞 湲곕뀗?쇰룄 ?곗씠?몃줈 異붿쿇
+  /// 양쪽 다 비거나 쉬는 날을 반환
+  /// started_at을 기준으로 100일 단위 기념일도 데이트로 추천
   Future<List<DateTime>> getOptimalDays(
     String coupleId, {
     required DateTime startDate,
@@ -12,31 +12,23 @@ class DateOptimalService {
   }) async {
     final currentUserId = supabase.auth.currentUser!.id;
 
-    // ???쇱젙 (鍮??좎쭨 李얘린)
+    // 내 일정 (비는 날짜 찾기)
     final mySchedules = await supabase
         .from('schedules')
-        .select('date')
+        .select('date, category')
         .eq('user_id', currentUserId)
         .eq('couple_id', coupleId)
         .gte('date', startDate.toIso8601String().split('T')[0])
         .lte('date', endDate.toIso8601String().split('T')[0]);
 
-    // ?뚰듃???쇱젙 (鍮??좎쭨 李얘린)
+    // 파트너 일정 (비는 날짜 찾기)
     final partnerSchedules = await supabase
         .from('schedules')
-        .select('date')
+        .select('date, category')
         .neq('user_id', currentUserId)
         .eq('couple_id', coupleId)
         .gte('date', startDate.toIso8601String().split('T')[0])
         .lte('date', endDate.toIso8601String().split('T')[0]);
-
-    final myDates = (mySchedules as List)
-        .map((e) => DateTime.parse(e['date'] as String))
-        .toSet();
-
-    final partnerDates = (partnerSchedules as List)
-        .map((e) => DateTime.parse(e['date'] as String))
-        .toSet();
 
     final optimalDays = <DateTime>[];
 
@@ -45,22 +37,21 @@ class DateOptimalService {
         date = date.add(const Duration(days: 1))) {
       final dateStr = date.toIso8601String().split('T')[0];
 
-      // ???쇱젙 ?뺤씤
-      final mySchedule = mySchedules.cast<Map>().firstWhere(
+      // 내 일정 확인
+      final myDay = (mySchedules as List).cast<Map>().firstWhere(
         (s) => s['date'] == dateStr,
         orElse: () => {},
       );
 
-      // ?뚰듃???쇱젙 ?뺤씤
-      final partnerSchedule = partnerSchedules.cast<Map>().firstWhere(
+      // 파트너 일정 확인
+      final partnerDay = (partnerSchedules as List).cast<Map>().firstWhere(
         (s) => s['date'] == dateStr,
         orElse: () => {},
       );
 
-      // ?묒そ ??鍮꾧굅???щ뒗 ?좎씤吏 ?뺤씤
-      final isMyFree = mySchedule.isEmpty || mySchedule['category'] == '?대Т';
-      final isPartnerFree =
-          partnerSchedule.isEmpty || partnerSchedule['category'] == '?대Т';
+      // 양쪽 다 비거나 쉬는 날인지 확인
+      final isMyFree = myDay.isEmpty || myDay['category'] == '휴무';
+      final isPartnerFree = partnerDay.isEmpty || partnerDay['category'] == '휴무';
 
       if (isMyFree && isPartnerFree) {
         optimalDays.add(date);
@@ -70,7 +61,7 @@ class DateOptimalService {
     return optimalDays;
   }
 
-  /// 媛??媛源뚯슫 ?곗씠??理쒖쟻??議고쉶
+  /// 가장 가까운 데이트 최적일 조회
   Future<DateTime?> getNextOptimalDay(String coupleId) async {
     final now = DateTime.now();
     final nextMonth = DateTime(now.year, now.month + 3, 1);

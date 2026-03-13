@@ -1,16 +1,16 @@
-﻿import 'dart:math';
+import 'dart:math';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/repeat_pattern.dart';
 
 enum ScheduleFilter {
-  mine,        // ?섎쭔
-  partner,      // ?뚰듃?덈쭔
-  both,         // ????
+  mine,        // 나만
+  partner,      // 파트너만
+  both,         // 우리 둘 다
 }
 
 class ScheduleService {
-  /// ?대떦 ?붿쓽 而ㅽ뵆 ?꾩껜 ?쇱젙 媛?몄삤湲?
+  /// 해당 월의 커플 전체 일정 가져오기
   Future<List<Schedule>> getMonthSchedules(
     String coupleId,
     DateTime month, {
@@ -59,7 +59,7 @@ class ScheduleService {
     return (data as List).map((e) => Schedule.fromMap(e)).toList();
   }
 
-  /// ?뱀젙 ?좎쭨???쇱젙 媛?몄삤湲?
+  /// 특정 날짜의 일정 가져오기
   Future<List<Schedule>> getDateSchedules(
     String coupleId,
     DateTime date, {
@@ -101,39 +101,39 @@ class ScheduleService {
     return (data as List).map((e) => Schedule.fromMap(e)).toList();
   }
 
-  /// ?쇱젙 ?곸꽭 議고쉶
+  /// 일정 상세 조회
   Future<Schedule?> getScheduleById(String id) async {
     final data = await supabase
         .from('schedules')
         .select()
         .eq('id', id)
-        .single();
+        .maybeSingle();
     if (data == null) return null;
     return Schedule.fromMap(data);
   }
 
-  /// ?쇱젙 異붽? (諛섎났 ?⑦꽩???덉쑝硫??먮룞?쇰줈 ?щ윭 ?좎쭨???앹꽦)
+  /// 일정 추가 (반복 패턴이 있으면 자동으로 여러 날짜에 생성)
   Future<void> addSchedule(Schedule schedule) async {
     final repeatMap = schedule.repeatPattern;
 
     if (repeatMap == null) {
-      // ?⑥씪 ?쇱젙
+      // 단일 일정
       await supabase.from('schedules').insert(schedule.toMap());
       return;
     }
 
-    // 諛섎났 ?쇱젙: 洹몃９ ID濡?臾띔린
+    // 반복 설정: 그룹 ID로 묶기
     final rp = RepeatPattern.fromMap(repeatMap);
     final groupId = _generateGroupId();
 
     final dates = _generateRepeatDates(
       pattern: rp,
       startDate: schedule.date,
-      maxMonths: 12, // 理쒕? 12媛쒖썡移??앹꽦
+      maxMonths: 12, // 최대 12개월치 생성
     );
 
     if (dates.isEmpty) {
-      // ?좎쭨 ?앹꽦 ?ㅽ뙣 ???⑥씪 ???
+      // 날짜 생성 실패 시 단일 저장
       await supabase.from('schedules').insert(schedule.toMap());
       return;
     }
@@ -146,11 +146,11 @@ class ScheduleService {
       return map;
     }).toList();
 
-    // Supabase insert??list 吏??
+    // Supabase insert는 list 지원
     await supabase.from('schedules').insert(rows);
   }
 
-  /// 諛섎났 ?쇱젙 洹몃９ ?꾩껜 ??젣
+  /// 반복 일정 그룹 전체 삭제
   Future<void> deleteRepeatGroup(String groupId) async {
     await supabase
         .from('schedules')
@@ -158,7 +158,7 @@ class ScheduleService {
         .eq('repeat_group_id', groupId);
   }
 
-  /// ?뱀젙 ?좎쭨 ?댄썑 諛섎났 ?쇱젙 ??젣
+  /// 특정 날짜 이후 반복 일정 삭제
   Future<void> deleteRepeatGroupFrom(String groupId, DateTime from) async {
     await supabase
         .from('schedules')
@@ -167,7 +167,7 @@ class ScheduleService {
         .gte('date', from.toIso8601String().split('T')[0]);
   }
 
-  /// 諛섎났 ?⑦꽩???곕씪 ?좎쭨 紐⑸줉 ?앹꽦
+  /// 반복 패턴에 따라 날짜 목록 생성
   List<DateTime> _generateRepeatDates({
     required RepeatPattern pattern,
     required DateTime startDate,
@@ -184,8 +184,9 @@ class ScheduleService {
         while (!d.isAfter(endDate)) {
           dates.add(d);
           d = d.add(Duration(days: interval));
-          if (dates.length > 500) break; // ?덉쟾?μ튂
+          if (dates.length > 500) break; // 안전장치
         }
+        break;
 
       case 'weekly':
         if (pattern.days == null || pattern.days!.isEmpty) break;
@@ -197,6 +198,7 @@ class ScheduleService {
           d = d.add(const Duration(days: 1));
           if (dates.length > 500) break;
         }
+        break;
 
       case 'monthly':
         var year = startDate.year;
@@ -211,6 +213,7 @@ class ScheduleService {
           if (month > 12) { month = 1; year++; }
           if (dates.length > 120) break;
         }
+        break;
 
       case 'yearly':
         var year = startDate.year;
@@ -221,8 +224,9 @@ class ScheduleService {
           year++;
           if (dates.length > 20) break;
         }
+        break;
 
-      case '二쇰쭚':
+      case '주말':
         var d = startDate;
         while (!d.isAfter(endDate)) {
           if (d.weekday == DateTime.saturday || d.weekday == DateTime.sunday) {
@@ -231,8 +235,9 @@ class ScheduleService {
           d = d.add(const Duration(days: 1));
           if (dates.length > 500) break;
         }
+        break;
 
-      case '?됱씪':
+      case '평일':
         var d = startDate;
         while (!d.isAfter(endDate)) {
           if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) {
@@ -241,6 +246,7 @@ class ScheduleService {
           d = d.add(const Duration(days: 1));
           if (dates.length > 500) break;
         }
+        break;
     }
 
     return dates;
@@ -251,17 +257,17 @@ class ScheduleService {
     return 'repeat_${DateTime.now().millisecondsSinceEpoch}_$rand';
   }
 
-  /// ?쇱젙 ??젣
+  /// 일정 삭제
   Future<void> deleteSchedule(String id) async {
     await supabase.from('schedules').delete().eq('id', id);
   }
 
-  /// ?쇱젙 ?섏젙
+  /// 일정 수정
   Future<void> updateSchedule(String id, Map<String, dynamic> data) async {
     await supabase.from('schedules').update(data).eq('id', id);
   }
 
-  /// ?대떦 ?붿쓽 而ㅽ뵆 ?꾩껜 ?쇱젙 ??젣
+  /// 해당 월의 커플 전체 일정 삭제
   Future<void> deleteMonthSchedules(String coupleId, DateTime month) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
@@ -274,7 +280,7 @@ class ScheduleService {
         .lte('date', end.toIso8601String().split('T')[0]);
   }
 
-  /// ?대떦 ?붿쓽 蹂몄씤 ?쇱젙 ?꾩껜 ??젣
+  /// 해당 월의 본인 일정 전체 삭제
   Future<int> deleteMyMonthSchedules(DateTime month) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
@@ -285,12 +291,13 @@ class ScheduleService {
         .delete()
         .eq('user_id', currentUserId)
         .gte('date', start.toIso8601String().split('T')[0])
-        .lte('date', end.toIso8601String().split('T')[0]);
+        .lte('date', end.toIso8601String().split('T')[0])
+        .select();
 
-    return data.count ?? 0;
+    return (data as List).length;
   }
 
-  /// ?꾩옱 ?좎???coupleId 媛?몄삤湲?
+  /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
     final userId = supabase.auth.currentUser!.id;
     final profile = await supabase
@@ -301,9 +308,9 @@ class ScheduleService {
     return profile?['couple_id'] as String?;
   }
 
-  /// ?꾩옱 ?좎? ID
+  /// 현재 유저 ID
   String get currentUserId => supabase.auth.currentUser!.id;
 
-  /// ?쇱젙???꾩옱 ?좎???寃껋씤吏 ?뺤씤
+  /// 일정이 현재 유저의 것인지 확인
   bool isMine(Schedule schedule) => schedule.userId == currentUserId;
 }

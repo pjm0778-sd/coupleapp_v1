@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/notification_manager.dart';
 import '../../../core/supabase_client.dart';
@@ -8,6 +8,7 @@ import '../models/notification_settings.dart';
 class NotificationService {
   final NotificationManager _manager = NotificationManager();
   RealtimeChannel? _schedulesChannel;
+  RealtimeChannel? _commentsChannel;
 
   NotificationSettings get settings => _manager.settings;
   void updateSettings(NotificationSettings newSettings) => _manager.updateSettings(newSettings);
@@ -17,6 +18,7 @@ class NotificationService {
   Future<void> initialize() async {
     await _manager.initialize();
     await _subscribeToSchedules();
+    await _subscribeToComments();
   }
 
   Future<void> _subscribeToSchedules() async {
@@ -26,7 +28,7 @@ class NotificationService {
     final myUserId = supabase.auth.currentUser?.id;
     if (myUserId == null) return;
 
-    // ?뚰듃?덉쓽 ?쇱젙留??섏떊?섍린 ?꾪븳 ?꾪꽣??RLS濡?泥섎━
+    // 파트너의 일정만 수신하기 위한 필터는 RLS로 처리
     _schedulesChannel = supabase.channel('public:schedules');
 
     // Subscribe to INSERT events
@@ -39,21 +41,21 @@ class NotificationService {
         if (record == null) return;
 
         final userId = record['user_id'] as String?;
-        // ???쇱젙? 臾댁떆 (?뚰듃?덉쓽 ?쇱젙留??뚮┝)
+        // 내 일정은 무시 (파트너의 일정만 알림)
         if (userId == myUserId) return;
 
         if (_manager.settings.scheduleAdded) {
           final date = DateTime.parse(record['date'] as String);
           await _manager.showLocalNotification(
             id: DateTime.now().millisecondsSinceEpoch,
-            title: '?뱟 ?뚰듃?덇? ?쇱젙??異붽??덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙??異붽??섏뿀?댁슂',
+            title: '✨ 파트너가 일정을 추가했어요',
+            body: '${date.month}월 ${date.day}일 일정이 추가되었어요',
             type: NotificationType.scheduleAdded,
           );
           _manager.addToHistory(AppNotification.fromRealtime(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: '?뱟 ?뚰듃?덇? ?쇱젙??異붽??덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙??異붽??섏뿀?댁슂',
+            title: '✨ 파트너가 일정을 추가했어요',
+            body: '${date.month}월 ${date.day}일 일정이 추가되었어요',
             type: NotificationType.scheduleAdded,
           ));
         }
@@ -76,14 +78,14 @@ class NotificationService {
           final date = DateTime.parse(oldRecord['date'] as String);
           await _manager.showLocalNotification(
             id: DateTime.now().millisecondsSinceEpoch + 1,
-            title: '?뿊截??뚰듃?덇? ?쇱젙????젣?덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙????젣?섏뿀?댁슂',
+            title: '🗑️ 파트너가 일정을 삭제했어요',
+            body: '${date.month}월 ${date.day}일 일정이 삭제되었어요',
             type: NotificationType.scheduleDeleted,
           );
           _manager.addToHistory(AppNotification.fromRealtime(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: '?뿊截??뚰듃?덇? ?쇱젙????젣?덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙????젣?섏뿀?댁슂',
+            title: '🗑️ 파트너가 일정을 삭제했어요',
+            body: '${date.month}월 ${date.day}일 일정이 삭제되었어요',
             type: NotificationType.scheduleDeleted,
           ));
         }
@@ -108,15 +110,61 @@ class NotificationService {
           final date = DateTime.parse(newRecord['date'] as String);
           await _manager.showLocalNotification(
             id: DateTime.now().millisecondsSinceEpoch + 2,
-            title: '?륅툘 ?뚰듃?덇? ?쇱젙???섏젙?덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙???섏젙?섏뿀?댁슂',
+            title: '📝 파트너가 일정을 수정했어요',
+            body: '${date.month}월 ${date.day}일 일정이 수정되었어요',
             type: NotificationType.scheduleUpdated,
           );
           _manager.addToHistory(AppNotification.fromRealtime(
             id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: '?륅툘 ?뚰듃?덇? ?쇱젙???섏젙?덉뼱??,
-            body: '${date.month}??${date.day}???쇱젙???섏젙?섏뿀?댁슂',
+            title: '📝 파트너가 일정을 수정했어요',
+            body: '${date.month}월 ${date.day}일 일정이 수정되었어요',
             type: NotificationType.scheduleUpdated,
+          ));
+        }
+      },
+    ).subscribe();
+  }
+
+  Future<void> _subscribeToComments() async {
+    final myUserId = supabase.auth.currentUser?.id;
+    if (myUserId == null) return;
+
+    _commentsChannel = supabase.channel('public:schedule_comments');
+
+    _commentsChannel!.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'schedule_comments',
+      callback: (payload) async {
+        final record = payload.newRecord as Map<String, dynamic>?;
+        if (record == null) return;
+
+        final userId = record['user_id'] as String?;
+        // 내 댓글은 무시
+        if (userId == myUserId) return;
+
+        if (_manager.settings.commentAdded) {
+          // 일정 제목을 가져오기 위해 조회
+          final scheduleId = record['schedule_id'] as String;
+          final schedule = await supabase
+              .from('schedules')
+              .select('title, work_type')
+              .eq('id', scheduleId)
+              .maybeSingle();
+          
+          final scheduleTitle = schedule?['title'] ?? schedule?['work_type'] ?? '일정';
+
+          await _manager.showLocalNotification(
+            id: DateTime.now().millisecondsSinceEpoch,
+            title: '💬 파트너가 댓글을 남겼어요',
+            body: '"$scheduleTitle" 일정에 댓글이 달렸습니다',
+            type: NotificationType.commentAdded,
+          );
+          _manager.addToHistory(AppNotification.fromRealtime(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: '💬 파트너가 댓글을 남겼어요',
+            body: '"$scheduleTitle" 일정에 댓글이 달렸습니다',
+            type: NotificationType.commentAdded,
           ));
         }
       },
@@ -138,5 +186,6 @@ class NotificationService {
 
   void dispose() {
     _schedulesChannel?.unsubscribe();
+    _commentsChannel?.unsubscribe();
   }
 }
