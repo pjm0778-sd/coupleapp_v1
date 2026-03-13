@@ -30,6 +30,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   bool _isLoading = true;
   bool _showCalendarGrid = true;
   DateTime? _startedAt;
+  String? _partnerNickname;
 
   String? _coupleId;
   String? _myUserId;
@@ -47,11 +48,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (_coupleId != null) {
       final coupleData = await supabase
           .from('couples')
-          .select('started_at')
+          .select('started_at, user1_id, user2_id')
           .eq('id', _coupleId!)
           .maybeSingle();
-      if (coupleData != null && coupleData['started_at'] != null) {
-        _startedAt = DateTime.parse(coupleData['started_at'] as String);
+      
+      if (coupleData != null) {
+        if (coupleData['started_at'] != null) {
+          _startedAt = DateTime.parse(coupleData['started_at'] as String);
+        }
+
+        // 파트너 닉네임 가져오기
+        final partnerId = coupleData['user1_id'] == _myUserId
+            ? coupleData['user2_id']
+            : coupleData['user1_id'];
+        
+        if (partnerId != null) {
+          final partnerData = await supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', partnerId)
+              .maybeSingle();
+          if (mounted) {
+            setState(() => _partnerNickname = partnerData?['nickname']);
+          }
+        }
       }
       _setupRealtime();
     }
@@ -704,7 +724,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           const SizedBox(width: 8),
           _FilterChip(
-            label: '${_partnerNickname}의 일정',
+            label: '${_partnerNickname ?? '파트너'}의 일정',
             isSelected: _filter == ScheduleFilter.partner,
             onTap: () => _onFilterChanged(ScheduleFilter.partner),
           ),
