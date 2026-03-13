@@ -7,11 +7,23 @@ class AuthService {
     required String password,
     required String nickname,
   }) async {
-    await supabase.auth.signUp(
+    final response = await supabase.auth.signUp(
       email: email,
       password: password,
       data: {'nickname': nickname},
     );
+
+    if (response.user != null) {
+      // 트리거가 없을 경우를 대비해 수동으로 프로필 생성 시도
+      try {
+        await supabase.from('profiles').upsert({
+          'id': response.user!.id,
+          'nickname': nickname,
+        });
+      } catch (_) {
+        // 이미 트리거에 의해 생성되었다면 무시 가능
+      }
+    }
   }
 
   Future<void> signIn({

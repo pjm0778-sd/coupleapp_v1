@@ -139,32 +139,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
     try {
       final userId = supabase.auth.currentUser!.id;
 
-      // 내 프로필
-      final profile = await supabase
-          .from('profiles')
-          .select('nickname, couple_id')
-          .eq('id', userId)
-          .single();
-      _myNickname = profile['nickname'] as String?;
-      final coupleId = profile['couple_id'] as String?;
+      // 내 프로필 조회
+      Map<String, dynamic>? profile;
+      try {
+        profile = await supabase
+            .from('profiles')
+            .select('nickname, couple_id')
+            .eq('id', userId)
+            .maybeSingle();
+      } catch (e) {
+        debugPrint('Error loading profile: $e');
+      }
 
-      // 커플 정보
-      if (coupleId != null) {
-        _coupleId = coupleId;
+      // 프로필이 없으면 생성 (트리거가 작동 안 했을 경우 대비)
+      if (profile == null) {
+        final nickname = supabase.auth.currentUser!.userMetadata?['nickname'] as String? ?? '사용자';
+        await supabase.from('profiles').insert({
+          'id': userId,
+          'nickname': nickname,
+        });
+        _myNickname = nickname;
+        _coupleId = null;
+      } else {
+        _myNickname = profile['nickname'] as String?;
+        _coupleId = profile['couple_id'] as String?;
+      }
+
+      // 커플 정보 로드
+      if (_coupleId != null) {
         final couple = await supabase
             .from('couples')
             .select('started_at, user1_id, user2_id')
-            .eq('id', coupleId)
+            .eq('id', _coupleId!)
             .maybeSingle();
-        if (couple == null) {
-          _partnerNickname = null;
-          _startedAt = null;
-        } else {
-          _startedAt = DateTime.parse(couple['started_at'] as String);
+            
+        if (couple != null) {
+          if (couple['started_at'] != null) {
+            _startedAt = DateTime.parse(couple['started_at'] as String);
+          }
           final partnerId = couple['user1_id'] == userId
               ? couple['user2_id']
               : couple['user1_id'];
-          if (partnerId != null && partnerId!.isNotEmpty) {
+              
+          if (partnerId != null && (partnerId as String).isNotEmpty) {
             final partner = await supabase
                 .from('profiles')
                 .select('nickname')
@@ -174,9 +191,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           } else {
             _partnerNickname = null;
           }
+        } else {
+          _partnerNickname = null;
+          _startedAt = null;
         }
       }
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Settings _loadData error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
