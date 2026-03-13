@@ -282,19 +282,27 @@ class ScheduleService {
 
   /// 해당 월의 본인 일정 전체 삭제
   Future<int> deleteMyMonthSchedules(DateTime month) async {
-    final start = DateTime(month.year, month.month, 1);
-    final end = DateTime(month.year, month.month + 1, 0);
-    final currentUserId = supabase.auth.currentUser!.id;
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+      final currentUserId = supabase.auth.currentUser!.id;
 
-    final data = await supabase
-        .from('schedules')
-        .delete()
-        .eq('user_id', currentUserId)
-        .gte('date', start.toIso8601String().split('T')[0])
-        .lte('date', end.toIso8601String().split('T')[0])
-        .select();
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', currentUserId)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
 
-    return (data as List).length;
+      if (data == null) return 0;
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deleteMyMonthSchedules error: $e');
+      // 삭제 과정에서 에러가 나더라도 실제 쿼리는 수행되었을 수 있으므로 
+      // 예외를 밖으로 던져서 UI에서 처리하게 하되, 로그를 남깁니다.
+      rethrow;
+    }
   }
 
   /// 현재 유저의 coupleId 가져오기

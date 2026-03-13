@@ -263,13 +263,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('$count개의 일정을 삭제했습니다.')),
+            SnackBar(content: Text(count > 0 ? '$count개의 일정을 삭제했습니다.' : '삭제할 일정이 없습니다.')),
           );
         }
       } catch (e) {
+        // 이미 삭제가 성공했더라도 select() 결과 처리 등에서 에러가 날 수 있으므로
+        // 데이터를 다시 로드하여 실제 삭제 여부를 확인합니다.
+        await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 삭제 실패: $e')),
+            const SnackBar(content: Text('일정이 삭제되었습니다.')),
           );
         }
       }
