@@ -50,11 +50,7 @@ class CoupleService {
     final coupleId = profile['couple_id'];
     if (coupleId == null) return null;
 
-    return await supabase
-        .from('couples')
-        .select()
-        .eq('id', coupleId)
-        .single();
+    return await supabase.from('couples').select().eq('id', coupleId).single();
   }
 
   /// 커플 사귄 날짜 업데이트

@@ -27,15 +27,15 @@ class _NotificationSettingsScreenState
     setState(() => _checkingPermission = true);
     try {
       if (kIsWeb) {
-        final result =
-            await NotificationManager().requestWebNotificationPermission();
+        final result = await NotificationManager()
+            .requestWebNotificationPermission();
         if (mounted) {
           setState(() => _permissionGranted = result == 'granted');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result == 'granted'
-                  ? '알림 권한을 허용했습니다.'
-                  : '알림 권한을 거부했습니다.'),
+              content: Text(
+                result == 'granted' ? '알림 권한을 허용했습니다.' : '알림 권한을 거부했습니다.',
+              ),
             ),
           );
         }
@@ -45,18 +45,18 @@ class _NotificationSettingsScreenState
           setState(() => _permissionGranted = granted);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(granted
-                  ? '알림 권한을 허용했습니다.'
-                  : '알림 권한을 거부했습니다. 설정 앱에서 직접 허용해주세요.'),
+              content: Text(
+                granted ? '알림 권한을 허용했습니다.' : '알림 권한을 거부했습니다. 설정 앱에서 직접 허용해주세요.',
+              ),
             ),
           );
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('알림 권한 요청 중 오류가 발생했습니다')));
       }
     } finally {
       if (mounted) setState(() => _checkingPermission = false);
@@ -90,15 +90,17 @@ class _NotificationSettingsScreenState
             title: '내 애인 일정 삭제 알림',
             subtitle: '내 애인이 일정을 삭제하면 알림',
             value: settings.scheduleDeleted,
-            onChanged: (value) => manager
-                .updateSettings(settings.copyWith(scheduleDeleted: value)),
+            onChanged: (value) => manager.updateSettings(
+              settings.copyWith(scheduleDeleted: value),
+            ),
           ),
           _buildSwitchTile(
             title: '내 애인 일정 수정 알림',
             subtitle: '내 애인이 일정을 수정하면 알림',
             value: settings.scheduleUpdated,
-            onChanged: (value) => manager
-                .updateSettings(settings.copyWith(scheduleUpdated: value)),
+            onChanged: (value) => manager.updateSettings(
+              settings.copyWith(scheduleUpdated: value),
+            ),
           ),
 
           const SizedBox(height: 8),
@@ -154,14 +156,10 @@ class _NotificationSettingsScreenState
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _permissionGranted
-              ? AppTheme.surface
-              : Colors.amber.shade50,
+          color: _permissionGranted ? AppTheme.surface : Colors.amber.shade50,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _permissionGranted
-                ? AppTheme.border
-                : Colors.amber.shade300,
+            color: _permissionGranted ? AppTheme.border : Colors.amber.shade300,
           ),
         ),
         child: Column(
@@ -215,7 +213,9 @@ class _NotificationSettingsScreenState
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Icon(Icons.notifications, size: 18),
                   label: Text(_checkingPermission ? '요청 중...' : '알림 권한 허용'),
@@ -282,14 +282,16 @@ class _NotificationSettingsScreenState
 
   void _toggleAll(bool value) {
     final manager = NotificationManager();
-    manager.updateSettings(NotificationSettings(
-      scheduleAdded: value,
-      scheduleDeleted: value,
-      scheduleUpdated: value,
-      bothOff: value,
-      dateBefore: value,
-      dateToday: value,
-    ));
+    manager.updateSettings(
+      NotificationSettings(
+        scheduleAdded: value,
+        scheduleDeleted: value,
+        scheduleUpdated: value,
+        bothOff: value,
+        dateBefore: value,
+        dateToday: value,
+      ),
+    );
     setState(() {});
   }
 }

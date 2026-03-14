@@ -14,14 +14,26 @@ class AppTheme {
 
   // Schedule color presets (20 distinct colors)
   static const List<Color> scheduleColors = [
-    Color(0xFFFF5252), Color(0xFFFF4081), Color(0xFFE91E63),
-    Color(0xFFFF6D00), Color(0xFFFFCA28), Color(0xFFFFEB3B),
-    Color(0xFF00E676), Color(0xFF69F0AE), Color(0xFF00BFA5),
+    Color(0xFFFF5252),
+    Color(0xFFFF4081),
+    Color(0xFFE91E63),
+    Color(0xFFFF6D00),
+    Color(0xFFFFCA28),
+    Color(0xFFFFEB3B),
+    Color(0xFF00E676),
+    Color(0xFF69F0AE),
+    Color(0xFF00BFA5),
     Color(0xFF4DB6AC),
-    Color(0xFF2979FF), Color(0xFF448AFF), Color(0xFF536DFE),
+    Color(0xFF2979FF),
+    Color(0xFF448AFF),
+    Color(0xFF536DFE),
     Color(0xFF64FFDA),
-    Color(0xFFE040FB), Color(0xFFD500F9), Color(0xFF7C4DFF),
-    Color(0xFF795548), Color(0xFF8D6E63), Color(0xFF607D8B),
+    Color(0xFFE040FB),
+    Color(0xFFD500F9),
+    Color(0xFF7C4DFF),
+    Color(0xFF795548),
+    Color(0xFF8D6E63),
+    Color(0xFF607D8B),
   ];
 
   static const Color dateBorderColor = Color(0xFFFF4081);
@@ -39,18 +51,38 @@ class AppTheme {
       // ── Google Fonts 전역 적용 ──
       textTheme: baseTextTheme.copyWith(
         displayLarge: baseTextTheme.displayLarge?.copyWith(color: textPrimary),
-        displayMedium: baseTextTheme.displayMedium?.copyWith(color: textPrimary),
+        displayMedium: baseTextTheme.displayMedium?.copyWith(
+          color: textPrimary,
+        ),
         displaySmall: baseTextTheme.displaySmall?.copyWith(color: textPrimary),
-        headlineLarge: baseTextTheme.headlineLarge?.copyWith(color: textPrimary, fontWeight: FontWeight.w700),
-        headlineMedium: baseTextTheme.headlineMedium?.copyWith(color: textPrimary, fontWeight: FontWeight.w700),
-        headlineSmall: baseTextTheme.headlineSmall?.copyWith(color: textPrimary, fontWeight: FontWeight.w600),
-        titleLarge: baseTextTheme.titleLarge?.copyWith(color: textPrimary, fontWeight: FontWeight.w600),
-        titleMedium: baseTextTheme.titleMedium?.copyWith(color: textPrimary, fontWeight: FontWeight.w600),
+        headlineLarge: baseTextTheme.headlineLarge?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+        headlineSmall: baseTextTheme.headlineSmall?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        titleLarge: baseTextTheme.titleLarge?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
+        titleMedium: baseTextTheme.titleMedium?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
         titleSmall: baseTextTheme.titleSmall?.copyWith(color: textPrimary),
         bodyLarge: baseTextTheme.bodyLarge?.copyWith(color: textPrimary),
         bodyMedium: baseTextTheme.bodyMedium?.copyWith(color: textPrimary),
         bodySmall: baseTextTheme.bodySmall?.copyWith(color: textSecondary),
-        labelLarge: baseTextTheme.labelLarge?.copyWith(color: textPrimary, fontWeight: FontWeight.w600),
+        labelLarge: baseTextTheme.labelLarge?.copyWith(
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
+        ),
         labelMedium: baseTextTheme.labelMedium?.copyWith(color: textSecondary),
         labelSmall: baseTextTheme.labelSmall?.copyWith(color: textSecondary),
       ),
@@ -76,7 +108,9 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         selectedLabelStyle: GoogleFonts.notoSansKr(
-          fontSize: 11, fontWeight: FontWeight.w600),
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
         unselectedLabelStyle: GoogleFonts.notoSansKr(fontSize: 11),
       ),
       // ── Card ──
@@ -103,7 +137,8 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: GoogleFonts.notoSansKr(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -117,7 +152,8 @@ class AppTheme {
           side: const BorderSide(color: border, width: 1.2),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12)),
+            borderRadius: BorderRadius.circular(12),
+          ),
           textStyle: GoogleFonts.notoSansKr(
             fontSize: 14,
             fontWeight: FontWeight.w500,
@@ -128,10 +164,11 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: surface,
-        hintStyle: GoogleFonts.notoSansKr(
-          color: textSecondary, fontSize: 14),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        hintStyle: GoogleFonts.notoSansKr(color: textSecondary, fontSize: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: border),

@@ -9,7 +9,6 @@ import '../services/schedule_service.dart';
 import '../widgets/schedule_add_dialog.dart';
 import '../widgets/schedule_detail.dart';
 import '../widgets/calendar_card.dart';
-import 'package:intl/intl.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -51,7 +50,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           .select('started_at, user1_id, user2_id')
           .eq('id', _coupleId!)
           .maybeSingle();
-      
+
       if (coupleData != null) {
         if (coupleData['started_at'] != null) {
           _startedAt = DateTime.parse(coupleData['started_at'] as String);
@@ -61,7 +60,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         final partnerId = coupleData['user1_id'] == _myUserId
             ? coupleData['user2_id']
             : coupleData['user1_id'];
-        
+
         if (partnerId != null) {
           final partnerData = await supabase
               .from('profiles')
@@ -82,20 +81,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _setupRealtime() {
     if (_coupleId == null) return;
 
-    _schedulesChannel ??= Supabase.instance.client.channel('public:schedules_calendar')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'schedules',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'couple_id',
-          value: _coupleId!,
-        ),
-        callback: (payload) {
-          if (mounted) _loadSchedules(_focusedMonth);
-        },
-      )..subscribe();
+    _schedulesChannel ??=
+        Supabase.instance.client
+            .channel('public:schedules_calendar')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'schedules',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'couple_id',
+                value: _coupleId!,
+              ),
+              callback: (payload) {
+                if (mounted) _loadSchedules(_focusedMonth);
+              },
+            )
+          ..subscribe();
   }
 
   @override
@@ -116,19 +118,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
     setState(() => _isLoading = true);
     try {
-      final list = await _service.getMonthSchedules(_coupleId!, month,
-          filter: _filter);
-          
+      final list = await _service.getMonthSchedules(
+        _coupleId!,
+        month,
+        filter: _filter,
+      );
+
       // 기념일 계산 (100일, 200일, 1주년 등)
       final anniversaries = _generateAnniversaries(month);
       list.addAll(anniversaries);
-          
+
       final map = <DateTime, List<Schedule>>{};
       for (final s in list) {
-        final key = DateTime(s.date.year, s.date.month, s.date.day);
-        map.putIfAbsent(key, () => []).add(s);
+        final start = s.startDate ?? s.date;
+        final end = s.endDate ?? start;
+        var current = DateTime(start.year, start.month, start.day);
+        final endDay = DateTime(end.year, end.month, end.day);
+        while (!current.isAfter(endDay)) {
+          map.putIfAbsent(current, () => []).add(s);
+          current = current.add(const Duration(days: 1));
+        }
       }
-      if (mounted) setState(() { _events = map; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _events = map;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -149,35 +165,43 @@ class _CalendarScreenState extends State<CalendarScreen> {
     // 100일 단위 기념일 (1000일까지 확인)
     for (int i = 1; i <= 10; i++) {
       final targetDate = _startedAt!.add(Duration(days: (i * 100) - 1));
-      if (targetDate.isAfter(start.subtract(const Duration(days: 1))) && 
+      if (targetDate.isAfter(start.subtract(const Duration(days: 1))) &&
           targetDate.isBefore(end.add(const Duration(days: 1)))) {
-        results.add(Schedule(
-          id: 'anniv_100_$i',
-          userId: 'system',
-          coupleId: _coupleId,
-          date: targetDate,
-          title: '${i * 100}일',
-          category: '기념일',
-          colorHex: '#FF4081',
-          isAnniversary: true,
-        ));
+        results.add(
+          Schedule(
+            id: 'anniv_100_$i',
+            userId: 'system',
+            coupleId: _coupleId,
+            date: targetDate,
+            title: '${i * 100}일',
+            category: '기념일',
+            colorHex: '#FF4081',
+            isAnniversary: true,
+          ),
+        );
       }
     }
 
     // 1년 단위 기념일 (10주년까지 확인)
     for (int i = 1; i <= 10; i++) {
-      final targetDate = DateTime(_startedAt!.year + i, _startedAt!.month, _startedAt!.day);
+      final targetDate = DateTime(
+        _startedAt!.year + i,
+        _startedAt!.month,
+        _startedAt!.day,
+      );
       if (targetDate.year == month.year && targetDate.month == month.month) {
-        results.add(Schedule(
-          id: 'anniv_yr_$i',
-          userId: 'system',
-          coupleId: _coupleId,
-          date: targetDate,
-          title: '$i주년',
-          category: '기념일',
-          colorHex: '#FF4081',
-          isAnniversary: true,
-        ));
+        results.add(
+          Schedule(
+            id: 'anniv_yr_$i',
+            userId: 'system',
+            coupleId: _coupleId,
+            date: targetDate,
+            title: '$i주년',
+            category: '기념일',
+            colorHex: '#FF4081',
+            isAnniversary: true,
+          ),
+        );
       }
     }
 
@@ -196,13 +220,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '근무': return const Color(0xFF4CAF50);
-      case '약속': return const Color(0xFF2196F3);
-      case '여행': return const Color(0xFFFF9800);
-      case '데이트': return const Color(0xFFE91E63);
-      case '휴무': return const Color(0xFFBDBDBD);
-      case '기념일': return const Color(0xFFFF4081);
-      default: return AppTheme.primary;
+      case '근무':
+        return const Color(0xFF4CAF50);
+      case '약속':
+        return const Color(0xFF2196F3);
+      case '여행':
+        return const Color(0xFFFF9800);
+      case '데이트':
+        return const Color(0xFFE91E63);
+      case '휴무':
+        return const Color(0xFFBDBDBD);
+      case '기념일':
+        return const Color(0xFFFF4081);
+      default:
+        return AppTheme.primary;
     }
   }
 
@@ -210,7 +241,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (s.colorHex != null && s.colorHex!.isNotEmpty) {
       try {
         return Color(
-            int.parse('FF${s.colorHex!.replaceAll('#', '')}', radix: 16));
+          int.parse('FF${s.colorHex!.replaceAll('#', '')}', radix: 16),
+        );
       } catch (_) {}
     }
     return _getCategoryColor(s.category);
@@ -218,13 +250,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '근무': return Icons.work_outline;
-      case '약속': return Icons.handshake_outlined;
-      case '여행': return Icons.flight_takeoff_outlined;
-      case '데이트': return Icons.favorite_outline;
-      case '휴무': return Icons.beach_access_outlined;
-      case '기념일': return Icons.cake_outlined;
-      default: return Icons.event_outlined;
+      case '근무':
+        return Icons.work_outline;
+      case '약속':
+        return Icons.handshake_outlined;
+      case '여행':
+        return Icons.flight_takeoff_outlined;
+      case '데이트':
+        return Icons.favorite_outline;
+      case '휴무':
+        return Icons.beach_access_outlined;
+      case '기념일':
+        return Icons.cake_outlined;
+      default:
+        return Icons.event_outlined;
     }
   }
 
@@ -283,7 +322,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(count > 0 ? '$count개의 일정을 삭제했습니다.' : '삭제할 일정이 없습니다.')),
+            SnackBar(
+              content: Text(
+                count > 0 ? '$count개의 일정을 삭제했습니다.' : '삭제할 일정이 없습니다.',
+              ),
+            ),
           );
         }
       } catch (e) {
@@ -291,9 +334,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         // 데이터를 다시 로드하여 실제 삭제 여부를 확인합니다.
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정이 삭제되었습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정이 삭제되었습니다.')));
         }
       }
     }
@@ -307,25 +350,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (result != null && mounted) {
       try {
         if (_coupleId == null || _myUserId == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('커플 연결이 필요합니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('커플 연결이 필요합니다.')));
           return;
         }
-        final scheduleToSave =
-            result.copyWith(userId: _myUserId, coupleId: _coupleId);
+        final scheduleToSave = result.copyWith(
+          userId: _myUserId,
+          coupleId: _coupleId,
+        );
         await _service.addSchedule(scheduleToSave);
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정을 추가했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정을 추가했습니다.')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 추가 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
         }
       }
     }
@@ -343,12 +388,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: YearPicker(
               firstDate: DateTime(2000),
               lastDate: DateTime(2100),
-              initialDate: _focusedMonth,
               selectedDate: _focusedMonth,
               onChanged: (DateTime dateTime) {
                 Navigator.pop(context);
                 setState(() {
-                  _focusedMonth = DateTime(dateTime.year, _focusedMonth.month, 1);
+                  _focusedMonth = DateTime(
+                    dateTime.year,
+                    _focusedMonth.month,
+                    1,
+                  );
                 });
                 _loadHolidays(_focusedMonth);
                 _loadSchedules(_focusedMonth);
@@ -371,7 +419,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
             children: [
               Text(
                 '${_focusedMonth.year}년 ${_focusedMonth.month}월',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(width: 4),
               const Icon(Icons.arrow_drop_down),
@@ -381,7 +432,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent),
+            icon: const Icon(
+              Icons.delete_sweep_outlined,
+              color: Colors.redAccent,
+            ),
             tooltip: '이달의 내 일정 전체 삭제',
             onPressed: _deleteMyMonthSchedules,
           ),
@@ -397,8 +451,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _showCalendarGrid
-                    ? _buildSelectedDaySchedules()
-                    : _buildCalendarList(),
+                ? _buildSelectedDaySchedules()
+                : _buildCalendarList(),
           ),
         ],
       ),
@@ -433,7 +487,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
               duration: const Duration(seconds: 2),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         }
@@ -491,7 +546,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     width: 5,
                     height: 5,
                     margin: const EdgeInsets.symmetric(horizontal: 0.8),
-                    decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
                   );
                 }),
                 // 공휴일/기념일 마커
@@ -513,11 +571,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildDayCell(DateTime day,
-      {required bool isSelected, required bool isToday}) {
+  Widget _buildDayCell(
+    DateTime day, {
+    required bool isSelected,
+    required bool isToday,
+  }) {
     final holidays = _getHolidaysForDay(day);
-    final isPublicHoliday =
-        holidays.any((h) => h.type == HolidayType.publicHoliday);
+    final isPublicHoliday = holidays.any(
+      (h) => h.type == HolidayType.publicHoliday,
+    );
     final isSunday = day.weekday == DateTime.sunday;
     final isSaturday = day.weekday == DateTime.saturday;
 
@@ -603,12 +665,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: holidays.map((h) {
                     return Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: h.color.withOpacity(0.1),
+                        color: h.color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border:
-                            Border.all(color: h.color.withOpacity(0.4)),
+                        border: Border.all(color: h.color.withOpacity(0.4)),
                       ),
                       child: Text(
                         '${h.emoji} ${h.name}',
@@ -631,17 +694,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
           child: schedules.isEmpty
               ? Center(
                   child: Text(
-                    holidays.isNotEmpty
-                        ? '일정이 없어요 🥲'
-                        : '일정이 없어요',
+                    holidays.isNotEmpty ? '일정이 없어요 🥲' : '일정이 없어요',
                     style: const TextStyle(
-                        color: AppTheme.textSecondary, fontSize: 14),
+                      color: AppTheme.textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
                 )
               : ListView.separated(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   itemCount: schedules.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final s = schedules[index];
                     final color = _getScheduleColor(s);
@@ -660,9 +723,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               width: 36,
                               height: 36,
                               decoration: BoxDecoration(
-                                  color: color, shape: BoxShape.circle),
-                              child: Icon(_getCategoryIcon(s.category),
-                                  color: Colors.white, size: 18),
+                                color: color,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                _getCategoryIcon(s.category),
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -677,7 +745,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       color: AppTheme.textPrimary,
                                     ),
                                   ),
-                                  if (s.startTime != null) ...[
+                                  if (s.startDate != null && s.endDate != null && s.endDate!.isAfter(s.startDate!)) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${s.startDate!.month}/${s.startDate!.day} ~ ${s.endDate!.month}/${s.endDate!.day}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  ] else if (s.startTime != null) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       _formatTimeRange(s.startTime, s.endTime),
@@ -772,7 +849,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _events[DateTime(date.year, date.month, date.day)] ?? [];
         final holidays =
             _holidays[DateTime(date.year, date.month, date.day)] ?? [];
-        final isToday = date.year == today.year &&
+        final isToday =
+            date.year == today.year &&
             date.month == today.month &&
             date.day == today.day;
         final weekday = ['월', '화', '수', '목', '금', '토', '일'][date.weekday - 1];
@@ -799,9 +877,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final firstDay = DateTime(month.year, month.month, 1);
     final lastDay = DateTime(month.year, month.month + 1, 0);
     final days = <DateTime>[];
-    for (var date = firstDay;
-        !date.isAfter(lastDay);
-        date = date.add(const Duration(days: 1))) {
+    for (
+      var date = firstDay;
+      !date.isAfter(lastDay);
+      date = date.add(const Duration(days: 1))
+    ) {
       days.add(date);
     }
     return days;
@@ -814,7 +894,6 @@ class _FilterChip extends StatelessWidget {
   final VoidCallback onTap;
 
   const _FilterChip({
-    super.key,
     required this.label,
     required this.isSelected,
     required this.onTap,

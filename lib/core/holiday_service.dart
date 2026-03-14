@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum HolidayType {
-  publicHoliday,     // 법정 공휴일 (빨간색)
+  publicHoliday, // 법정 공휴일 (빨간색)
   coupleAnniversary, // 커플 기념일 (핑크색)
 }
 
@@ -10,11 +10,7 @@ class Holiday {
   final String emoji;
   final HolidayType type;
 
-  const Holiday({
-    required this.name,
-    required this.emoji,
-    required this.type,
-  });
+  const Holiday({required this.name, required this.emoji, required this.type});
 
   Color get color {
     switch (type) {
@@ -35,13 +31,13 @@ class HolidayService {
   // 커플 기념일 (매년 반복 – month/day 기준)
   // ───────────────────────────────────────────────────
   static const List<({int month, int day, String name, String emoji})>
-      _coupleAnniversaries = [
+  _coupleAnniversaries = [
     (month: 1, day: 14, name: '다이어리데이', emoji: '📓'),
     (month: 2, day: 14, name: '발렌타인데이', emoji: '🍫'),
     (month: 3, day: 14, name: '화이트데이', emoji: '🍬'),
     (month: 4, day: 14, name: '블랙데이', emoji: '🍜'),
     (month: 5, day: 14, name: '로즈데이', emoji: '🌹'),
-    (month: 5, day: 1,  name: '근로자의 날', emoji: '👷'),
+    (month: 5, day: 1, name: '근로자의 날', emoji: '👷'),
     (month: 6, day: 14, name: '키스데이', emoji: '💋'),
     (month: 7, day: 14, name: '실버데이', emoji: '🥈'),
     (month: 8, day: 14, name: '그린데이', emoji: '🍃'),
@@ -149,27 +145,33 @@ class HolidayService {
         '${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
 
     if (_publicHolidays.containsKey(yearKey)) {
-      result.add(Holiday(
-        name: _publicHolidays[yearKey]!,
-        emoji: '🇰🇷',
-        type: HolidayType.publicHoliday,
-      ));
+      result.add(
+        Holiday(
+          name: _publicHolidays[yearKey]!,
+          emoji: '🇰🇷',
+          type: HolidayType.publicHoliday,
+        ),
+      );
     } else if (_publicHolidays.containsKey(fixedKey)) {
-      result.add(Holiday(
-        name: _publicHolidays[fixedKey]!,
-        emoji: '🇰🇷',
-        type: HolidayType.publicHoliday,
-      ));
+      result.add(
+        Holiday(
+          name: _publicHolidays[fixedKey]!,
+          emoji: '🇰🇷',
+          type: HolidayType.publicHoliday,
+        ),
+      );
     }
 
     // 2. 커플 기념일 확인 (매년 반복)
     for (final ann in _coupleAnniversaries) {
       if (ann.month == date.month && ann.day == date.day) {
-        result.add(Holiday(
-          name: ann.name,
-          emoji: ann.emoji,
-          type: HolidayType.coupleAnniversary,
-        ));
+        result.add(
+          Holiday(
+            name: ann.name,
+            emoji: ann.emoji,
+            type: HolidayType.coupleAnniversary,
+          ),
+        );
       }
     }
 

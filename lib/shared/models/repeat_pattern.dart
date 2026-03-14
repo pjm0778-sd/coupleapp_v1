@@ -14,26 +14,24 @@ class RepeatPattern {
   });
 
   factory RepeatPattern.fromMap(Map<String, dynamic> map) => RepeatPattern(
-        type: map['type'] as String,
-        days: (map['days'] as List<dynamic>?)
-                ?.map((e) => e as int)
-                .toList(),
-        startDate: map['start_date'] != null
-            ? DateTime.parse(map['start_date'] as String)
-            : null,
-        endDate: map['end_date'] != null
-            ? DateTime.parse(map['end_date'] as String)
-            : null,
-        interval: map['interval'] as int?,
-      );
+    type: map['type'] as String,
+    days: (map['days'] as List<dynamic>?)?.map((e) => e as int).toList(),
+    startDate: map['start_date'] != null
+        ? DateTime.parse(map['start_date'] as String)
+        : null,
+    endDate: map['end_date'] != null
+        ? DateTime.parse(map['end_date'] as String)
+        : null,
+    interval: map['interval'] as int?,
+  );
 
   Map<String, dynamic> toMap() => {
-        'type': type,
-        'days': days,
-        'start_date': startDate?.toIso8601String().split('T')[0],
-        'end_date': endDate?.toIso8601String().split('T')[0],
-        'interval': interval,
-      };
+    'type': type,
+    'days': days,
+    'start_date': startDate?.toIso8601String().split('T')[0],
+    'end_date': endDate?.toIso8601String().split('T')[0],
+    'interval': interval,
+  };
 
   /// 지정된 날짜가 반복 패턴에 포함되는지 확인
   bool includesDate(DateTime date) {
@@ -55,7 +53,11 @@ class RepeatPattern {
 
       case 'yearly':
         if (startDate != null) {
-          final monthDate = DateTime(date.year, startDate!.month, startDate!.day);
+          final monthDate = DateTime(
+            date.year,
+            startDate!.month,
+            startDate!.day,
+          );
           return date.isAtSameMomentAs(monthDate);
         }
         return false;

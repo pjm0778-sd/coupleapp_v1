@@ -54,16 +54,13 @@ class DDayWidget extends StatelessWidget {
           // 오늘 기념일/공휴일 배너
           if (todayHolidays.isNotEmpty) ...[
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                todayHolidays
-                    .map((h) => '${h.emoji} ${h.name}')
-                    .join('  ·  '),
+                todayHolidays.map((h) => '${h.emoji} ${h.name}').join('  ·  '),
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -147,8 +144,7 @@ class DDayWidget extends StatelessWidget {
           if (nextDateDays != null) ...[
             const SizedBox(height: 14),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(12),
@@ -156,8 +152,11 @@ class DDayWidget extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_month_outlined,
-                      color: Colors.white70, size: 14),
+                  const Icon(
+                    Icons.calendar_month_outlined,
+                    color: Colors.white70,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     nextDateDays == 0

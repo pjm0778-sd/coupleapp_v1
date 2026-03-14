@@ -10,9 +10,7 @@ class CommentService {
         .eq('schedule_id', scheduleId)
         .order('created_at', ascending: true);
 
-    return (data as List)
-        .map((e) => ScheduleComment.fromMap(e))
-        .toList();
+    return (data as List).map((e) => ScheduleComment.fromMap(e)).toList();
   }
 
   /// 일정 댓글 실시간 스트림 (Realtime 자동 구독)
@@ -31,10 +29,7 @@ class CommentService {
   }
 
   /// 댓글 추가
-  Future<void> addComment(
-    String scheduleId,
-    String content,
-  ) async {
+  Future<void> addComment(String scheduleId, String content) async {
     await supabase.from('schedule_comments').insert({
       'schedule_id': scheduleId,
       'user_id': supabase.auth.currentUser!.id,

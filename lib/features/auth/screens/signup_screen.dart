@@ -69,9 +69,7 @@ class _SignupScreenState extends State<SignupScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SafeArea(
-        child: _isDone ? _buildDoneView() : _buildFormView(),
-      ),
+      body: SafeArea(child: _isDone ? _buildDoneView() : _buildFormView()),
     );
   }
 
@@ -207,8 +205,11 @@ class _SignupScreenState extends State<SignupScreen> {
                 color: AppTheme.primary.withAlpha(20),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.mark_email_read_outlined,
-                  size: 36, color: AppTheme.primary),
+              child: const Icon(
+                Icons.mark_email_read_outlined,
+                size: 36,
+                color: AppTheme.primary,
+              ),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -224,9 +225,10 @@ class _SignupScreenState extends State<SignupScreen> {
               '${_emailController.text}으로\n인증 메일을 보냈습니다.\n확인 후 로그인해주세요.',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 14,
-                  color: AppTheme.textSecondary,
-                  height: 1.6),
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+                height: 1.6,
+              ),
             ),
             const SizedBox(height: 36),
             SizedBox(
@@ -244,8 +246,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 onPressed: () => Navigator.pop(context),
                 child: const Text(
                   '로그인으로 돌아가기',
-                  style: TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -282,8 +283,7 @@ class _SignupScreenState extends State<SignupScreen> {
       style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+        hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppTheme.surface,
@@ -303,8 +303,10 @@ class _SignupScreenState extends State<SignupScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.redAccent),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

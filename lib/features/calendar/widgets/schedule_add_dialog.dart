@@ -7,11 +7,7 @@ class ScheduleAddDialog extends StatefulWidget {
   final DateTime? date;
   final Schedule? existingSchedule;
 
-  const ScheduleAddDialog({
-    super.key,
-    this.date,
-    this.existingSchedule,
-  });
+  const ScheduleAddDialog({super.key, this.date, this.existingSchedule});
 
   @override
   State<ScheduleAddDialog> createState() => _ScheduleAddDialogState();
@@ -216,8 +212,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
               padding: const EdgeInsets.fromLTRB(20, 20, 8, 20),
               decoration: const BoxDecoration(
                 color: AppTheme.primary,
-                borderRadius:
-                    BorderRadius.vertical(top: Radius.circular(20)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Row(
                 children: [
@@ -313,8 +308,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       value: _category,
                       hint: '종류 선택',
                       items: _categories
-                          .map((c) =>
-                              DropdownMenuItem(value: c, child: Text(c)))
+                          .map(
+                            (c) => DropdownMenuItem(value: c, child: Text(c)),
+                          )
                           .toList(),
                       onChanged: (v) {
                         setState(() {
@@ -327,10 +323,16 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                     ),
                     const SizedBox(height: 12),
                     SwitchListTile(
-                      title: const Text('데이트 일정으로 표시', style: TextStyle(fontSize: 14)),
-                      subtitle: const Text('홈 화면의 다음 데이트 D-day에 반영됩니다', style: TextStyle(fontSize: 12)),
+                      title: const Text(
+                        '데이트 일정으로 표시',
+                        style: TextStyle(fontSize: 14),
+                      ),
+                      subtitle: const Text(
+                        '홈 화면의 다음 데이트 D-day에 반영됩니다',
+                        style: TextStyle(fontSize: 12),
+                      ),
                       value: _isDate,
-                      activeColor: AppTheme.primary,
+                      activeThumbColor: AppTheme.primary,
                       onChanged: (v) => setState(() => _isDate = v),
                       contentPadding: EdgeInsets.zero,
                     ),
@@ -344,8 +346,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       children: _colorPalette.entries.map((e) {
                         final isSelected = _colorHex == e.key;
                         return GestureDetector(
-                          onTap: () =>
-                              setState(() => _colorHex = e.key),
+                          onTap: () => setState(() => _colorHex = e.key),
                           child: Container(
                             width: 36,
                             height: 36,
@@ -355,12 +356,16 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                               border: isSelected
                                   ? Border.all(
                                       color: AppTheme.textPrimary,
-                                      width: 2.5)
+                                      width: 2.5,
+                                    )
                                   : null,
                             ),
                             child: isSelected
-                                ? const Icon(Icons.check,
-                                    color: Colors.white, size: 18)
+                                ? const Icon(
+                                    Icons.check,
+                                    color: Colors.white,
+                                    size: 18,
+                                  )
                                 : null,
                           ),
                         );
@@ -372,8 +377,10 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                     _buildSectionTitle('장소'),
                     TextFormField(
                       initialValue: _location,
-                      decoration: _inputDecoration('장소 입력',
-                          prefixIcon: Icons.location_on_outlined),
+                      decoration: _inputDecoration(
+                        '장소 입력',
+                        prefixIcon: Icons.location_on_outlined,
+                      ),
                       style: const TextStyle(fontSize: 14),
                       onChanged: (v) => setState(() => _location = v),
                     ),
@@ -396,13 +403,14 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       value: _reminderMinutes,
                       hint: '알림 없음',
                       items: _reminderOptions.entries
-                          .map((e) => DropdownMenuItem(
-                                value: e.value,
-                                child: Text(e.key),
-                              ))
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.value,
+                              child: Text(e.key),
+                            ),
+                          )
                           .toList(),
-                      onChanged: (v) =>
-                          setState(() => _reminderMinutes = v),
+                      onChanged: (v) => setState(() => _reminderMinutes = v),
                     ),
                     const SizedBox(height: 20),
 
@@ -412,10 +420,12 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                       value: _selectedRepeatKey,
                       hint: '반복 없음',
                       items: _repeatOptions.entries
-                          .map((e) => DropdownMenuItem(
-                                value: e.value,
-                                child: Text(e.key),
-                              ))
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.value,
+                              child: Text(e.key),
+                            ),
+                          )
                           .toList(),
                       onChanged: _onRepeatChanged,
                     ),
@@ -440,10 +450,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           setState(() {
                             _repeatPattern = RepeatPattern(
                               type: _selectedRepeatKey!,
-                              days:
-                                  _selectedWeekdays.isNotEmpty
-                                      ? (_selectedWeekdays.toList()..sort())
-                                      : null,
+                              days: _selectedWeekdays.isNotEmpty
+                                  ? (_selectedWeekdays.toList()..sort())
+                                  : null,
                               startDate: _startDate,
                               endDate: d,
                             );
@@ -461,10 +470,10 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text('취소'),
                           ),
@@ -476,10 +485,10 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primary,
                               foregroundColor: Colors.white,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 14),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text(
                               '저장',
@@ -530,8 +539,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
         hint: Text(hint, style: const TextStyle(fontSize: 14)),
         isExpanded: true,
         underline: const SizedBox.shrink(),
-        style: const TextStyle(
-            fontSize: 14, color: AppTheme.textPrimary),
+        style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
         items: items,
         onChanged: onChanged,
       ),
@@ -573,30 +581,25 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
     );
   }
 
-  InputDecoration _inputDecoration(String hint,
-      {IconData? prefixIcon}) {
+  InputDecoration _inputDecoration(String hint, {IconData? prefixIcon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(
-          color: AppTheme.textSecondary, fontSize: 14),
+      hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
       prefixIcon: prefixIcon != null
           ? Icon(prefixIcon, size: 20, color: AppTheme.textSecondary)
           : null,
       filled: true,
       fillColor: AppTheme.surface,
-      border:
-          OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
         borderSide: const BorderSide(color: AppTheme.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide:
-            const BorderSide(color: AppTheme.primary, width: 1.5),
+        borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
       ),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 }
@@ -641,14 +644,19 @@ class _DateButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(Icons.calendar_today_outlined,
-                size: 16, color: AppTheme.textSecondary),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 16,
+              color: AppTheme.textSecondary,
+            ),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
                 label.length < 5 ? '$label\n$dateStr' : dateStr,
                 style: const TextStyle(
-                    fontSize: 13, color: AppTheme.textPrimary),
+                  fontSize: 13,
+                  color: AppTheme.textPrimary,
+                ),
               ),
             ),
           ],
@@ -697,17 +705,21 @@ class _TimeButton extends StatelessWidget {
             Text(
               label,
               style: const TextStyle(
-                  fontSize: 13, color: AppTheme.textSecondary),
+                fontSize: 13,
+                color: AppTheme.textSecondary,
+              ),
             ),
             const Spacer(),
             Text(
               timeStr,
-              style: const TextStyle(
-                  fontSize: 14, color: AppTheme.textPrimary),
+              style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
             ),
             const SizedBox(width: 4),
-            const Icon(Icons.access_time,
-                size: 16, color: AppTheme.textSecondary),
+            const Icon(
+              Icons.access_time,
+              size: 16,
+              color: AppTheme.textSecondary,
+            ),
           ],
         ),
       ),

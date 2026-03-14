@@ -49,7 +49,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   String _parseError(String error) {
-    if (error.contains('Invalid login credentials')) return '이메일 또는 비밀번호가 틀렸습니다.';
+    if (error.contains('Invalid login credentials')) {
+      return '이메일 또는 비밀번호가 틀렸습니다.';
+    }
     if (error.contains('Email not confirmed')) return '이메일 인증을 완료해주세요.';
     return '로그인 중 오류가 발생했습니다.';
   }
@@ -80,10 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 4),
                 const Text(
                   '커플 스케줄을 함께 관리하세요',
-                  style: TextStyle(
-                    fontSize: 15,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),
                 ),
                 const SizedBox(height: 56),
 
@@ -169,13 +168,14 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Text(
                       '아직 계정이 없으신가요?',
                       style: TextStyle(
-                          color: AppTheme.textSecondary, fontSize: 14),
+                        color: AppTheme.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (_) => const SignupScreen()),
+                        MaterialPageRoute(builder: (_) => const SignupScreen()),
                       ),
                       child: const Text(
                         '회원가입',
@@ -223,8 +223,7 @@ class _LoginScreenState extends State<LoginScreen> {
       style: const TextStyle(fontSize: 15, color: AppTheme.textPrimary),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle:
-            const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+        hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
         suffixIcon: suffixIcon,
         filled: true,
         fillColor: AppTheme.surface,
@@ -244,8 +243,10 @@ class _LoginScreenState extends State<LoginScreen> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.redAccent),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
     );
   }

@@ -65,7 +65,9 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
   }
 
   bool get _isNightShift =>
-      _startTime != null && _endTime != null && _startTime!.hour > _endTime!.hour;
+      _startTime != null &&
+      _endTime != null &&
+      _startTime!.hour > _endTime!.hour;
 
   void _onSave() {
     final formState = _formKey.currentState;
@@ -73,9 +75,9 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
 
     final title = _titleController.text.trim();
     if (title.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('제목을 입력해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('제목을 입력해주세요')));
       return;
     }
 
@@ -180,11 +182,18 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                           color: color,
                           shape: BoxShape.circle,
                           border: isSelected
-                              ? Border.all(color: AppTheme.textPrimary, width: 3)
+                              ? Border.all(
+                                  color: AppTheme.textPrimary,
+                                  width: 3,
+                                )
                               : null,
                         ),
                         child: isSelected
-                            ? const Icon(Icons.check, color: Colors.white, size: 22)
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 22,
+                              )
                             : null,
                       ),
                     );
@@ -197,14 +206,19 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                   decoration: InputDecoration(
                     labelText: '제목',
                     hintText: '예: 주간근무',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     errorBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(color: Colors.red),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppTheme.primary, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primary,
+                        width: 2,
+                      ),
                     ),
                     labelStyle: const TextStyle(color: AppTheme.textSecondary),
                   ),
@@ -231,7 +245,10 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                       child: GestureDetector(
                         onTap: () => _pickTime(true),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(10),
@@ -263,13 +280,19 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                     ),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 8),
-                      child: Text('~', style: TextStyle(color: AppTheme.textSecondary)),
+                      child: Text(
+                        '~',
+                        style: TextStyle(color: AppTheme.textSecondary),
+                      ),
                     ),
                     Expanded(
                       child: GestureDetector(
                         onTap: () => _pickTime(false),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(10),
@@ -306,7 +329,10 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       '야간근무로 인식됩니다',
-                      style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
                     ),
                   ),
                 const SizedBox(height: 30),
@@ -317,7 +343,9 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                       child: OutlinedButton(
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         child: const Text('취소'),
                       ),
@@ -329,9 +357,13 @@ class _MappingAddDialogState extends State<MappingAddDialog> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: Text(widget.existingMapping != null ? '수정' : '저장'),
+                        child: Text(
+                          widget.existingMapping != null ? '수정' : '저장',
+                        ),
                       ),
                     ),
                   ],

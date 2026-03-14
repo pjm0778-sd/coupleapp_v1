@@ -83,21 +83,21 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     );
     if (updated != null) {
       try {
-        await supabase.from('color_mappings').update({
-          'color_hex': updated.colorHex,
-          'work_type': updated.title,
-        }).eq('id', existing.id);
+        await supabase
+            .from('color_mappings')
+            .update({'color_hex': updated.colorHex, 'work_type': updated.title})
+            .eq('id', existing.id);
         await _loadColorMappings();
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('매핑이 수정되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('매핑이 수정되었습니다')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('매핑 수정 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('매핑 수정 실패: $e')));
         }
       }
     }
@@ -115,24 +115,24 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
 
       await _loadColorMappings();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('매핑이 추가되었습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('매핑이 추가되었습니다')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매핑 추가 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('매핑 추가 실패: $e')));
       }
     }
   }
 
   Future<void> _onUploadPressed() async {
     if (_useMapping && _colorMappings.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('먼저 아래에서 색상 매핑을 추가해주세요')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('먼저 아래에서 색상 매핑을 추가해주세요')));
       return;
     }
 
@@ -159,12 +159,20 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         body: {
           'imageBase64': base64Image,
           'imageMediaType': mediaType,
-          'colorMappings': _colorMappings.map((m) => {
-            'color_hex': m.colorHex,
-            'work_type': m.title,
-            'start_time': m.startTime != null ? '${m.startTime!.hour.toString().padLeft(2, '0')}:${m.startTime!.minute.toString().padLeft(2, '0')}' : null,
-            'end_time': m.endTime != null ? '${m.endTime!.hour.toString().padLeft(2, '0')}:${m.endTime!.minute.toString().padLeft(2, '0')}' : null,
-          }).toList(),
+          'colorMappings': _colorMappings
+              .map(
+                (m) => {
+                  'color_hex': m.colorHex,
+                  'work_type': m.title,
+                  'start_time': m.startTime != null
+                      ? '${m.startTime!.hour.toString().padLeft(2, '0')}:${m.startTime!.minute.toString().padLeft(2, '0')}'
+                      : null,
+                  'end_time': m.endTime != null
+                      ? '${m.endTime!.hour.toString().padLeft(2, '0')}:${m.endTime!.minute.toString().padLeft(2, '0')}'
+                      : null,
+                },
+              )
+              .toList(),
           'targetYear': now.year,
           'targetMonth': now.month,
           'useMapping': _useMapping, // 매핑참고 여부
@@ -178,7 +186,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         throw Exception(data['error']);
       }
 
-      final schedulesList = (data['schedules'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      final schedulesList =
+          (data['schedules'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       if (schedulesList.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -188,25 +197,32 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         return;
       }
 
+      final ocrYear = data['year'] as int? ?? now.year;
+      final ocrMonth = data['month'] as int? ?? now.month;
+
       if (mounted) {
-        _showOcrResultsDialog(schedulesList, now);
+        _showOcrResultsDialog(schedulesList, ocrYear, ocrMonth);
       }
     } catch (e) {
       setState(() => _isUploading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('OCR 분석 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('OCR 분석 실패: $e')));
       }
     }
   }
 
-  void _showOcrResultsDialog(List<Map<String, dynamic>> schedules, DateTime month) {
+  void _showOcrResultsDialog(
+    List<Map<String, dynamic>> schedules,
+    int ocrYear,
+    int ocrMonth,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('${month.month}월 스케줄 분석 결과 (${schedules.length}건)'),
+        title: Text('$ocrYear년 $ocrMonth월 스케줄 분석 결과 (${schedules.length}건)'),
         content: SizedBox(
           width: double.maxFinite,
           height: 300,
@@ -225,7 +241,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
                   ),
                 ),
                 title: Text(
-                  '${s['date']} - ${s['work_type']}',
+                  s['start_date'] == s['end_date']
+                      ? '${s['start_date']} - ${s['work_type']}'
+                      : '${s['start_date']}~${s['end_date']} - ${s['work_type']}',
                   style: const TextStyle(fontSize: 13),
                 ),
               );
@@ -241,10 +259,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               await _saveOcrSchedules(schedules);
-              if (!_useMapping) {
-                // 매핑 무시일 경우 저장 후 캘린더 탭으로 이동 (main.dart의 인덱스 기준: 홈=0, 캘린더=1)
-                TabSwitchNotification(1).dispatch(context);
-              }
+              if (!mounted) return;
+              TabSwitchNotification(1).dispatch(context);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
@@ -259,9 +275,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
 
   Future<void> _saveOcrSchedules(List<Map<String, dynamic>> schedules) async {
     if (_myUserId == null || _coupleId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('커플 연결이 필요합니다')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('커플 연결이 필요합니다')));
       return;
     }
 
@@ -269,49 +285,61 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       final service = ScheduleService();
       int saved = 0;
       for (final s in schedules) {
-        final dateStr = s['date'] as String?;
+        final startDateStr = s['start_date'] as String?;
+        final endDateStr = s['end_date'] as String?;
         final workType = s['work_type'] as String?;
         final colorHex = s['color_hex'] as String?;
         final startTimeStr = s['start_time'] as String?;
         final endTimeStr = s['end_time'] as String?;
-        if (dateStr == null) continue;
+        if (startDateStr == null) continue;
 
         TimeOfDay? startTime, endTime;
         if (startTimeStr != null && startTimeStr.contains(':')) {
-           final parts = startTimeStr.split(':');
-           startTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+          final parts = startTimeStr.split(':');
+          startTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
         }
         if (endTimeStr != null && endTimeStr.contains(':')) {
-           final parts = endTimeStr.split(':');
-           endTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+          final parts = endTimeStr.split(':');
+          endTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
         }
+
+        final startDate = DateTime.parse(startDateStr);
+        final endDate = endDateStr != null ? DateTime.parse(endDateStr) : startDate;
 
         final schedule = Schedule(
           id: '',
           userId: _myUserId!,
           coupleId: _coupleId,
-          date: DateTime.parse(dateStr),
+          date: startDate,
+          startDate: startDate,
+          endDate: endDate,
           title: workType,
           workType: workType,
           colorHex: colorHex,
           startTime: startTime,
           endTime: endTime,
           isAnniversary: false,
-          category: '근무', // OCR 기반 등록은 기본 카테고리를 근무로 취급
+          category: '근무',
         );
         await service.addSchedule(schedule);
         saved++;
       }
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$saved개의 일정이 저장되었습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$saved개의 일정이 저장되었습니다')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('일정 저장 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('일정 저장 실패: $e')));
       }
     }
   }
@@ -327,9 +355,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('일정 자동등록'),
-      ),
+      appBar: AppBar(title: const Text('일정 자동등록')),
       body: Column(
         children: [
           // OCR 이미지 업로드 영역
@@ -340,8 +366,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _colorMappings.isEmpty
-                    ? _buildEmptyState()
-                    : _buildMappingList(),
+                ? _buildEmptyState()
+                : _buildMappingList(),
           ),
         ],
       ),
@@ -380,7 +406,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
               children: [
                 Checkbox(
                   value: _useMapping,
-                  onChanged: (value) => setState(() => _useMapping = value ?? true),
+                  onChanged: (value) =>
+                      setState(() => _useMapping = value ?? true),
                   activeColor: AppTheme.primary,
                 ),
                 const SizedBox(width: 8),
@@ -389,7 +416,10 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
                     _useMapping
                         ? '매핑을 참고하여 분석 (비슷한 색 계열 인정)'
                         : '매핑 무시하고 사진의 색/글씨를 정확히 파악',
-                    style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.textPrimary,
+                    ),
                   ),
                 ),
               ],
@@ -401,7 +431,11 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.border, width: 2, style: BorderStyle.solid),
+              border: Border.all(
+                color: AppTheme.border,
+                width: 2,
+                style: BorderStyle.solid,
+              ),
             ),
             child: Center(
               child: Column(
@@ -410,7 +444,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
                   Icon(
                     Icons.image_outlined,
                     size: 48,
-                    color: AppTheme.textSecondary.withOpacity(0.4),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -447,15 +481,12 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           Icon(
             Icons.palette_outlined,
             size: 64,
-            color: AppTheme.textSecondary.withOpacity(0.3),
+            color: AppTheme.textSecondary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
           Text(
             '등록된 매핑이 없어요',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 8),
           ElevatedButton.icon(
@@ -476,7 +507,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: _colorMappings.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final mapping = _colorMappings[index];
         return ColorMappingCard(
@@ -493,15 +524,15 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       await supabase.from('color_mappings').delete().eq('id', mapping.id);
       await _loadColorMappings();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매핑이 삭제되었습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('매핑이 삭제되었습니다')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('매핑 삭제 실패')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('매핑 삭제 실패')));
       }
     }
   }

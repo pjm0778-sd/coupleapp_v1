@@ -9,10 +9,7 @@ import 'schedule_add_dialog.dart';
 class ScheduleDetailScreen extends StatefulWidget {
   final Schedule schedule;
 
-  const ScheduleDetailScreen({
-    super.key,
-    required this.schedule,
-  });
+  const ScheduleDetailScreen({super.key, required this.schedule});
 
   @override
   State<ScheduleDetailScreen> createState() => _ScheduleDetailScreenState();
@@ -56,9 +53,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       _commentController.clear();
       // 실시간 구독으로 자동 업데이트됨
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('댓글 추가 실패')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('댓글 추가 실패')));
     }
   }
 
@@ -67,32 +65,39 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       await _commentService.deleteComment(id);
       // 실시간 구독으로 자동 업데이트됨
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('댓글 삭제 실패')),
-      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('댓글 삭제 실패')));
     }
   }
 
   Future<void> _editSchedule() async {
     final result = await showDialog<Schedule>(
       context: context,
-      builder: (context) => ScheduleAddDialog(existingSchedule: _currentSchedule),
+      builder: (context) =>
+          ScheduleAddDialog(existingSchedule: _currentSchedule),
     );
     if (result != null && mounted) {
       try {
-        await _scheduleService.updateSchedule(_currentSchedule.id, result.toMap());
-        setState(() => _currentSchedule = result.copyWith(id: _currentSchedule.id));
+        await _scheduleService.updateSchedule(
+          _currentSchedule.id,
+          result.toMap(),
+        );
+        setState(
+          () => _currentSchedule = result.copyWith(id: _currentSchedule.id),
+        );
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정이 수정되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정이 수정되었습니다')));
           Navigator.pop(context, true);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 수정 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
         }
       }
     }
@@ -106,8 +111,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         builder: (context) => AlertDialog(
           title: const Text('반복 일정 삭제'),
           content: const Text('어떤 일정을 삭제할까요?'),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, 'this'),
@@ -119,8 +125,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, 'all'),
-              style:
-                  TextButton.styleFrom(foregroundColor: Colors.red),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('모든 반복 일정'),
             ),
             TextButton(
@@ -143,16 +148,17 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
             _currentSchedule.date,
           );
         } else {
-          await _scheduleService
-              .deleteRepeatGroup(_currentSchedule.repeatGroupId!);
+          await _scheduleService.deleteRepeatGroup(
+            _currentSchedule.repeatGroupId!,
+          );
         }
         if (mounted) Navigator.pop(context, true);
       } catch (e) {
         setState(() => _isDeleting = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정 삭제 실패')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정 삭제 실패')));
         }
       }
       return;
@@ -166,10 +172,11 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         Navigator.pop(context, true); // true = deleted
       }
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isDeleting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('일정 삭제 실패')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('일정 삭제 실패')));
     }
   }
 
@@ -183,15 +190,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           Icon(
             Icons.chat_bubble_outline,
             size: 64,
-            color: AppTheme.textSecondary.withOpacity(0.3),
+            color: AppTheme.textSecondary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
           Text(
             '댓글이 없어요',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.textSecondary,
-            ),
+            style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
           ),
         ],
       ),
@@ -227,15 +231,17 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         children: [
           _buildInfoCard(category, categoryColor, categoryIcon),
           const Divider(height: 1),
-          Expanded(
-            child: _buildCommentsSection(),
-          ),
+          Expanded(child: _buildCommentsSection()),
         ],
       ),
     );
   }
 
-  Widget _buildInfoCard(String? category, Color categoryColor, IconData categoryIcon) {
+  Widget _buildInfoCard(
+    String? category,
+    Color categoryColor,
+    IconData categoryIcon,
+  ) {
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
@@ -257,11 +263,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   color: categoryColor,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  categoryIcon,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                child: Icon(categoryIcon, color: Colors.white, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -269,7 +271,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _currentSchedule.title ?? _currentSchedule.workType ?? '일정',
+                      _currentSchedule.title ??
+                          _currentSchedule.workType ??
+                          '일정',
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
@@ -282,7 +286,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                         children: [
                           if (category != null)
                             Text(
-                              category!,
+                              category,
                               style: TextStyle(
                                 fontSize: 13,
                                 color: AppTheme.textSecondary,
@@ -292,7 +296,10 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                             const SizedBox(width: 8),
                           if (_currentSchedule.isDate)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppTheme.primary.withAlpha(25),
                                 borderRadius: BorderRadius.circular(4),
@@ -316,18 +323,26 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           ),
           const SizedBox(height: 16),
           // 날짜/시간
-          _buildInfoRow(Icons.calendar_today_outlined,
-              '${_formatDate(_currentSchedule.date)}'),
+          _buildInfoRow(
+            Icons.calendar_today_outlined,
+            _formatDate(_currentSchedule.date),
+          ),
           const SizedBox(height: 8),
           _buildInfoRow(Icons.access_time, _formatTimeRange()),
           const SizedBox(height: 16),
           // 장소
-          if (_currentSchedule.location != null && _currentSchedule.location!.isNotEmpty)
-            _buildInfoRow(Icons.location_on_outlined, _currentSchedule.location!),
-          if (_currentSchedule.location != null && _currentSchedule.location!.isNotEmpty)
+          if (_currentSchedule.location != null &&
+              _currentSchedule.location!.isNotEmpty)
+            _buildInfoRow(
+              Icons.location_on_outlined,
+              _currentSchedule.location!,
+            ),
+          if (_currentSchedule.location != null &&
+              _currentSchedule.location!.isNotEmpty)
             const SizedBox(height: 8),
           // 메모
-          if (_currentSchedule.note != null && _currentSchedule.note!.isNotEmpty)
+          if (_currentSchedule.note != null &&
+              _currentSchedule.note!.isNotEmpty)
             _buildInfoRow(Icons.note_outlined, _currentSchedule.note!),
         ],
       ),
@@ -342,10 +357,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         Expanded(
           child: Text(
             text,
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.textPrimary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppTheme.textPrimary),
           ),
         ),
       ],
@@ -372,21 +384,23 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
           child: _isLoadingComments
               ? const Center(child: CircularProgressIndicator())
               : _comments.isEmpty
-                  ? _buildEmptyMessage()
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _comments.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, index) {
-                        final comment = _comments[index];
-                        final isMine = _commentService.isMine(comment);
-                        return _CommentItem(
-                          comment: comment,
-                          isMine: isMine,
-                          onDelete: isMine ? () => _deleteComment(comment.id) : null,
-                        );
-                      },
-                    ),
+              ? _buildEmptyMessage()
+              : ListView.separated(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _comments.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final comment = _comments[index];
+                    final isMine = _commentService.isMine(comment);
+                    return _CommentItem(
+                      comment: comment,
+                      isMine: isMine,
+                      onDelete: isMine
+                          ? () => _deleteComment(comment.id)
+                          : null,
+                    );
+                  },
+                ),
         ),
         // 댓글 입력
         Container(
@@ -404,7 +418,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
                     decoration: InputDecoration(
                       hintText: '댓글을 입력하세요...',
                       border: InputBorder.none,
-                      hintStyle: TextStyle(color: AppTheme.textSecondary.withOpacity(0.5)),
+                      hintStyle: TextStyle(
+                        color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                      ),
                     ),
                     style: TextStyle(color: AppTheme.textPrimary),
                     maxLines: 3,
@@ -434,7 +450,8 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   String _formatTimeRange() {
-    if (_currentSchedule.startTime == null && _currentSchedule.endTime == null) {
+    if (_currentSchedule.startTime == null &&
+        _currentSchedule.endTime == null) {
       return '';
     }
     final start = _formatTime(_currentSchedule.startTime);
@@ -443,7 +460,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     return '$start ~ $end';
   }
 
-  String _formatTime(var time) {
+  String _formatTime(dynamic time) {
     if (time == null) return '';
     if (time is TimeOfDay) {
       return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
@@ -492,7 +509,6 @@ class _CommentItem extends StatelessWidget {
   final VoidCallback? onDelete;
 
   const _CommentItem({
-    super.key,
     required this.comment,
     required this.isMine,
     this.onDelete,
@@ -510,7 +526,7 @@ class _CommentItem extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.2),
+              color: AppTheme.primary.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -539,10 +555,7 @@ class _CommentItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _formatTime(comment.createdAt),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
             ),

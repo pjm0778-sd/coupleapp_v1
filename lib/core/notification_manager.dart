@@ -23,12 +23,11 @@ class NotificationManager {
   NotificationSettings get settings => _settings;
 
   // Web 권한 (Web 전용)
-  bool _webPermissionGranted = false;
+  final bool _webPermissionGranted = false;
   bool get webPermissionGranted => _webPermissionGranted;
 
   Stream<List<AppNotification>> get historyStream {
-    _historyController ??=
-        StreamController<List<AppNotification>>.broadcast();
+    _historyController ??= StreamController<List<AppNotification>>.broadcast();
     return _historyController!.stream;
   }
 
@@ -67,15 +66,17 @@ class NotificationManager {
     if (kIsWeb) return false;
 
     if (defaultTargetPlatform == TargetPlatform.android) {
-      final androidPlugin =
-          _plugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
+      final androidPlugin = _plugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
       final granted = await androidPlugin?.requestNotificationsPermission();
       return granted ?? false;
     } else if (defaultTargetPlatform == TargetPlatform.iOS) {
-      final iosPlugin =
-          _plugin.resolvePlatformSpecificImplementation<
-              IOSFlutterLocalNotificationsPlugin>();
+      final iosPlugin = _plugin
+          .resolvePlatformSpecificImplementation<
+            IOSFlutterLocalNotificationsPlugin
+          >();
       final granted = await iosPlugin?.requestPermissions(
         alert: true,
         badge: true,
@@ -110,12 +111,14 @@ class NotificationManager {
   }) async {
     // 내부 히스토리 추가
     if (type != null) {
-      addToHistory(AppNotification.fromRealtime(
-        id: '${id}_${DateTime.now().millisecondsSinceEpoch}',
-        title: title,
-        body: body,
-        type: type,
-      ));
+      addToHistory(
+        AppNotification.fromRealtime(
+          id: '${id}_${DateTime.now().millisecondsSinceEpoch}',
+          title: title,
+          body: body,
+          type: type,
+        ),
+      );
     }
 
     if (kIsWeb) return; // Web은 시스템 알림 미지원
@@ -224,8 +227,9 @@ class NotificationManager {
   }) async {
     if (!_settings.dateBefore) return;
 
-    final datePlan =
-        schedules.where((s) => s.isDate && s.date == tomorrow).toList();
+    final datePlan = schedules
+        .where((s) => s.isDate && s.date == tomorrow)
+        .toList();
 
     if (datePlan.isNotEmpty) {
       await showLocalNotification(
@@ -243,8 +247,9 @@ class NotificationManager {
   }) async {
     if (!_settings.dateToday) return;
 
-    final datePlan =
-        schedules.where((s) => s.isDate && s.date == today).toList();
+    final datePlan = schedules
+        .where((s) => s.isDate && s.date == today)
+        .toList();
 
     if (datePlan.isNotEmpty) {
       await showLocalNotification(

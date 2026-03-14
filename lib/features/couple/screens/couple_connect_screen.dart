@@ -35,7 +35,12 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
   Future<void> _loadMyCode() async {
     try {
       final code = await _coupleService.getOrCreateMyCode();
-      if (mounted) setState(() { _myCode = code; _isLoadingCode = false; });
+      if (mounted) {
+        setState(() {
+          _myCode = code;
+          _isLoadingCode = false;
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => _isLoadingCode = false);
     }
@@ -117,7 +122,11 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
             const SizedBox(height: 4),
             const Text(
               '아래 코드를 내 애인에게 공유하거나\n내 애인의 코드를 입력해 연결하세요',
-              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary, height: 1.5),
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondary,
+                height: 1.5,
+              ),
             ),
             const SizedBox(height: 32),
 
@@ -133,7 +142,9 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                 border: Border.all(color: AppTheme.border),
               ),
               child: _isLoadingCode
-                  ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : Column(
                       children: [
                         // 코드 표시
@@ -167,15 +178,23 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: AppTheme.border),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10)),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
                           ),
                           onPressed: _copyCode,
-                          icon: const Icon(Icons.copy_outlined,
-                              size: 16, color: AppTheme.textPrimary),
-                          label: const Text('코드 복사',
-                              style: TextStyle(color: AppTheme.textPrimary)),
+                          icon: const Icon(
+                            Icons.copy_outlined,
+                            size: 16,
+                            color: AppTheme.textPrimary,
+                          ),
+                          label: const Text(
+                            '코드 복사',
+                            style: TextStyle(color: AppTheme.textPrimary),
+                          ),
                         ),
                       ],
                     ),
@@ -228,7 +247,9 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: const BorderSide(
-                            color: AppTheme.primary, width: 1.5),
+                          color: AppTheme.primary,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -241,7 +262,8 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                         backgroundColor: AppTheme.primary,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                       onPressed: _isConnecting ? null : _connect,
@@ -250,11 +272,17 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  color: Colors.white, strokeWidth: 2),
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
-                          : const Text('연결하기',
+                          : const Text(
+                              '연결하기',
                               style: TextStyle(
-                                  fontSize: 15, fontWeight: FontWeight.w600)),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                 ],

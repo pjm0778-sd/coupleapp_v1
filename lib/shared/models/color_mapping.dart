@@ -23,30 +23,26 @@ class ColorMapping {
   });
 
   factory ColorMapping.fromMap(Map<String, dynamic> map) => ColorMapping(
-        id: map['id'] as String,
-        userId: map['user_id'] as String?,
-        colorHex: map['color_hex'] as String,
-        title: map['work_type'] as String? ?? '일정',
-        startTime: map['start_time'] != null ? _parseTime(map['start_time'] as String) : null,
-        endTime: map['end_time'] != null ? _parseTime(map['end_time'] as String) : null,
-      );
+    id: map['id'] as String,
+    userId: map['user_id'] as String?,
+    colorHex: map['color_hex'] as String,
+    title: map['work_type'] as String? ?? '일정',
+    startTime: map['start_time'] != null
+        ? _parseTime(map['start_time'] as String)
+        : null,
+    endTime: map['end_time'] != null
+        ? _parseTime(map['end_time'] as String)
+        : null,
+  );
 
   Map<String, dynamic> toMap() => {
-        'user_id': userId,
-        'color_hex': colorHex,
-        'work_type': title,
-      };
+    'user_id': userId,
+    'color_hex': colorHex,
+    'work_type': title,
+  };
 
   static TimeOfDay _parseTime(String time) {
     final parts = time.split(':');
-    return TimeOfDay(
-      hour: int.parse(parts[0]),
-      minute: int.parse(parts[1]),
-    );
-  }
-
-  static String? _formatTime(TimeOfDay? time) {
-    if (time == null) return null;
-    return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 }

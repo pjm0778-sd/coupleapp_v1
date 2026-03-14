@@ -18,37 +18,91 @@ Deno.serve(async (req) => {
 
     let prompt: string
     if (useMapping) {
-      // 매핑을 참고하는 모드 - 비슷한 색 계열도 인정
-      prompt = `이 이미지는 근무 스케줄 달력입니다. 
-      
-[분석 지침]
-1. 연도 및 월 식별: 이미지 내에서 해당 달력이 어느 연도와 어느 월인지 가장 먼저 찾아내세요. 만약 이미지에서 명확한 연도/월을 찾을 수 없다면 기본값으로 ${targetYear}년 ${targetMonth}월을 사용하세요.
-2. 색상 계열 기준 매칭: 사용자가 등록한 색상-근무형태 매핑 (${colorMappingText})을 참고하되, 정확히 일치하지 않아도 같은 색 계열(빨강, 파랑, 녹색 등)이면 매핑으로 인정하세요.
-3. 주요 색상 식별: 날짜 칸의 배경색이나 칸 내부의 마커 색상을 우선으로 분석하세요.
-4. 빈 날짜 스킵: 색상 마커나 배경색이 없는 날짜는 결과에서 제외하세요.
-5. 시간 추가: 매핑에 시작/종료 시간이 있는 경우 결과에 포함하세요. (형식: "HH:mm")
+      // 매핑 참고 모드
+      prompt = `당신은 달력 이미지에서 일정을 추출하는 전문가입니다.
 
-반드시 아래 JSON 형식으로만 응답하세요 (다른 설명 없이):
+이미지는 안드로이드, 아이폰, 구글 캘린더, 삼성 캘린더 등 어떤 달력 앱의 캡처일 수도 있습니다.
+
+【1단계: 연도와 월 파악】
+달력 상단 제목(예: "2025년 12월", "December 2025", "12월 2025")을 읽어 연도와 월을 파악하세요.
+제목이 보이지 않으면 날짜 숫자 배치와 요일로 유추하세요.
+어떤 방법으로도 알 수 없을 때만 연도=${targetYear}, 월=${targetMonth}를 사용하세요.
+파악한 연도와 월로 모든 날짜(start_date, end_date)를 구성하세요.
+
+【2단계: 일정 추출】
+이미지에 보이는 모든 일정을 빠짐없이 추출하세요:
+- 여러 날에 걸친 가로 막대(bar) 일정은 시작일~종료일을 하나의 일정으로 추출
+- 같은 날짜에 일정이 여러 개면 전부 추출
+- 파악한 연도/월 범위를 벗어나는 날짜(이전 달, 다음 달)는 제외
+- 일정이 없는 날짜는 포함하지 않음
+
+아래는 사용자가 등록한 색상-근무형태 매핑입니다:
+${colorMappingText}
+
+각 일정의 색상이 위 매핑 중 하나와 유사하면 해당 work_type과 start_time, end_time을 사용하세요.
+유사한 매핑이 없으면 이미지에서 읽은 텍스트나 색상 그대로 사용하세요.
+
+반드시 아래 JSON 형식으로만 응답하세요. 코드블록(\`\`\`) 없이 순수 JSON만 출력하세요:
 {
   "year": 연도숫자,
   "month": 월숫자,
-  "schedules": [{"date":"YYYY-MM-DD","work_type":"근무형태","color_hex":"#XXXXXX","start_time":"HH:mm","end_time":"HH:mm"}]
-}`
+  "schedules": [
+    {
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD",
+      "work_type": "일정명",
+      "color_hex": "#RRGGBB",
+      "start_time": "HH:mm",
+      "end_time": "HH:mm"
+    }
+  ]
+}
+
+규칙:
+- 하루짜리 일정은 start_date와 end_date를 동일하게 입력
+- start_time, end_time은 매핑에 시간 정보가 있거나 이미지에 표시된 경우에만 포함, 없으면 해당 필드 생략
+- color_hex는 일정의 배경색 또는 마커 색상 (#RRGGBB 형식)
+- work_type은 반드시 문자열로 입력. 텍스트가 없으면 색상 기반 이름(예: "파란 일정", "빨간 일정") 사용. null 절대 금지`
     } else {
-      // 매핑 무시 모드 - 사진의 색/글씨를 정확히 파악
-      prompt = `이 이미지는 근무 스케줄 달력입니다.
+      // 자유 인식 모드 - 매핑 없이 이미지에서 직접 추출
+      prompt = `당신은 달력 이미지에서 일정을 추출하는 전문가입니다.
 
-[분석 지침]
-1. 연도 및 월 식별: 이미지 내에서 해당 달력이 어느 연도와 어느 월인지 가장 먼저 찾아내세요. 만약 이미지에서 명확한 연도/월을 찾을 수 없다면 기본값으로 ${targetYear}년 ${targetMonth}월을 사용하세요.
-2. 색상/텍스트 정확 파악: 각 날짜의 실제 배경색(HEX)과 표시된 텍스트(근무명)를 정확히 파악하여 일정을 만드세요.
-3. 빈 날짜 스킵: 색상 마커나 배경색이 없는 날짜는 결과에서 제외하세요.
+이미지는 안드로이드, 아이폰, 구글 캘린더, 삼성 캘린더 등 어떤 달력 앱의 캡처일 수도 있습니다.
 
-반드시 아래 JSON 형식으로만 응답하세요 (다른 설명 없이):
+【1단계: 연도와 월 파악】
+달력 상단 제목(예: "2025년 12월", "December 2025", "12월 2025")을 읽어 연도와 월을 파악하세요.
+제목이 보이지 않으면 날짜 숫자 배치와 요일로 유추하세요.
+어떤 방법으로도 알 수 없을 때만 연도=${targetYear}, 월=${targetMonth}를 사용하세요.
+파악한 연도와 월로 모든 날짜(start_date, end_date)를 구성하세요.
+
+【2단계: 일정 추출】
+이미지에 보이는 모든 일정을 빠짐없이 추출하세요:
+- 여러 날에 걸친 가로 막대(bar) 일정은 시작일~종료일을 하나의 일정으로 추출
+- 같은 날짜에 일정이 여러 개면 전부 추출
+- 파악한 연도/월 범위를 벗어나는 날짜(이전 달, 다음 달)는 제외
+- 일정이 없는 날짜는 포함하지 않음
+
+반드시 아래 JSON 형식으로만 응답하세요. 코드블록(\`\`\`) 없이 순수 JSON만 출력하세요:
 {
   "year": 연도숫자,
   "month": 월숫자,
-  "schedules": [{"date":"YYYY-MM-DD","work_type":"근무형태","color_hex":"#XXXXXX"}]
-}`
+  "schedules": [
+    {
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD",
+      "work_type": "일정명 또는 색상 기반 분류",
+      "color_hex": "#RRGGBB",
+      "start_time": "HH:mm",
+      "end_time": "HH:mm"
+    }
+  ]
+}
+
+규칙:
+- 하루짜리 일정은 start_date와 end_date를 동일하게 입력
+- start_time, end_time은 이미지에 시간 정보가 있을 때만 포함, 없으면 해당 필드 생략
+- color_hex는 일정의 배경색 또는 마커 색상 (#RRGGBB 형식)
+- work_type은 반드시 문자열로 입력. 텍스트가 없으면 색상 기반 이름(예: "파란 일정", "빨간 일정") 사용. null 절대 금지`
     }
 
     const apiKey = Deno.env.get('OPENAI_API_KEY') ?? ''
@@ -97,10 +151,29 @@ Deno.serve(async (req) => {
 
     const data = await response.json()
     const content = data.choices?.[0]?.message?.content ?? '{}'
+    console.log('GPT-4o raw response:', content)
 
-    // JSON 추출 (객체 형태 {year, month, schedules})
-    const match = content.match(/\{[\s\S]*\}/)
+    // JSON 추출 (코드블록 제거 후 파싱)
+    const cleaned = content
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim()
+    const match = cleaned.match(/\{[\s\S]*\}/)
     const resultJson = match ? JSON.parse(match[0]) : { year: targetYear, month: targetMonth, schedules: [] }
+
+    // year/month 보정
+    const finalYear = resultJson.year ?? targetYear
+    const finalMonth = resultJson.month ?? targetMonth
+    resultJson.year = finalYear
+    resultJson.month = finalMonth
+
+    // start_date/end_date null 보정: 날짜가 null이면 제거, year/month가 있으면 로그
+    if (resultJson.schedules) {
+      console.log('schedules before fix:', JSON.stringify(resultJson.schedules.slice(0, 3)))
+      resultJson.schedules = (resultJson.schedules as Record<string, unknown>[]).filter(
+        (s) => s['start_date'] != null
+      )
+    }
 
     return new Response(JSON.stringify(resultJson), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

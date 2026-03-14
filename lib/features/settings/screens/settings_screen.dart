@@ -51,15 +51,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .eq('id', _coupleId!);
         if (mounted) {
           setState(() => _startedAt = date);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('연애 시작일이 변경되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('연애 시작일이 변경되었습니다')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('변경 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('변경 실패: $e')));
         }
       }
     }
@@ -67,8 +67,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _editProfile(bool isMyProfile) async {
     final controller = TextEditingController(
-        text: isMyProfile ? _myNickname : _partnerNickname);
-        
+      text: isMyProfile ? _myNickname : _partnerNickname,
+    );
+
     final newName = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -94,7 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (newName != null && newName.isNotEmpty) {
       try {
         final userId = supabase.auth.currentUser!.id;
-        
+
         if (isMyProfile) {
           await supabase
               .from('profiles')
@@ -105,31 +106,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
           // 파트너 닉네임 설정 (다른 사용자의 프로필 업데이트)
           if (_coupleId != null) {
             final couple = await supabase
-              .from('couples')
-              .select('user1_id, user2_id')
-              .eq('id', _coupleId!)
-              .single();
-            final partnerId = couple['user1_id'] == userId ? couple['user2_id'] : couple['user1_id'];
+                .from('couples')
+                .select('user1_id, user2_id')
+                .eq('id', _coupleId!)
+                .single();
+            final partnerId = couple['user1_id'] == userId
+                ? couple['user2_id']
+                : couple['user1_id'];
             if (partnerId != null) {
-               await supabase
-                .from('profiles')
-                .update({'nickname': newName})
-                .eq('id', partnerId);
-               setState(() => _partnerNickname = newName);
+              await supabase
+                  .from('profiles')
+                  .update({'nickname': newName})
+                  .eq('id', partnerId);
+              setState(() => _partnerNickname = newName);
             }
           }
         }
-        
+
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('이름이 변경되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('이름이 변경되었습니다')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('변경 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('변경 실패: $e')));
         }
       }
     }
@@ -153,7 +156,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // 프로필이 없으면 생성 (트리거가 작동 안 했을 경우 대비)
       if (profile == null) {
-        final nickname = supabase.auth.currentUser!.userMetadata?['nickname'] as String? ?? '사용자';
+        final nickname =
+            supabase.auth.currentUser!.userMetadata?['nickname'] as String? ??
+            '사용자';
         await supabase.from('profiles').insert({
           'id': userId,
           'nickname': nickname,
@@ -172,7 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             .select('started_at, user1_id, user2_id')
             .eq('id', _coupleId!)
             .maybeSingle();
-            
+
         if (couple != null) {
           if (couple['started_at'] != null) {
             _startedAt = DateTime.parse(couple['started_at'] as String);
@@ -180,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final partnerId = couple['user1_id'] == userId
               ? couple['user2_id']
               : couple['user1_id'];
-              
+
           if (partnerId != null && (partnerId as String).isNotEmpty) {
             final partner = await supabase
                 .from('profiles')
@@ -213,13 +218,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.redAccent,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('로그아웃'),
@@ -267,18 +277,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       // 닉네임
                       Row(
                         children: [
-                          const Icon(Icons.favorite,
-                              color: AppTheme.accent, size: 18),
+                          const Icon(
+                            Icons.favorite,
+                            color: AppTheme.accent,
+                            size: 18,
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             _myNickname ?? '-',
                             style: const TextStyle(
-                                fontWeight: FontWeight.w600, fontSize: 15),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                            ),
                           ),
                           const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('&',
-                                style: TextStyle(color: AppTheme.textSecondary)),
+                            child: Text(
+                              '&',
+                              style: TextStyle(color: AppTheme.textSecondary),
+                            ),
                           ),
                           Text(
                             _partnerNickname ?? '연결 대기 중',
@@ -293,9 +310,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const Spacer(),
                           GestureDetector(
                             onTap: _coupleId != null ? _changeStartedAt : null,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                            ),
+                            child: Row(mainAxisSize: MainAxisSize.min),
                           ),
                         ],
                       ),
@@ -334,7 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const SizedBox(height: 32),
-                
+
                 // 프로필 설정
                 _buildSectionTitle('프로필 설정'),
                 const SizedBox(height: 12),
@@ -347,22 +362,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.person_outline, color: AppTheme.textPrimary),
+                        leading: const Icon(
+                          Icons.person_outline,
+                          color: AppTheme.textPrimary,
+                        ),
                         title: const Text('내 이름 변경'),
-                        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppTheme.textSecondary,
+                        ),
                         onTap: () => _editProfile(true),
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.favorite_border, color: AppTheme.accent),
+                        leading: const Icon(
+                          Icons.favorite_border,
+                          color: AppTheme.accent,
+                        ),
                         title: const Text('내 애인 이름 설정'),
-                        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppTheme.textSecondary,
+                        ),
                         onTap: () => _editProfile(false),
                       ),
                     ],
                   ),
                 ),
-                
+
                 const SizedBox(height: 32),
 
                 // 앱 설정
@@ -377,40 +404,69 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: const Icon(Icons.notifications_outlined, color: AppTheme.textPrimary),
+                        leading: const Icon(
+                          Icons.notifications_outlined,
+                          color: AppTheme.textPrimary,
+                        ),
                         title: const Text('알림 설정'),
-                        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppTheme.textSecondary,
+                        ),
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => const NotificationSettingsScreen(),
+                              builder: (_) =>
+                                  const NotificationSettingsScreen(),
                             ),
                           );
                         },
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.info_outline, color: AppTheme.textPrimary),
+                        leading: const Icon(
+                          Icons.info_outline,
+                          color: AppTheme.textPrimary,
+                        ),
                         title: const Text('앱 버전'),
-                        trailing: const Text('v1.0.0', style: TextStyle(color: AppTheme.textSecondary)),
+                        trailing: const Text(
+                          'v1.0.0',
+                          style: TextStyle(color: AppTheme.textSecondary),
+                        ),
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.description_outlined, color: AppTheme.textPrimary),
+                        leading: const Icon(
+                          Icons.description_outlined,
+                          color: AppTheme.textPrimary,
+                        ),
                         title: const Text('서비스 이용약관'),
-                        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppTheme.textSecondary,
+                        ),
                         onTap: () {
-                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('준비 중입니다.')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('준비 중입니다.')),
+                          );
                         },
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.privacy_tip_outlined, color: AppTheme.textPrimary),
+                        leading: const Icon(
+                          Icons.privacy_tip_outlined,
+                          color: AppTheme.textPrimary,
+                        ),
                         title: const Text('개인정보 처리방침'),
-                        trailing: const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
+                        trailing: const Icon(
+                          Icons.chevron_right,
+                          color: AppTheme.textSecondary,
+                        ),
                         onTap: () {
-                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('준비 중입니다.')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('준비 중입니다.')),
+                          );
                         },
                       ),
                     ],
@@ -425,16 +481,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     side: const BorderSide(color: Colors.redAccent),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     foregroundColor: Colors.redAccent,
                   ),
                   onPressed: _signOut,
                   icon: const Icon(Icons.logout, size: 18),
-                  label: const Text('로그아웃',
-                      style: TextStyle(fontWeight: FontWeight.w500)),
+                  label: const Text(
+                    '로그아웃',
+                    style: TextStyle(fontWeight: FontWeight.w500),
+                  ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // 계정 탈퇴
                 TextButton(
                   onPressed: () {
@@ -442,24 +501,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       context: context,
                       builder: (ctx) => AlertDialog(
                         title: const Text('회원 탈퇴'),
-                        content: const Text('정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.'),
+                        content: const Text(
+                          '정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.',
+                        ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('취소'),
+                          ),
                           ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent, foregroundColor: Colors.white),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.redAccent,
+                              foregroundColor: Colors.white,
+                            ),
                             onPressed: () async {
-                               // 탈퇴 로직
-                               Navigator.pop(ctx);
-                               ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('탈퇴 처리가 완료되었습니다')));
-                               await supabase.auth.signOut();
-                            }, 
-                            child: const Text('탈퇴하기')
+                              // 탈퇴 로직
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('탈퇴 처리가 완료되었습니다')),
+                              );
+                              await supabase.auth.signOut();
+                            },
+                            child: const Text('탈퇴하기'),
                           ),
                         ],
                       ),
                     );
                   },
-                  child: const Text('회원 탈퇴', style: TextStyle(color: Colors.grey, decoration: TextDecoration.underline)),
+                  child: const Text(
+                    '회원 탈퇴',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -470,9 +545,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Text(
       title,
       style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.textPrimary),
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textPrimary,
+      ),
     );
   }
 }

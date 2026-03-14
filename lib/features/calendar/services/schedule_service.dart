@@ -1,12 +1,13 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/repeat_pattern.dart';
 
 enum ScheduleFilter {
-  mine,        // 나만
-  partner,      // 파트너만
-  both,         // 우리 둘 다
+  mine, // 나만
+  partner, // 파트너만
+  both, // 우리 둘 다
 }
 
 class ScheduleService {
@@ -152,10 +153,7 @@ class ScheduleService {
 
   /// 반복 일정 그룹 전체 삭제
   Future<void> deleteRepeatGroup(String groupId) async {
-    await supabase
-        .from('schedules')
-        .delete()
-        .eq('repeat_group_id', groupId);
+    await supabase.from('schedules').delete().eq('repeat_group_id', groupId);
   }
 
   /// 특정 날짜 이후 반복 일정 삭제
@@ -173,7 +171,8 @@ class ScheduleService {
     required DateTime startDate,
     int maxMonths = 12,
   }) {
-    final endDate = pattern.endDate ??
+    final endDate =
+        pattern.endDate ??
         DateTime(startDate.year, startDate.month + maxMonths, startDate.day);
     final dates = <DateTime>[];
 
@@ -210,7 +209,10 @@ class ScheduleService {
           if (d.isAfter(endDate)) break;
           if (!d.isBefore(startDate)) dates.add(d);
           month++;
-          if (month > 12) { month = 1; year++; }
+          if (month > 12) {
+            month = 1;
+            year++;
+          }
           if (dates.length > 120) break;
         }
         break;
@@ -294,12 +296,10 @@ class ScheduleService {
           .gte('date', start.toIso8601String().split('T')[0])
           .lte('date', end.toIso8601String().split('T')[0])
           .select();
-
-      if (data == null) return 0;
       return (data as List).length;
     } catch (e) {
       debugPrint('deleteMyMonthSchedules error: $e');
-      // 삭제 과정에서 에러가 나더라도 실제 쿼리는 수행되었을 수 있으므로 
+      // 삭제 과정에서 에러가 나더라도 실제 쿼리는 수행되었을 수 있으므로
       // 예외를 밖으로 던져서 UI에서 처리하게 하되, 로그를 남깁니다.
       rethrow;
     }

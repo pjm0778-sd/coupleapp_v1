@@ -37,16 +37,24 @@ class _CalendarCardState extends State<CalendarCard> {
   Color _getScheduleColor(Schedule schedule) {
     if (schedule.colorHex != null && schedule.colorHex!.isNotEmpty) {
       try {
-        return Color(int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16));
+        return Color(
+          int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16),
+        );
       } catch (_) {}
     }
     switch (schedule.category) {
-      case '근무': return const Color(0xFF4CAF50);
-      case '약속': return const Color(0xFF2196F3);
-      case '여행': return const Color(0xFFFF9800);
-      case '데이트': return const Color(0xFFE91E63);
-      case '휴무': return const Color(0xFFBDBDBD);
-      default: return AppTheme.primary;
+      case '근무':
+        return const Color(0xFF4CAF50);
+      case '약속':
+        return const Color(0xFF2196F3);
+      case '여행':
+        return const Color(0xFFFF9800);
+      case '데이트':
+        return const Color(0xFFE91E63);
+      case '휴무':
+        return const Color(0xFFBDBDBD);
+      default:
+        return AppTheme.primary;
     }
   }
 
@@ -78,13 +86,18 @@ class _CalendarCardState extends State<CalendarCard> {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: widget.isToday ? AppTheme.primary : AppTheme.textPrimary,
+                  color: widget.isToday
+                      ? AppTheme.primary
+                      : AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(width: 8),
               if (widget.isToday)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primary,
                     borderRadius: BorderRadius.circular(8),
@@ -115,23 +128,29 @@ class _CalendarCardState extends State<CalendarCard> {
                   ),
                   if (widget.holidays.isNotEmpty) ...[
                     const SizedBox(width: 8),
-                    ...widget.holidays.take(2).map((h) => Container(
-                          margin: const EdgeInsets.only(right: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: h.color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            '${h.emoji} ${h.name}',
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: h.color,
-                              fontWeight: FontWeight.w500,
+                    ...widget.holidays
+                        .take(2)
+                        .map(
+                          (h) => Container(
+                            margin: const EdgeInsets.only(right: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: h.color.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${h.emoji} ${h.name}',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: h.color,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                        )),
+                        ),
                   ],
                 ],
               ),
@@ -162,7 +181,7 @@ class _CalendarCardState extends State<CalendarCard> {
                         _EmptyState(
                           message: widget.isToday ? '오늘 일정이 없어요' : '일정이 없어요',
                           icon: Icons.event_note_outlined,
-                        )
+                        ),
                       ]
                     : widget.schedules.asMap().entries.map((entry) {
                         final index = entry.key;
@@ -194,7 +213,6 @@ class _ScheduleItem extends StatelessWidget {
   final String Function(TimeOfDay?, TimeOfDay?) formatTimeRange;
 
   const _ScheduleItem({
-    super.key,
     required this.schedule,
     required this.isFirst,
     required this.onTap,
@@ -207,7 +225,9 @@ class _ScheduleItem extends StatelessWidget {
   Color _getScheduleColor(Schedule schedule) {
     if (schedule.colorHex != null && schedule.colorHex!.isNotEmpty) {
       try {
-        return Color(int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16));
+        return Color(
+          int.parse('FF${schedule.colorHex!.replaceAll('#', '')}', radix: 16),
+        );
       } catch (_) {}
     }
     // category 기준 색상
@@ -239,7 +259,8 @@ class _ScheduleItem extends StatelessWidget {
     final scheduleColor = _getScheduleColor(schedule);
     final categoryIcon = getCategoryIcon(category);
     final timeRange = formatTimeRange(schedule.startTime, schedule.endTime);
-    final hasLocation = schedule.location != null && schedule.location!.isNotEmpty;
+    final hasLocation =
+        schedule.location != null && schedule.location!.isNotEmpty;
 
     return GestureDetector(
       onTap: onTap,
@@ -260,11 +281,7 @@ class _ScheduleItem extends StatelessWidget {
                 color: scheduleColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(
-                categoryIcon,
-                color: Colors.white,
-                size: 18,
-              ),
+              child: Icon(categoryIcon, color: Colors.white, size: 18),
             ),
             const SizedBox(width: 12),
             // 일정 정보
@@ -334,11 +351,7 @@ class _EmptyState extends StatelessWidget {
   final String message;
   final IconData icon;
 
-  const _EmptyState({
-    super.key,
-    required this.message,
-    required this.icon,
-  });
+  const _EmptyState({required this.message, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -347,11 +360,7 @@ class _EmptyState extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: AppTheme.textSecondary.withOpacity(0.4),
-            size: 32,
-          ),
+          Icon(icon, color: AppTheme.textSecondary.withOpacity(0.4), size: 32),
           const SizedBox(width: 12),
           Text(
             message,

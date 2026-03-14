@@ -40,9 +40,7 @@ class HomeService {
   }
 
   /// 오늘의 일정 요약
-  Future<Map<String, List<Schedule>>> getTodaySchedules(
-    String coupleId,
-  ) async {
+  Future<Map<String, List<Schedule>>> getTodaySchedules(String coupleId) async {
     final today = DateTime.now();
     final todayStr = today.toIso8601String().split('T')[0];
     final currentUserId = supabase.auth.currentUser!.id;
@@ -73,10 +71,7 @@ class HomeService {
         .map((e) => Schedule.fromMap(e))
         .toList();
 
-    return {
-      'mine': mySchedules,
-      'partner': partnerSchedules,
-    };
+    return {'mine': mySchedules, 'partner': partnerSchedules};
   }
 
   /// 내일의 일정 요약
@@ -110,9 +105,7 @@ class HomeService {
   }
 
   /// 다음 데이트 조회 (직접 등록한 데이트 일정 + 시스템 기념일 포함)
-  Future<Map<String, dynamic>?> getNextDateSchedule(
-    String coupleId,
-  ) async {
+  Future<Map<String, dynamic>?> getNextDateSchedule(String coupleId) async {
     final now = DateTime.now();
     final todayStr = now.toIso8601String().split('T')[0];
 
@@ -138,7 +131,7 @@ class HomeService {
         .select('started_at')
         .eq('id', coupleId)
         .maybeSingle();
-    
+
     Schedule? annivSchedule;
     if (coupleData != null && coupleData['started_at'] != null) {
       final startedAt = DateTime.parse(coupleData['started_at'] as String);
@@ -148,15 +141,17 @@ class HomeService {
       for (int i = 1; i <= 10; i++) {
         final d = startedAt.add(Duration(days: (i * 100) - 1));
         if (!d.isBefore(DateTime(now.year, now.month, now.day))) {
-          anniversaries.add(Schedule(
-            id: 'anniv_100_$i',
-            userId: 'system',
-            coupleId: coupleId,
-            date: d,
-            title: '${i * 100}일',
-            category: '기념일',
-            isAnniversary: true,
-          ));
+          anniversaries.add(
+            Schedule(
+              id: 'anniv_100_$i',
+              userId: 'system',
+              coupleId: coupleId,
+              date: d,
+              title: '${i * 100}일',
+              category: '기념일',
+              isAnniversary: true,
+            ),
+          );
         }
       }
 
@@ -164,15 +159,17 @@ class HomeService {
       for (int i = 1; i <= 10; i++) {
         final d = DateTime(startedAt.year + i, startedAt.month, startedAt.day);
         if (!d.isBefore(DateTime(now.year, now.month, now.day))) {
-          anniversaries.add(Schedule(
-            id: 'anniv_yr_$i',
-            userId: 'system',
-            coupleId: coupleId,
-            date: d,
-            title: '$i주년',
-            category: '기념일',
-            isAnniversary: true,
-          ));
+          anniversaries.add(
+            Schedule(
+              id: 'anniv_yr_$i',
+              userId: 'system',
+              coupleId: coupleId,
+              date: d,
+              title: '$i주년',
+              category: '기념일',
+              isAnniversary: true,
+            ),
+          );
         }
       }
 
@@ -185,7 +182,9 @@ class HomeService {
     // 3. DB 일정과 기념일 중 더 가까운 것 선택
     Schedule? next;
     if (dbSchedule != null && annivSchedule != null) {
-      next = dbSchedule.date.isBefore(annivSchedule.date) ? dbSchedule : annivSchedule;
+      next = dbSchedule.date.isBefore(annivSchedule.date)
+          ? dbSchedule
+          : annivSchedule;
     } else {
       next = dbSchedule ?? annivSchedule;
     }
@@ -196,10 +195,7 @@ class HomeService {
     final nowDate = DateTime(now.year, now.month, now.day);
     final diff = targetDate.difference(nowDate).inDays;
 
-    return {
-      'schedule': next,
-      'days_until': diff,
-    };
+    return {'schedule': next, 'days_until': diff};
   }
 
   /// 홈 화면 요약 데이터

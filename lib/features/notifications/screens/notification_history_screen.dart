@@ -10,14 +10,19 @@ class NotificationHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final manager = NotificationManager();
     final history = manager.history;
-    final scheduleAlerts = history.where((n) => 
-      n.type == NotificationType.scheduleAdded ||
-      n.type == NotificationType.scheduleDeleted ||
-      n.type == NotificationType.scheduleUpdated ||
-      n.type == NotificationType.commentAdded).toList();
+    final scheduleAlerts = history
+        .where(
+          (n) =>
+              n.type == NotificationType.scheduleAdded ||
+              n.type == NotificationType.scheduleDeleted ||
+              n.type == NotificationType.scheduleUpdated ||
+              n.type == NotificationType.commentAdded,
+        )
+        .toList();
 
-    final generalAlerts = history.where((n) => 
-      !scheduleAlerts.contains(n)).toList();
+    final generalAlerts = history
+        .where((n) => !scheduleAlerts.contains(n))
+        .toList();
 
     final unreadCount = history.where((n) => !n.isRead).length;
 
@@ -32,19 +37,16 @@ class NotificationHistoryScreen extends StatelessWidget {
                 onPressed: () {
                   manager.markAllAsRead();
                 },
-                child: const Text(
-                  '모두 읽음',
-                  style: TextStyle(fontSize: 13),
-                ),
+                child: const Text('모두 읽음', style: TextStyle(fontSize: 13)),
               ),
-            ],
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(text: '일반 알림'),
               Tab(text: '이벤트 알림'),
             ],
           ),
-          ),
+        ),
         body: TabBarView(
           children: [
             _buildNotificationList(generalAlerts),
@@ -57,32 +59,32 @@ class NotificationHistoryScreen extends StatelessWidget {
 
   Widget _buildNotificationList(List<AppNotification> notifications) {
     return notifications.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.notifications_none_outlined,
-                    color: AppTheme.textSecondary,
-                    size: 48,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    '알림이 없어요',
-                    style: TextStyle(color: AppTheme.textSecondary),
-                  ),
-                ],
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: notifications.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, index) {
-                final notification = notifications[index];
-                return _NotificationCard(notification: notification);
-              },
-            );
+        ? const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.notifications_none_outlined,
+                  color: AppTheme.textSecondary,
+                  size: 48,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '알림이 없어요',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+              ],
+            ),
+          )
+        : ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: notifications.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (_, index) {
+              final notification = notifications[index];
+              return _NotificationCard(notification: notification);
+            },
+          );
   }
 }
 
@@ -123,7 +125,9 @@ class _NotificationCard extends StatelessWidget {
                 Text(
                   notification.title,
                   style: TextStyle(
-                    fontWeight: notification.isRead ? FontWeight.normal : FontWeight.w600,
+                    fontWeight: notification.isRead
+                        ? FontWeight.normal
+                        : FontWeight.w600,
                     fontSize: 14,
                     color: AppTheme.textPrimary,
                   ),

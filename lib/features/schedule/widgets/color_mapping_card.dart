@@ -25,7 +25,9 @@ class ColorMappingCard extends StatelessWidget {
         ? '${_formatTime(mapping.startTime)} ~ ${_formatTime(mapping.endTime)}'
         : '시간 미설정';
 
-    final isNightShift = mapping.startTime != null && mapping.endTime != null &&
+    final isNightShift =
+        mapping.startTime != null &&
+        mapping.endTime != null &&
         mapping.startTime!.hour > mapping.endTime!.hour;
 
     return Container(
@@ -94,14 +96,18 @@ class ColorMappingCard extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 20),
               onPressed: onEdit,
-              style: IconButton.styleFrom(foregroundColor: AppTheme.textSecondary),
+              style: IconButton.styleFrom(
+                foregroundColor: AppTheme.textSecondary,
+              ),
               tooltip: '수정',
             ),
           // 삭제 버튼
           IconButton(
             icon: const Icon(Icons.delete_outline, size: 20),
             onPressed: onDelete,
-            style: IconButton.styleFrom(foregroundColor: AppTheme.textSecondary),
+            style: IconButton.styleFrom(
+              foregroundColor: AppTheme.textSecondary,
+            ),
             tooltip: '삭제',
           ),
         ],

@@ -23,10 +23,7 @@ class TabSwitchNotification extends Notification {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await NotificationManager().initialize();
   runApp(const CoupleApp());
 }
@@ -48,9 +45,7 @@ class CoupleApp extends StatelessWidget {
       ),
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
-      routes: {
-        '/': (_) => const AppRouter(),
-      },
+      routes: {'/': (_) => const AppRouter()},
     );
   }
 }
@@ -64,8 +59,7 @@ class AppRouter extends StatelessWidget {
     return StreamBuilder<AuthState>(
       stream: supabase.auth.onAuthStateChange,
       builder: (context, authSnap) {
-        final session =
-            authSnap.data?.session ?? supabase.auth.currentSession;
+        final session = authSnap.data?.session ?? supabase.auth.currentSession;
 
         // 미로그인
         if (session == null) return const LoginScreen();
@@ -169,10 +163,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           return true;
         },
         child: Scaffold(
-          body: IndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
+          body: IndexedStack(index: _currentIndex, children: _screens),
           bottomNavigationBar: Container(
             decoration: const BoxDecoration(
               border: Border(top: BorderSide(color: AppTheme.border)),

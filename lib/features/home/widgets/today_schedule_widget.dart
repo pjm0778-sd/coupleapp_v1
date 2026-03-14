@@ -64,72 +64,72 @@ class TodayScheduleWidget extends StatelessWidget {
     final partnerSchedules = todaySchedules['partner'] ?? [];
 
     return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.border, width: 1),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 헤더
-            Row(
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더
+          Row(
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                weekday,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // 일정 목록
+          if (mySchedules.isEmpty && partnerSchedules.isEmpty)
+            Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.event_note_outlined,
+                    size: 48,
+                    color: AppTheme.textSecondary.withOpacity(0.3),
                   ),
-                ),
-                const Spacer(),
-                Text(
-                  weekday,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.textSecondary,
+                  const SizedBox(height: 16),
+                  const Text(
+                    '오늘 일정이 없어요',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // 일정 목록
-            if (mySchedules.isEmpty && partnerSchedules.isEmpty)
-              Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.event_note_outlined,
-                      size: 48,
-                      color: AppTheme.textSecondary.withOpacity(0.3),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      '오늘 일정이 없어요',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            else ...[
-              // 내 일정
-              if (mySchedules.isNotEmpty) ...[
-                _buildScheduleSection('나', mySchedules),
-                const SizedBox(height: 20),
-              ],
-              // 내 애인 일정
-              if (partnerSchedules.isNotEmpty) ...[
-                _buildScheduleSection('내 애인', partnerSchedules),
-              ],
+                ],
+              ),
+            )
+          else ...[
+            // 내 일정
+            if (mySchedules.isNotEmpty) ...[
+              _buildScheduleSection('나', mySchedules),
+              const SizedBox(height: 20),
+            ],
+            // 내 애인 일정
+            if (partnerSchedules.isNotEmpty) ...[
+              _buildScheduleSection('내 애인', partnerSchedules),
             ],
           ],
-        ),
-      );
+        ],
+      ),
+    );
   }
 
   Widget _buildScheduleSection(String title, List<Schedule> schedules) {
@@ -171,7 +171,6 @@ class _ScheduleItem extends StatelessWidget {
   final String Function(TimeOfDay?, TimeOfDay?) formatTimeRange;
 
   const _ScheduleItem({
-    super.key,
     required this.schedule,
     required this.index,
     required this.getCategoryColor,
@@ -187,7 +186,8 @@ class _ScheduleItem extends StatelessWidget {
     final categoryColor = getCategoryColor(category);
     final categoryIcon = getCategoryIcon(category);
     final timeRange = formatTimeRange(schedule.startTime, schedule.endTime);
-    final hasLocation = schedule.location != null && schedule.location!.isNotEmpty;
+    final hasLocation =
+        schedule.location != null && schedule.location!.isNotEmpty;
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -205,11 +205,7 @@ class _ScheduleItem extends StatelessWidget {
               color: categoryColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              categoryIcon,
-              color: Colors.white,
-              size: 18,
-            ),
+            child: Icon(categoryIcon, color: Colors.white, size: 18),
           ),
           const SizedBox(width: 12),
           // 일정 정보
@@ -240,23 +236,23 @@ class _ScheduleItem extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                          Icons.location_on_outlined,
-                          size: 14,
-                          color: AppTheme.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            schedule.location!,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textPrimary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: AppTheme.textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          schedule.location!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textPrimary,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ],
+                      ),
+                    ],
                   ),
                 ],
               ],

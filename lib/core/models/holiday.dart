@@ -3,11 +3,7 @@ class Holiday {
   final String name;
   final bool isNationwide;
 
-  Holiday({
-    required this.date,
-    required this.name,
-    this.isNationwide = false,
-  });
+  Holiday({required this.date, required this.name, this.isNationwide = false});
 
   factory Holiday.fromJson(Map<String, dynamic> json) {
     return Holiday(

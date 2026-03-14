@@ -46,10 +46,7 @@ class ScheduleCommentsWidget extends StatelessWidget {
             itemBuilder: (context, index) {
               final comment = comments[index];
               final isMine = _isMine(comment);
-              return _CommentItem(
-                comment: comment,
-                isMine: isMine,
-              );
+              return _CommentItem(comment: comment, isMine: isMine);
             },
           ),
         ),
@@ -62,10 +59,7 @@ class _CommentItem extends StatelessWidget {
   final ScheduleComment comment;
   final bool isMine;
 
-  const _CommentItem({
-    required this.comment,
-    required this.isMine,
-  });
+  const _CommentItem({required this.comment, required this.isMine});
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +70,9 @@ class _CommentItem extends StatelessWidget {
         children: [
           // 아바타
           _Avatar(
-            initial: comment.content.isNotEmpty ? comment.content[0].toUpperCase() : '?',
+            initial: comment.content.isNotEmpty
+                ? comment.content[0].toUpperCase()
+                : '?',
           ),
           const SizedBox(width: 12),
           // 댓글 내용
@@ -94,10 +90,7 @@ class _CommentItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   _formatTime(comment.createdAt),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -140,9 +133,7 @@ class _CommentItem extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   final String initial;
 
-  const _Avatar({
-    required this.initial,
-  });
+  const _Avatar({required this.initial});
 
   @override
   Widget build(BuildContext context) {
@@ -171,10 +162,7 @@ class _EmptyState extends StatelessWidget {
   final String message;
   final IconData icon;
 
-  const _EmptyState({
-    required this.message,
-    required this.icon,
-  });
+  const _EmptyState({required this.message, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -183,11 +171,7 @@ class _EmptyState extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            icon,
-            color: AppTheme.textSecondary.withOpacity(0.4),
-            size: 32,
-          ),
+          Icon(icon, color: AppTheme.textSecondary.withOpacity(0.4), size: 32),
           const SizedBox(width: 12),
           Text(
             message,

@@ -49,36 +49,42 @@ class _HomeScreenState extends State<HomeScreen> {
     // 이미 채널이 있으면 리스너만 재확인하거나 무시 (중복 방지)
     if (_schedulesChannel != null) return;
 
-    _schedulesChannel = Supabase.instance.client.channel('public:schedules_home')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'schedules',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'couple_id',
-          value: _coupleId!,
-        ),
-        callback: (payload) {
-          debugPrint('Realtime change detected: ${payload.eventType}');
-          if (mounted) _loadData();
-        },
-      )..subscribe();
+    _schedulesChannel =
+        Supabase.instance.client
+            .channel('public:schedules_home')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'schedules',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'couple_id',
+                value: _coupleId!,
+              ),
+              callback: (payload) {
+                debugPrint('Realtime change detected: ${payload.eventType}');
+                if (mounted) _loadData();
+              },
+            )
+          ..subscribe();
 
-    _couplesChannel ??= Supabase.instance.client.channel('public:couples_home')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.update,
-        schema: 'public',
-        table: 'couples',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'id',
-          value: _coupleId!,
-        ),
-        callback: (payload) {
-          if (mounted) _loadData();
-        },
-      )..subscribe();
+    _couplesChannel ??=
+        Supabase.instance.client
+            .channel('public:couples_home')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'couples',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'id',
+                value: _coupleId!,
+              ),
+              callback: (payload) {
+                if (mounted) _loadData();
+              },
+            )
+          ..subscribe();
   }
 
   @override
@@ -121,7 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final nm = NotificationManager();
 
     // 오늘 데이트 체크
-    final todaySchedules = data['today_schedules'] as Map<String, List<Schedule>>?;
+    final todaySchedules =
+        data['today_schedules'] as Map<String, List<Schedule>>?;
     if (todaySchedules != null) {
       final allToday = <Schedule>[
         ...(todaySchedules['mine'] ?? []),
@@ -130,8 +137,12 @@ class _HomeScreenState extends State<HomeScreen> {
       await nm.checkDateToday(schedules: allToday, today: today);
 
       // 둘 다 휴무 체크
-      final myOff = (todaySchedules['mine'] ?? []).where((s) => s.category == '휴무').toList();
-      final partnerOff = (todaySchedules['partner'] ?? []).where((s) => s.category == '휴무').toList();
+      final myOff = (todaySchedules['mine'] ?? [])
+          .where((s) => s.category == '휴무')
+          .toList();
+      final partnerOff = (todaySchedules['partner'] ?? [])
+          .where((s) => s.category == '휴무')
+          .toList();
       if (myOff.isNotEmpty && partnerOff.isNotEmpty) {
         await nm.checkBothOffAndSchedule(
           mySchedules: myOff,
@@ -142,7 +153,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 내일 데이트 체크
-    final tomorrowSchedules = data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
+    final tomorrowSchedules =
+        data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
     if (tomorrowSchedules != null) {
       final allTomorrow = <Schedule>[
         ...(tomorrowSchedules['mine'] ?? []),
@@ -153,12 +165,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   int? get _dDays => _data['d_days']?['days'] as int?;
-  String? get _partnerNickname => _data['d_days']?['partner_nickname'] as String?;
+  String? get _partnerNickname =>
+      _data['d_days']?['partner_nickname'] as String?;
   Map<String, List<Schedule>>? get _todaySchedules =>
       _data['today_schedules'] as Map<String, List<Schedule>>?;
   Map<String, List<Schedule>>? get _tomorrowSchedules =>
       _data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
-  Map<String, dynamic>? get _nextDate => _data['next_date'] as Map<String, dynamic>?;
+  Map<String, dynamic>? get _nextDate =>
+      _data['next_date'] as Map<String, dynamic>?;
   int? get _nextDateDaysUntil => _data['next_date']?['days_until'] as int?;
 
   bool _hasSchedules(Map<String, List<Schedule>>? schedules) {
@@ -211,11 +225,11 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
-              ? _buildNoCoupleState()
-              : RefreshIndicator(
-                  onRefresh: _loadData,
-                  child: _buildHomeContent(todayWeekday, tomorrowWeekday),
-                ),
+          ? _buildNoCoupleState()
+          : RefreshIndicator(
+              onRefresh: _loadData,
+              child: _buildHomeContent(todayWeekday, tomorrowWeekday),
+            ),
     );
   }
 
