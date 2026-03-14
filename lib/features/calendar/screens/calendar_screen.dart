@@ -290,6 +290,48 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _editScheduleItem(Schedule schedule) async {
+    final result = await showDialog<Schedule>(
+      context: context,
+      builder: (context) => ScheduleAddDialog(existingSchedule: schedule),
+    );
+    if (result != null && mounted) {
+      try {
+        await _service.updateSchedule(schedule.id, result.toMap());
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('일정이 수정되었습니다')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('일정 수정 실패: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteScheduleItem(Schedule schedule) async {
+    try {
+      await _service.deleteSchedule(schedule.id);
+      await _loadSchedules(_focusedMonth);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('일정이 삭제되었습니다')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('일정 삭제 실패')),
+        );
+      }
+    }
+  }
+
   Future<void> _deleteMyMonthSchedules() async {
     if (_myUserId == null) return;
     final confirmed = await showDialog<bool>(
@@ -708,7 +750,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   itemBuilder: (context, index) {
                     final s = schedules[index];
                     final color = _getScheduleColor(s);
-                    return GestureDetector(
+                    final isMine = _myUserId != null && s.userId == _myUserId;
+
+                    Widget card = GestureDetector(
                       onTap: () => _onScheduleTap(s),
                       child: Container(
                         padding: const EdgeInsets.all(14),
@@ -780,6 +824,67 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           ],
                         ),
                       ),
+                    );
+
+                    if (s.isAnniversary || !isMine) return card;
+
+                    return Dismissible(
+                      key: Key('schedule_${s.id}_$index'),
+                      background: Container(
+                        alignment: Alignment.centerLeft,
+                        padding: const EdgeInsets.only(left: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.edit, color: Colors.white),
+                      ),
+                      secondaryBackground: Container(
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.only(right: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.delete, color: Colors.white),
+                      ),
+                      confirmDismiss: (direction) async {
+                        if (direction == DismissDirection.startToEnd) {
+                          await _editScheduleItem(s);
+                          return false;
+                        } else {
+                          final ok = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('일정 삭제'),
+                              content: const Text('이 일정을 삭제하시겠습니까?'),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, false),
+                                  child: const Text('취소'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(ctx, true),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                  child: const Text('삭제'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return ok == true;
+                        }
+                      },
+                      onDismissed: (direction) {
+                        if (direction == DismissDirection.endToStart) {
+                          _deleteScheduleItem(s);
+                        }
+                      },
+                      child: card,
                     );
                   },
                 ),

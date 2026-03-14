@@ -325,7 +325,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           startTime: startTime,
           endTime: endTime,
           isAnniversary: false,
-          category: '근무',
+          category: _detectCategory(workType),
         );
         await service.addSchedule(schedule);
         saved++;
@@ -342,6 +342,30 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         ).showSnackBar(SnackBar(content: Text('일정 저장 실패: $e')));
       }
     }
+  }
+
+  String? _detectCategory(String? workType) {
+    if (workType == null || workType.isEmpty) return null;
+    final t = workType.toLowerCase();
+    if (t.contains('야간') || t.contains('주간') || t.contains('근무') ||
+        t.contains('출근') || t.contains('당직') || t.contains('주야') ||
+        t.contains('오전') || t.contains('오후') || t.contains('work')) {
+      return '근무';
+    }
+    if (t.contains('여행') || t.contains('출장') || t.contains('trip') ||
+        t.contains('travel')) {
+      return '여행';
+    }
+    if (t.contains('데이트') || t.contains('date')) return '데이트';
+    if (t.contains('약속') || t.contains('미팅') || t.contains('회의') ||
+        t.contains('meeting')) {
+      return '약속';
+    }
+    if (t.contains('휴무') || t.contains('휴가') || t.contains('오프') ||
+        t.contains('off') || t.contains('쉬')) {
+      return '기타';
+    }
+    return '기타';
   }
 
   Color _hexToColor(String hex) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
-import '../../../shared/models/repeat_pattern.dart';
 
 class ScheduleAddDialog extends StatefulWidget {
   final DateTime? date;
@@ -26,11 +25,7 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   late String _location;
   late String _note;
   late int? _reminderMinutes;
-  late RepeatPattern? _repeatPattern;
   late bool _isDate;
-
-  // 반복 요일 (주간 반복용): 1=월 ~ 7=일
-  final Set<int> _selectedWeekdays = {};
 
   static const _colorPalette = <String, Color>{
     '#E53935': Color(0xFFE53935),
@@ -56,19 +51,6 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
 
   final _categories = ['근무', '약속', '여행', '데이트', '기타'];
 
-  // 반복 타입 (표시 이름 → 내부 key 매핑)
-  static const _repeatOptions = <String, String?>{
-    '없음': null,
-    '매일': 'daily',
-    '매주': 'weekly',
-    '매월': 'monthly',
-    '매년': 'yearly',
-    '주말마다': '주말',
-    '평일마다': '평일',
-  };
-
-  String? _selectedRepeatKey; // null = 없음
-
   // 알림 옵션 (표시 이름 → 분)
   static const _reminderOptions = <String, int?>{
     '없음': null,
@@ -84,11 +66,11 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
   void initState() {
     super.initState();
     final now = DateTime.now();
-    _startDate = widget.date ?? now;
-    _endDate = widget.date ?? now;
 
     if (widget.existingSchedule != null) {
       final s = widget.existingSchedule!;
+      _startDate = s.startDate ?? s.date;
+      _endDate = s.endDate ?? s.startDate ?? s.date;
       _startTime = s.startTime;
       _endTime = s.endTime;
       _title = s.title ?? s.workType ?? '';
@@ -98,15 +80,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _note = s.note ?? '';
       _reminderMinutes = s.reminderMinutes;
       _isDate = s.isDate;
-      if (s.repeatPattern != null) {
-        final rp = RepeatPattern.fromMap(s.repeatPattern!);
-        _selectedRepeatKey = rp.type;
-        _repeatPattern = rp;
-        if (rp.days != null) _selectedWeekdays.addAll(rp.days!);
-      } else {
-        _repeatPattern = null;
-      }
     } else {
+      _startDate = widget.date ?? now;
+      _endDate = widget.date ?? now;
       _startTime = null;
       _endTime = null;
       _title = '';
@@ -115,43 +91,8 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
       _location = '';
       _note = '';
       _reminderMinutes = null;
-      _repeatPattern = null;
       _isDate = false;
     }
-  }
-
-  void _onRepeatChanged(String? key) {
-    setState(() {
-      _selectedRepeatKey = key;
-      if (key == null) {
-        _repeatPattern = null;
-      } else if (key == 'weekly') {
-        _repeatPattern = RepeatPattern(
-          type: key,
-          days: _selectedWeekdays.toList()..sort(),
-          startDate: _startDate,
-        );
-      } else {
-        _repeatPattern = RepeatPattern(type: key, startDate: _startDate);
-      }
-    });
-  }
-
-  void _onWeekdayToggle(int day) {
-    setState(() {
-      if (_selectedWeekdays.contains(day)) {
-        _selectedWeekdays.remove(day);
-      } else {
-        _selectedWeekdays.add(day);
-      }
-      if (_selectedRepeatKey == 'weekly') {
-        _repeatPattern = RepeatPattern(
-          type: 'weekly',
-          days: _selectedWeekdays.toList()..sort(),
-          startDate: _startDate,
-        );
-      }
-    });
   }
 
   void _onSave() {
@@ -159,6 +100,9 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
 
     final schedule = widget.existingSchedule != null
         ? widget.existingSchedule!.copyWith(
+            date: _startDate,
+            startDate: _startDate,
+            endDate: _endDate != _startDate ? _endDate : null,
             title: _title.trim().isEmpty
                 ? widget.existingSchedule!.title
                 : _title.trim(),
@@ -169,7 +113,6 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             location: _location.trim().isEmpty ? null : _location.trim(),
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
-            repeatPattern: _repeatPattern?.toMap(),
             isDate: _isDate,
           )
         : Schedule(
@@ -187,7 +130,6 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
             location: _location.trim().isEmpty ? null : _location.trim(),
             note: _note.trim().isEmpty ? null : _note.trim(),
             reminderMinutes: _reminderMinutes,
-            repeatPattern: _repeatPattern?.toMap(),
             isDate: _isDate,
             isAnniversary: false,
           );
@@ -248,7 +190,10 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           child: _DateButton(
                             label: '시작일',
                             date: _startDate,
-                            onChanged: (d) => setState(() => _startDate = d),
+                            onChanged: (d) => setState(() {
+                              _startDate = d;
+                              if (_endDate.isBefore(d)) _endDate = d;
+                            }),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -412,54 +357,6 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
                           .toList(),
                       onChanged: (v) => setState(() => _reminderMinutes = v),
                     ),
-                    const SizedBox(height: 20),
-
-                    // ── 반복 ──
-                    _buildSectionTitle('반복'),
-                    _buildDropdown<String>(
-                      value: _selectedRepeatKey,
-                      hint: '반복 없음',
-                      items: _repeatOptions.entries
-                          .map(
-                            (e) => DropdownMenuItem(
-                              value: e.value,
-                              child: Text(e.key),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: _onRepeatChanged,
-                    ),
-
-                    // 매주 선택 시 요일 체크박스 표시
-                    if (_selectedRepeatKey == 'weekly') ...[
-                      const SizedBox(height: 12),
-                      _buildSectionTitle('반복 요일'),
-                      _buildWeekdaySelector(),
-                    ],
-
-                    // 반복 종료일
-                    if (_selectedRepeatKey != null) ...[
-                      const SizedBox(height: 12),
-                      _buildSectionTitle('반복 종료일 (선택)'),
-                      _DateButton(
-                        label: _repeatPattern?.endDate != null
-                            ? '${_repeatPattern!.endDate!.year}년 ${_repeatPattern!.endDate!.month}월 ${_repeatPattern!.endDate!.day}일'
-                            : '종료일 없음',
-                        date: _repeatPattern?.endDate ?? _startDate,
-                        onChanged: (d) {
-                          setState(() {
-                            _repeatPattern = RepeatPattern(
-                              type: _selectedRepeatKey!,
-                              days: _selectedWeekdays.isNotEmpty
-                                  ? (_selectedWeekdays.toList()..sort())
-                                  : null,
-                              startDate: _startDate,
-                              endDate: d,
-                            );
-                          });
-                        },
-                      ),
-                    ],
 
                     const SizedBox(height: 24),
 
@@ -543,41 +440,6 @@ class _ScheduleAddDialogState extends State<ScheduleAddDialog> {
         items: items,
         onChanged: onChanged,
       ),
-    );
-  }
-
-  Widget _buildWeekdaySelector() {
-    const days = ['월', '화', '수', '목', '금', '토', '일'];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: List.generate(7, (i) {
-        final day = i + 1;
-        final isSelected = _selectedWeekdays.contains(day);
-        return GestureDetector(
-          onTap: () => _onWeekdayToggle(day),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primary : AppTheme.background,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: isSelected ? AppTheme.primary : AppTheme.border,
-              ),
-            ),
-            child: Center(
-              child: Text(
-                days[i],
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : AppTheme.textPrimary,
-                ),
-              ),
-            ),
-          ),
-        );
-      }),
     );
   }
 
