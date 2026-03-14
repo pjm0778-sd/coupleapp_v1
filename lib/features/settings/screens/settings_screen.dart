@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
+import '../../couple/services/couple_service.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -208,6 +209,227 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _breakUp() async {
+    if (_coupleId == null) return;
+
+    // 1단계: 경고 다이얼로그
+    final goNext = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Text('💔', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text(
+              '헤어지기',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '헤어지면 아래 데이터가 모두 삭제되며\n절대 복구할 수 없어요.',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
+            const SizedBox(height: 16),
+            _warnItem('📅 우리가 함께 쌓은 모든 일정'),
+            _warnItem('💬 일정에 남긴 댓글'),
+            _warnItem('🎨 색상 매핑 설정'),
+            _warnItem('💑 커플 연결 정보'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Text(
+                '이 작업은 두 사람 모두에게 적용되며,\n되돌릴 수 없습니다.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('계속하기'),
+          ),
+        ],
+      ),
+    );
+
+    if (goNext != true || !mounted) return;
+
+    // 2단계: 최종 확인 (텍스트 입력)
+    final confirmController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            '정말 헤어지실 건가요?',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '확인을 위해 아래에 "헤어지기"를 입력해주세요.',
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '헤어지기',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide:
+                        const BorderSide(color: Colors.red, width: 1.5),
+                  ),
+                ),
+                onChanged: (_) => setS(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text(
+                '취소',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: confirmController.text.trim() == '헤어지기'
+                    ? Colors.red
+                    : Colors.grey,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: confirmController.text.trim() == '헤어지기'
+                  ? () => Navigator.pop(ctx, true)
+                  : null,
+              child: const Text('헤어지기'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // 실제 삭제 처리
+    setState(() => _isLoading = true);
+    try {
+      await CoupleService().disconnectCouple(_coupleId!);
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('💔', style: TextStyle(fontSize: 48)),
+                SizedBox(height: 16),
+                Text(
+                  '연결이 해제되었습니다',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '다시 로그인하면\n새 파트너와 연결할 수 있어요.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('확인'),
+              ),
+            ],
+          ),
+        );
+        await supabase.auth.signOut();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('처리 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _warnItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
   Future<void> _signOut() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -344,6 +566,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                       ),
+                      if (_coupleId != null) ...[
+                        const SizedBox(height: 20),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: _breakUp,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.heart_broken_outlined,
+                                size: 16,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '헤어지기',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: Colors.red,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),

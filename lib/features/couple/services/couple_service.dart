@@ -60,4 +60,12 @@ class CoupleService {
         .update({'started_at': date.toIso8601String().split('T')[0]})
         .eq('id', coupleId);
   }
+
+  /// 커플 연결 해제 및 모든 공유 데이터 삭제
+  Future<void> disconnectCouple(String coupleId) async {
+    await supabase.rpc(
+      'disconnect_couple',
+      params: {'p_couple_id': coupleId},
+    );
+  }
 }
