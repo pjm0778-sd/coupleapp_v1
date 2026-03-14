@@ -35,7 +35,11 @@ jobs:
 
       # 5. Cloudflare Pages 배포 (wrangler 직접 실행)
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler@3 pages deploy build/web --project-name=coupleapp-v1
+        run: |
+          npx wrangler@3 pages deploy build/web \
+            --project-name=coupleapp-v1 \
+            --commit-message="deploy: ${{ github.sha }}" \
+            --commit-hash="${{ github.sha }}"
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
