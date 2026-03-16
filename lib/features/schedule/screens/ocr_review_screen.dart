@@ -9,6 +9,7 @@ class OcrReviewScreen extends StatefulWidget {
   final int ocrMonth;
   final String userId;
   final String? coupleId;
+  final bool isGoogleCalendar;
 
   const OcrReviewScreen({
     super.key,
@@ -17,6 +18,7 @@ class OcrReviewScreen extends StatefulWidget {
     required this.ocrMonth,
     required this.userId,
     required this.coupleId,
+    this.isGoogleCalendar = false,
   });
 
   @override
@@ -138,7 +140,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
           startTime: startTime,
           endTime: endTime,
           isAnniversary: false,
-          isOcr: true,
+          isOcr: !widget.isGoogleCalendar,
+          isGoogleCalendar: widget.isGoogleCalendar,
           category: _detectCategory(workType),
         );
 

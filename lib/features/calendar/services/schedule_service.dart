@@ -305,7 +305,7 @@ class ScheduleService {
     }
   }
 
-  /// 해당 월의 본인 OCR 일정만 삭제
+  /// 해당 월의 본인 OCR 일정만 삭제 (구글 캘린더 연동 일정 제외)
   Future<int> deleteMyOcrMonthSchedules(DateTime month) async {
     try {
       final start = DateTime(month.year, month.month, 1);
@@ -317,12 +317,84 @@ class ScheduleService {
           .delete()
           .eq('user_id', currentUserId)
           .eq('is_ocr', true)
+          .eq('is_google_calendar', false)
           .gte('date', start.toIso8601String().split('T')[0])
           .lte('date', end.toIso8601String().split('T')[0])
           .select();
       return (data as List).length;
     } catch (e) {
       debugPrint('deleteMyOcrMonthSchedules error: $e');
+      rethrow;
+    }
+  }
+
+  /// 해당 월의 파트너 OCR 일정만 삭제 (구글 캘린더 연동 일정 제외)
+  Future<int> deletePartnerOcrMonthSchedules(
+    DateTime month,
+    String partnerId,
+  ) async {
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', partnerId)
+          .eq('is_ocr', true)
+          .eq('is_google_calendar', false)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deletePartnerOcrMonthSchedules error: $e');
+      rethrow;
+    }
+  }
+
+  /// 해당 월의 본인 구글 캘린더 연동 일정 삭제
+  Future<int> deleteMyGoogleCalendarMonthSchedules(DateTime month) async {
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+      final currentUserId = supabase.auth.currentUser!.id;
+
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('is_google_calendar', true)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deleteMyGoogleCalendarMonthSchedules error: $e');
+      rethrow;
+    }
+  }
+
+  /// 해당 월의 파트너 구글 캘린더 연동 일정 삭제
+  Future<int> deletePartnerGoogleCalendarMonthSchedules(
+    DateTime month,
+    String partnerId,
+  ) async {
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', partnerId)
+          .eq('is_google_calendar', true)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deletePartnerGoogleCalendarMonthSchedules error: $e');
       rethrow;
     }
   }

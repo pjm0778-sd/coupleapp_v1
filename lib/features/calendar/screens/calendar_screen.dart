@@ -33,6 +33,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   String? _coupleId;
   String? _myUserId;
+  String? _partnerId;
   RealtimeChannel? _schedulesChannel;
 
   @override
@@ -68,7 +69,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               .eq('id', partnerId)
               .maybeSingle();
           if (mounted) {
-            setState(() => _partnerNickname = partnerData?['nickname']);
+            setState(() {
+              _partnerNickname = partnerData?['nickname'];
+              _partnerId = partnerId?.toString();
+            });
           }
         }
       }
@@ -384,15 +388,52 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
-  Future<void> _deleteMyOcrMonthSchedules() async {
+  Future<void> _deleteOcrMonthSchedules() async {
     if (_myUserId == null) return;
+
+    // 누구의 OCR 일정을 삭제할지 선택
+    String targetUserId = _myUserId!;
+    String targetLabel = '내';
+    if (_partnerId != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('누구의 OCR 일정을 삭제할까요?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('나의 OCR 일정'),
+                onTap: () => Navigator.pop(context, 'me'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                title: Text('${_partnerNickname ?? '파트너'}의 OCR 일정'),
+                onTap: () => Navigator.pop(context, 'partner'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (choice == null || !mounted) return;
+      if (choice == 'partner') {
+        targetUserId = _partnerId!;
+        targetLabel = '${_partnerNickname ?? '파트너'}의';
+      }
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('OCR 일정 삭제'),
         content: Text(
-          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 OCR 자동등록 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 $targetLabel OCR 자동등록 일정을 모두 삭제하시겠습니까?\n구글 캘린더 연동 일정은 삭제되지 않습니다.\n이 작업은 되돌릴 수 없습니다.',
         ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -412,13 +453,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (confirmed == true) {
       try {
-        final count = await _service.deleteMyOcrMonthSchedules(_focusedMonth);
+        final int count;
+        if (targetUserId == _myUserId) {
+          count = await _service.deleteMyOcrMonthSchedules(_focusedMonth);
+        } else {
+          count = await _service.deletePartnerOcrMonthSchedules(
+            _focusedMonth,
+            targetUserId,
+          );
+        }
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                count > 0 ? 'OCR 일정 $count개를 삭제했습니다.' : '삭제할 OCR 일정이 없습니다.',
+                count > 0
+                    ? 'OCR 일정 $count개를 삭제했습니다.'
+                    : '삭제할 OCR 일정이 없습니다.',
               ),
             ),
           );
@@ -434,21 +485,152 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  Future<void> _deleteGoogleCalendarMonthSchedules() async {
+    if (_myUserId == null) return;
+
+    // 누구의 구글 캘린더 일정을 삭제할지 선택
+    String targetUserId = _myUserId!;
+    String targetLabel = '내';
+    if (_partnerId != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('누구의 구글 캘린더 일정을 삭제할까요?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('나의 구글 캘린더 일정'),
+                onTap: () => Navigator.pop(context, 'me'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                title: Text('${_partnerNickname ?? '파트너'}의 구글 캘린더 일정'),
+                onTap: () => Navigator.pop(context, 'partner'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (choice == null || !mounted) return;
+      if (choice == 'partner') {
+        targetUserId = _partnerId!;
+        targetLabel = '${_partnerNickname ?? '파트너'}의';
+      }
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('구글 캘린더 일정 삭제'),
+        content: Text(
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 $targetLabel 구글 캘린더 연동 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF4285F4),
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final int count;
+        if (targetUserId == _myUserId) {
+          count = await _service.deleteMyGoogleCalendarMonthSchedules(
+            _focusedMonth,
+          );
+        } else {
+          count = await _service.deletePartnerGoogleCalendarMonthSchedules(
+            _focusedMonth,
+            targetUserId,
+          );
+        }
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                count > 0
+                    ? '구글 캘린더 일정 $count개를 삭제했습니다.'
+                    : '삭제할 구글 캘린더 일정이 없습니다.',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('구글 캘린더 일정이 삭제되었습니다.')),
+          );
+        }
+      }
+    }
+  }
+
   void _showAddDialog(DateTime? date) async {
+    if (_coupleId == null || _myUserId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('커플 연결이 필요합니다.')));
+      return;
+    }
+
+    // 파트너가 있으면 누구의 일정인지 선택
+    String targetUserId = _myUserId!;
+    if (_partnerId != null) {
+      final choice = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('누구의 일정인가요?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.person),
+                title: const Text('나의 일정'),
+                onTap: () => Navigator.pop(context, 'me'),
+              ),
+              ListTile(
+                leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
+                title: Text('${_partnerNickname ?? '파트너'}의 일정'),
+                onTap: () => Navigator.pop(context, 'partner'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (choice == null || !mounted) return;
+      targetUserId = choice == 'partner' ? _partnerId! : _myUserId!;
+    }
+
     final result = await showDialog<Schedule>(
       context: context,
       builder: (context) => ScheduleAddDialog(date: date ?? _selectedDay),
     );
     if (result != null && mounted) {
       try {
-        if (_coupleId == null || _myUserId == null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('커플 연결이 필요합니다.')));
-          return;
-        }
         final scheduleToSave = result.copyWith(
-          userId: _myUserId,
+          userId: targetUserId,
           coupleId: _coupleId,
         );
         await _service.addSchedule(scheduleToSave);
@@ -525,11 +707,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
         actions: [
           IconButton(
             icon: const Icon(
+              Icons.calendar_month_outlined,
+              color: Color(0xFF4285F4),
+            ),
+            tooltip: '이달의 구글 캘린더 연동 일정 삭제',
+            onPressed: _deleteGoogleCalendarMonthSchedules,
+          ),
+          IconButton(
+            icon: const Icon(
               Icons.document_scanner_outlined,
               color: Colors.orangeAccent,
             ),
             tooltip: '이달의 OCR 자동등록 일정 삭제',
-            onPressed: _deleteMyOcrMonthSchedules,
+            onPressed: _deleteOcrMonthSchedules,
           ),
           IconButton(
             icon: const Icon(
@@ -886,7 +1076,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       ),
                     );
 
-                    if (s.isAnniversary || !isMine) return card;
+                    if (s.isAnniversary) return card;
 
                     return Dismissible(
                       key: Key('schedule_${s.id}_$index'),

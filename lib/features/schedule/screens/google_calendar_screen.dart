@@ -7,11 +7,15 @@ import 'ocr_review_screen.dart';
 class GoogleCalendarScreen extends StatefulWidget {
   final String userId;
   final String? coupleId;
+  final String? partnerId;
+  final String? partnerNickname;
 
   const GoogleCalendarScreen({
     super.key,
     required this.userId,
     required this.coupleId,
+    this.partnerId,
+    this.partnerNickname,
   });
 
   @override
@@ -81,22 +85,60 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
         return;
       }
 
-      if (mounted) {
-        final saved = await Navigator.push<int>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => OcrReviewScreen(
-              schedules: events,
-              ocrYear: _selectedYear,
-              ocrMonth: _selectedMonth,
-              userId: widget.userId,
-              coupleId: widget.coupleId,
+      if (!mounted) return;
+
+      // 파트너가 있으면 누구의 일정인지 선택
+      String targetUserId = widget.userId;
+      if (widget.partnerId != null) {
+        final choice = await showDialog<String>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('누구의 일정인가요?'),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.person),
+                  title: const Text('나의 일정'),
+                  onTap: () => Navigator.pop(context, 'me'),
+                ),
+                ListTile(
+                  leading: const Icon(
+                    Icons.favorite,
+                    color: Colors.pinkAccent,
+                  ),
+                  title: Text(
+                    '${widget.partnerNickname ?? '파트너'}의 일정',
+                  ),
+                  onTap: () => Navigator.pop(context, 'partner'),
+                ),
+              ],
             ),
           ),
         );
-        if (saved != null && saved > 0 && mounted) {
-          Navigator.pop(context, saved);
-        }
+        if (choice == null || !mounted) return;
+        targetUserId =
+            choice == 'partner' ? widget.partnerId! : widget.userId;
+      }
+
+      final saved = await Navigator.push<int>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => OcrReviewScreen(
+            schedules: events,
+            ocrYear: _selectedYear,
+            ocrMonth: _selectedMonth,
+            userId: targetUserId,
+            coupleId: widget.coupleId,
+            isGoogleCalendar: true,
+          ),
+        ),
+      );
+      if (saved != null && saved > 0 && mounted) {
+        Navigator.pop(context, saved);
       }
     } catch (e) {
       if (mounted) {

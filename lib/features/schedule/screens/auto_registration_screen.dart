@@ -18,6 +18,8 @@ class AutoRegistrationScreen extends StatefulWidget {
 class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
   String? _myUserId;
   String? _coupleId;
+  String? _partnerId;
+  String? _partnerNickname;
   bool _isUploading = false;
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -30,6 +32,60 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
 
   Future<void> _init() async {
     _coupleId = await ScheduleService().getCoupleId();
+    if (_coupleId != null && _myUserId != null) {
+      final coupleData = await supabase
+          .from('couples')
+          .select('user1_id, user2_id')
+          .eq('id', _coupleId!)
+          .maybeSingle();
+      if (coupleData != null) {
+        final partnerId = coupleData['user1_id'] == _myUserId
+            ? coupleData['user2_id']
+            : coupleData['user1_id'];
+        if (partnerId != null) {
+          final profileData = await supabase
+              .from('profiles')
+              .select('nickname')
+              .eq('id', partnerId)
+              .maybeSingle();
+          if (mounted) {
+            setState(() {
+              _partnerId = partnerId?.toString();
+              _partnerNickname = profileData?['nickname'] as String?;
+            });
+          }
+        }
+      }
+    }
+  }
+
+  /// 파트너가 있으면 "누구의 일정?" 선택 다이얼로그 표시 후 userId 반환
+  Future<String?> _selectTargetUser() async {
+    if (_partnerId == null) return _myUserId;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('누구의 일정인가요?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('나의 일정'),
+              onTap: () => Navigator.pop(context, 'me'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
+              title: Text('${_partnerNickname ?? '파트너'}의 일정'),
+              onTap: () => Navigator.pop(context, 'partner'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return null;
+    return choice == 'partner' ? _partnerId : _myUserId;
   }
 
   Future<void> _onOcrPressed() async {
@@ -80,7 +136,10 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       final ocrYear = data['year'] as int? ?? now.year;
       final ocrMonth = data['month'] as int? ?? now.month;
 
-      if (mounted && _myUserId != null) {
+      if (mounted) {
+        final targetUserId = await _selectTargetUser();
+        if (targetUserId == null || !mounted) return;
+
         final saved = await Navigator.push<int>(
           context,
           MaterialPageRoute(
@@ -88,8 +147,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
               schedules: schedulesList,
               ocrYear: ocrYear,
               ocrMonth: ocrMonth,
-              userId: _myUserId!,
+              userId: targetUserId,
               coupleId: _coupleId,
+              isGoogleCalendar: false,
             ),
           ),
         );
@@ -115,6 +175,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
         builder: (_) => GoogleCalendarScreen(
           userId: _myUserId!,
           coupleId: _coupleId,
+          partnerId: _partnerId,
+          partnerNickname: _partnerNickname,
         ),
       ),
     );

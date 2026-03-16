@@ -174,7 +174,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       appBar: AppBar(
         title: Text(title),
         actions: [
-          if (_isMine && !_isDeleting) ...[
+          if (!_isDeleting) ...[
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               onPressed: _editSchedule,

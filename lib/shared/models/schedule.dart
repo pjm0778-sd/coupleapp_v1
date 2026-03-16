@@ -26,6 +26,7 @@ class Schedule {
   final String? emoji;
   final String? repeatGroupId; // 반복 일정 그룹 ID
   final bool isOcr; // OCR 자동등록 여부
+  final bool isGoogleCalendar; // 구글 캘린더 연동 여부
 
   const Schedule({
     required this.id,
@@ -49,6 +50,7 @@ class Schedule {
     this.emoji,
     this.repeatGroupId,
     this.isOcr = false,
+    this.isGoogleCalendar = false,
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -83,6 +85,7 @@ class Schedule {
     emoji: map['emoji'] as String?,
     repeatGroupId: map['repeat_group_id'] as String?,
     isOcr: map['is_ocr'] as bool? ?? false,
+    isGoogleCalendar: map['is_google_calendar'] as bool? ?? false,
   );
 
   Map<String, dynamic> toMap() => {
@@ -106,6 +109,7 @@ class Schedule {
     'emoji': emoji,
     'repeat_group_id': repeatGroupId,
     'is_ocr': isOcr,
+    'is_google_calendar': isGoogleCalendar,
   };
 
   static TimeOfDay _parseTime(String time) {
@@ -140,8 +144,9 @@ class Schedule {
     String? emoji,
     String? repeatGroupId,
     bool? isOcr,
-  }) {
-    return Schedule(
+    bool? isGoogleCalendar,
+  }) =>
+      Schedule(
       id: id ?? this.id,
       userId: userId ?? this.userId,
       coupleId: coupleId ?? this.coupleId,
@@ -163,6 +168,6 @@ class Schedule {
       emoji: emoji ?? this.emoji,
       repeatGroupId: repeatGroupId ?? this.repeatGroupId,
       isOcr: isOcr ?? this.isOcr,
+      isGoogleCalendar: isGoogleCalendar ?? this.isGoogleCalendar,
     );
-  }
 }
