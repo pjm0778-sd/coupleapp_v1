@@ -1,4 +1,4 @@
-package com.example.coupleapp_v1
+package com.coupleduty.app
 
 import io.flutter.embedding.android.FlutterActivity
 

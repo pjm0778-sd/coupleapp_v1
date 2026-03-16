@@ -8,7 +8,7 @@
         android:maxSdkVersion="32"/>
 
     <application
-        android:label="coupleapp_v1"
+        android:label="커플듀티"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

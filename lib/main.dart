@@ -34,7 +34,7 @@ class CoupleApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Couple',
+      title: '커플듀티',
       theme: AppTheme.light.copyWith(
         pageTransitionsTheme: const PageTransitionsTheme(
           builders: {
