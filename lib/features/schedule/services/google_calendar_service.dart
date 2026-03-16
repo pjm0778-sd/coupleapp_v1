@@ -19,6 +19,7 @@ class _AuthClient extends http.BaseClient {
 class GoogleCalendarService {
   static final _googleSignIn = GoogleSignIn(
     scopes: [gcal.CalendarApi.calendarReadonlyScope],
+    clientId: '495666365155-kfkkbjjvh6hgee5aj9oc2aukk62bemsr.apps.googleusercontent.com',
   );
 
   Future<GoogleSignInAccount?> signIn() => _googleSignIn.signIn();
