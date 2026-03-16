@@ -7,6 +7,7 @@ import '../../calendar/services/schedule_service.dart';
 import '../../../main.dart';
 import 'ocr_review_screen.dart';
 import 'google_calendar_screen.dart';
+import 'excel_import_screen.dart';
 
 class AutoRegistrationScreen extends StatefulWidget {
   const AutoRegistrationScreen({super.key});
@@ -15,19 +16,28 @@ class AutoRegistrationScreen extends StatefulWidget {
   State<AutoRegistrationScreen> createState() => _AutoRegistrationScreenState();
 }
 
-class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
+class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
+    with SingleTickerProviderStateMixin {
   String? _myUserId;
   String? _coupleId;
   String? _partnerId;
   String? _partnerNickname;
   bool _isUploading = false;
   final ImagePicker _imagePicker = ImagePicker();
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _myUserId = supabase.auth.currentUser?.id;
     _init();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _init() async {
@@ -127,7 +137,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       if (schedulesList.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('스케줄을 찾지 못했습니다. 이미지를 확인해주세요')),
+            const SnackBar(content: Text('일정을 찾지 못했습니다. 이미지를 확인해주세요')),
           );
         }
         return;
@@ -162,7 +172,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('OCR 분석 실패: $e')));
+        ).showSnackBar(SnackBar(content: Text('분석 실패: $e')));
       }
     }
   }
@@ -185,62 +195,229 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     }
   }
 
+  void _onExcelImportPressed() async {
+    if (_myUserId == null) return;
+    final saved = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExcelImportScreen(
+          myUserId: _myUserId!,
+          coupleId: _coupleId,
+          partnerId: _partnerId,
+          partnerNickname: _partnerNickname,
+        ),
+      ),
+    );
+    if (saved != null && saved > 0 && mounted) {
+      TabSwitchNotification(1).dispatch(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('일정 자동등록')),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text(
-              '방식을 선택하세요',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '달력 사진을 AI로 분석하거나, 구글 캘린더에서 직접 가져올 수 있어요.',
-              style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 24),
-
-            // OCR 카드
-            _buildOptionCard(
-              icon: Icons.image_search_outlined,
-              iconColor: AppTheme.primary,
-              title: '사진 OCR 분석',
-              subtitle: '달력 캡처 이미지를 AI가 분석하여\n일정을 자동으로 추출합니다',
-              badge: 'AI',
-              badgeColor: AppTheme.primary,
-              isLoading: _isUploading,
-              onTap: _isUploading ? null : _onOcrPressed,
-            ),
-
-            const SizedBox(height: 16),
-
-            // 구글 캘린더 카드
-            _buildOptionCard(
-              icon: Icons.calendar_today_outlined,
-              iconColor: const Color(0xFF4285F4),
-              title: '구글 캘린더 연동',
-              subtitle: '구글 계정으로 로그인하여\n캘린더 일정을 직접 가져옵니다',
-              badge: '정확도 100%',
-              badgeColor: const Color(0xFF34A853),
-              isLoading: false,
-              onTap: _onGoogleCalendarPressed,
-            ),
+      appBar: AppBar(
+        title: const Text('일정 자동등록'),
+        bottom: TabBar(
+          controller: _tabController,
+          labelStyle: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: const TextStyle(fontSize: 12),
+          labelColor: AppTheme.primary,
+          unselectedLabelColor: AppTheme.textSecondary,
+          indicatorColor: AppTheme.primary,
+          tabs: const [
+            Tab(text: '캘린더 앱 분석'),
+            Tab(text: '구글 캘린더'),
+            Tab(text: '근무표 불러오기'),
           ],
         ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildCalendarOcrTab(),
+          _buildGoogleCalendarTab(),
+          _buildExcelImportTab(),
+        ],
       ),
     );
   }
 
-  Widget _buildOptionCard({
+  // ── 탭 1: 캘린더 앱 사진 분석 ──────────────────────────────
+  Widget _buildCalendarOcrTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabHeader(
+            icon: Icons.phone_android_outlined,
+            iconColor: AppTheme.primary,
+            title: '캘린더 앱 화면 분석',
+            description:
+                '삼성 캘린더, 아이폰 캘린더, 구글 캘린더 등\n다른 앱의 달력 화면을 캡처하여 가져옵니다.\nAI가 일정을 자동으로 인식합니다.',
+          ),
+          const SizedBox(height: 28),
+          _buildActionCard(
+            icon: Icons.image_search_outlined,
+            iconColor: AppTheme.primary,
+            title: '사진 선택하기',
+            subtitle: '갤러리에서 달력 캡처 이미지를 선택하세요',
+            badge: 'AI 분석',
+            badgeColor: AppTheme.primary,
+            isLoading: _isUploading,
+            onTap: _isUploading ? null : _onOcrPressed,
+          ),
+          const SizedBox(height: 20),
+          _buildTipBox(
+            tips: [
+              '달력 전체가 보이도록 캡처해 주세요',
+              '글씨가 잘 보일 정도의 해상도면 충분합니다',
+              '구글·삼성·아이폰 캘린더 모두 지원합니다',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 탭 2: 구글 캘린더 연동 ──────────────────────────────────
+  Widget _buildGoogleCalendarTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabHeader(
+            icon: Icons.calendar_today_outlined,
+            iconColor: const Color(0xFF4285F4),
+            title: '구글 캘린더 연동',
+            description:
+                '구글 계정으로 로그인하여\n구글 캘린더의 일정을 직접 가져옵니다.\n가장 정확한 방법입니다.',
+          ),
+          const SizedBox(height: 28),
+          _buildActionCard(
+            icon: Icons.login_outlined,
+            iconColor: const Color(0xFF4285F4),
+            title: '구글 계정으로 가져오기',
+            subtitle: '구글 캘린더의 일정을 그대로 불러옵니다',
+            badge: '정확도 100%',
+            badgeColor: const Color(0xFF34A853),
+            isLoading: false,
+            onTap: _onGoogleCalendarPressed,
+          ),
+          const SizedBox(height: 20),
+          _buildTipBox(
+            tips: [
+              '구글 계정 로그인이 필요합니다',
+              '가져올 월을 선택할 수 있습니다',
+              '중복 일정은 자동으로 처리됩니다',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 탭 3: 엑셀 근무표 불러오기 ─────────────────────────────
+  Widget _buildExcelImportTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildTabHeader(
+            icon: Icons.table_chart_outlined,
+            iconColor: const Color(0xFF1D6F42),
+            title: '엑셀 근무표 불러오기',
+            description:
+                '병원·편의점·공장 등의 엑셀 근무표 파일을\n직접 업로드하면 내 이름의 근무 일정을\n자동으로 달력에 등록합니다.',
+          ),
+          const SizedBox(height: 28),
+          _buildActionCard(
+            icon: Icons.upload_file_outlined,
+            iconColor: const Color(0xFF1D6F42),
+            title: '.xlsx 파일 업로드',
+            subtitle: '엑셀 근무표 파일을 선택하고 이름을 지정하세요',
+            badge: 'Premium',
+            badgeColor: const Color(0xFFF59E0B),
+            isLoading: false,
+            onTap: _onExcelImportPressed,
+          ),
+          const SizedBox(height: 20),
+          _buildTipBox(
+            tips: [
+              'Excel 2007 이상 .xlsx 형식을 지원합니다',
+              '나와 파트너 이름을 동시에 지정할 수 있습니다',
+              '근무 종류(주간·야간·휴무 등)가 자동 분류됩니다',
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 공통 위젯 ────────────────────────────────────────────────
+
+  Widget _buildTabHeader({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String description,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.06),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: iconColor.withOpacity(0.15)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionCard({
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -258,6 +435,13 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -332,6 +516,61 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTipBox({required List<String> tips}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.lightbulb_outline, size: 14, color: AppTheme.textSecondary),
+              SizedBox(width: 6),
+              Text(
+                '사용 팁',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ...tips.map(
+            (tip) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '•  ',
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                  Expanded(
+                    child: Text(
+                      tip,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
