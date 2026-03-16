@@ -455,11 +455,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       try {
         final int count;
         if (targetUserId == _myUserId) {
-          count = await _service.deleteMyOcrMonthSchedules(_focusedMonth);
+          count = await _service.deleteMyOcrMonthSchedules(
+            _focusedMonth,
+            _coupleId!,
+          );
         } else {
           count = await _service.deletePartnerOcrMonthSchedules(
             _focusedMonth,
             targetUserId,
+            _coupleId!,
           );
         }
         await _loadSchedules(_focusedMonth);
@@ -554,11 +558,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
         if (targetUserId == _myUserId) {
           count = await _service.deleteMyGoogleCalendarMonthSchedules(
             _focusedMonth,
+            _coupleId!,
           );
         } else {
           count = await _service.deletePartnerGoogleCalendarMonthSchedules(
             _focusedMonth,
             targetUserId,
+            _coupleId!,
           );
         }
         await _loadSchedules(_focusedMonth);

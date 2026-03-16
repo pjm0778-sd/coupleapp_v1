@@ -271,12 +271,47 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
     );
   }
 
+  // ── 누구의 일정인지 선택 ────────────────────────────────────
+  Future<String?> _selectTargetUserId() async {
+    if (widget.partnerId == null) return widget.myUserId;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('누구의 일정인가요?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('나의 일정'),
+              onTap: () => Navigator.pop(ctx, 'me'),
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.favorite, color: Colors.pinkAccent),
+              title: Text(
+                '${widget.partnerNickname ?? '파트너'}의 일정',
+              ),
+              onTap: () => Navigator.pop(ctx, 'partner'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return null;
+    return choice == 'partner' ? widget.partnerId : widget.myUserId;
+  }
+
   // ── OcrReviewScreen으로 이동 ─────────────────────────────────
   Future<void> _goToReview(
     List<Map<String, dynamic>> schedules,
     int year,
     int month,
   ) async {
+    final targetUserId = await _selectTargetUserId();
+    if (targetUserId == null || !mounted) return;
+
     final saved = await Navigator.push<int>(
       context,
       MaterialPageRoute(
@@ -284,7 +319,7 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
           schedules: schedules,
           ocrYear: year,
           ocrMonth: month,
-          userId: widget.myUserId,
+          userId: targetUserId,
           coupleId: widget.coupleId,
           isGoogleCalendar: false,
         ),
