@@ -592,9 +592,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return;
     }
 
-    // 파트너가 있으면 누구의 일정인지 선택
+    // 필터에 따라 대상 유저 자동 결정
+    // mine → 나, partner → 파트너, both → 선택 다이얼로그
     String targetUserId = _myUserId!;
-    if (_partnerId != null) {
+    if (_filter == ScheduleFilter.partner && _partnerId != null) {
+      targetUserId = _partnerId!;
+    } else if (_filter == ScheduleFilter.both && _partnerId != null) {
       final choice = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
