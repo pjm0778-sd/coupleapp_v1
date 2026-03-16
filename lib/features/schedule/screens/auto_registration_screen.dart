@@ -322,7 +322,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     );
   }
 
-  // ── 탭 3: 엑셀 근무표 불러오기 ─────────────────────────────
+  // ── 탭 3: 근무표 불러오기 ──────────────────────────────────
   Widget _buildExcelImportTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -332,16 +332,16 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           _buildTabHeader(
             icon: Icons.table_chart_outlined,
             iconColor: const Color(0xFF1D6F42),
-            title: '엑셀 근무표 불러오기',
+            title: '근무표 자동 등록',
             description:
-                '병원·편의점·공장 등의 엑셀 근무표 파일을\n직접 업로드하면 내 이름의 근무 일정을\n자동으로 달력에 등록합니다.',
+                '병원·편의점·공장 등의 근무표에서\n내 이름을 지정하면 해당 근무 일정을\n달력에 자동 등록합니다.',
           ),
           const SizedBox(height: 28),
           _buildActionCard(
-            icon: Icons.upload_file_outlined,
+            icon: Icons.table_chart_outlined,
             iconColor: const Color(0xFF1D6F42),
-            title: '.xlsx 파일 업로드',
-            subtitle: '엑셀 근무표 파일을 선택하고 이름을 지정하세요',
+            title: '근무표 불러오기',
+            subtitle: '사진 촬영  ·  엑셀 파일(.xlsx)  ·  Google Sheets',
             badge: 'Premium',
             badgeColor: const Color(0xFFF59E0B),
             isLoading: false,
@@ -350,9 +350,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           const SizedBox(height: 20),
           _buildTipBox(
             tips: [
-              'Excel 2007 이상 .xlsx 형식을 지원합니다',
-              '나와 파트너 이름을 동시에 지정할 수 있습니다',
-              '근무 종류(주간·야간·휴무 등)가 자동 분류됩니다',
+              '근무표에 표시된 이름과 정확히 일치해야 합니다',
+              '인쇄된 근무표는 AI 사진 분석으로 인식합니다',
+              '엑셀 파일(.xlsx)을 직접 올리면 정확도 100%입니다',
             ],
           ),
         ],
