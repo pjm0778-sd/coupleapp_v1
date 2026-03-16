@@ -734,6 +734,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       body: Column(
         children: [
           _buildFilterBar(),
+          if (_filter == ScheduleFilter.both) _buildLegend(),
           const Divider(height: 1),
           if (_showCalendarGrid) _buildTableCalendar(),
           if (_showCalendarGrid) const Divider(height: 1),
@@ -823,35 +824,76 @@ class _CalendarScreenState extends State<CalendarScreen> {
         },
         markerBuilder: (context, date, events) {
           if (events.isEmpty) return const SizedBox.shrink();
+
+          // 나 / 파트너 / 기념일 분류
+          final mySchedules = events
+              .where((s) => !s.isAnniversary && s.userId == _myUserId)
+              .toList();
+          final partnerSchedules = events
+              .where((s) => !s.isAnniversary && s.userId != _myUserId && s.userId != 'system')
+              .toList();
+          final anniversaries = events.where((s) => s.isAnniversary).toList();
           final holidays = _getHolidaysForDay(date);
+
+          // 나: 파란색, 파트너: 분홍색
+          const myDotColor = Color(0xFF5C85D6);
+          const partnerDotColor = Color(0xFFE8A598); // AppTheme.accent
+
+          Widget dotRow(List items, Color color) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: items
+                    .take(3)
+                    .map(
+                      (_) => Container(
+                        width: 4.5,
+                        height: 4.5,
+                        margin: const EdgeInsets.symmetric(horizontal: 0.8),
+                        decoration: BoxDecoration(
+                          color: color,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+
           return Positioned(
-            bottom: 2,
-            child: Row(
+            bottom: 1,
+            child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 일정 마커
-                ...events.take(3).map((s) {
-                  final color = _getScheduleColor(s);
-                  return Container(
-                    width: 5,
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(horizontal: 0.8),
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  );
-                }),
-                // 공휴일/기념일 마커
-                if (holidays.isNotEmpty)
-                  Container(
-                    width: 5,
-                    height: 5,
-                    margin: const EdgeInsets.symmetric(horizontal: 0.8),
-                    decoration: BoxDecoration(
-                      color: holidays.first.color,
-                      shape: BoxShape.circle,
-                    ),
+                // 내 일정 도트 (파란색)
+                if (mySchedules.isNotEmpty) dotRow(mySchedules, myDotColor),
+                // 파트너 일정 도트 (분홍색)
+                if (partnerSchedules.isNotEmpty)
+                  dotRow(partnerSchedules, partnerDotColor),
+                // 기념일 / 공휴일 도트
+                if (anniversaries.isNotEmpty || holidays.isNotEmpty)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (anniversaries.isNotEmpty)
+                        Container(
+                          width: 4.5,
+                          height: 4.5,
+                          margin: const EdgeInsets.symmetric(horizontal: 0.8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF4081),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      if (holidays.isNotEmpty)
+                        Container(
+                          width: 4.5,
+                          height: 4.5,
+                          margin: const EdgeInsets.symmetric(horizontal: 0.8),
+                          decoration: BoxDecoration(
+                            color: holidays.first.color,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
                   ),
               ],
             ),
@@ -1143,6 +1185,31 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Widget _buildLegend() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: AppTheme.surface,
+      child: Row(
+        children: [
+          _LegendDot(color: const Color(0xFF5C85D6)),
+          const SizedBox(width: 4),
+          const Text('나', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+          const SizedBox(width: 12),
+          _LegendDot(color: const Color(0xFFE8A598)),
+          const SizedBox(width: 4),
+          Text(
+            _partnerNickname ?? '파트너',
+            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          ),
+          const SizedBox(width: 12),
+          _LegendDot(color: const Color(0xFFFF4081)),
+          const SizedBox(width: 4),
+          const Text('기념일', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilterBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1273,6 +1340,20 @@ class _FilterChip extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _LegendDot extends StatelessWidget {
+  final Color color;
+  const _LegendDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
     );
   }
 }
