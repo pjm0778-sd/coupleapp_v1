@@ -835,21 +835,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
           final anniversaries = events.where((s) => s.isAnniversary).toList();
           final holidays = _getHolidaysForDay(date);
 
-          // 나: 파란색, 파트너: 분홍색
-          const myDotColor = Color(0xFF5C85D6);
-          const partnerDotColor = Color(0xFFE8A598); // AppTheme.accent
-
-          Widget dotRow(List items, Color color) => Row(
+          // 각 일정의 실제 지정 색상으로 도트 표시
+          // 행 위치로 소유자 구분: 위 = 나, 아래 = 파트너
+          Widget dotRow(List<Schedule> schedules) => Row(
                 mainAxisSize: MainAxisSize.min,
-                children: items
+                children: schedules
                     .take(3)
                     .map(
-                      (_) => Container(
+                      (s) => Container(
                         width: 4.5,
                         height: 4.5,
                         margin: const EdgeInsets.symmetric(horizontal: 0.8),
                         decoration: BoxDecoration(
-                          color: color,
+                          color: _getScheduleColor(s),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -863,11 +861,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // 내 일정 도트 (파란색)
-                if (mySchedules.isNotEmpty) dotRow(mySchedules, myDotColor),
-                // 파트너 일정 도트 (분홍색)
-                if (partnerSchedules.isNotEmpty)
-                  dotRow(partnerSchedules, partnerDotColor),
+                // 내 일정 도트 (실제 지정 색)
+                if (mySchedules.isNotEmpty) dotRow(mySchedules),
+                // 파트너 일정 도트 (실제 지정 색)
+                if (partnerSchedules.isNotEmpty) dotRow(partnerSchedules),
                 // 기념일 / 공휴일 도트
                 if (anniversaries.isNotEmpty || holidays.isNotEmpty)
                   Row(
@@ -1191,15 +1188,26 @@ class _CalendarScreenState extends State<CalendarScreen> {
       color: AppTheme.surface,
       child: Row(
         children: [
-          _LegendDot(color: const Color(0xFF5C85D6)),
-          const SizedBox(width: 4),
-          const Text('나', style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
-          const SizedBox(width: 12),
-          _LegendDot(color: const Color(0xFFE8A598)),
-          const SizedBox(width: 4),
-          Text(
-            _partnerNickname ?? '파트너',
-            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+          // 나: 위 줄 도트 + 파트너: 아래 줄 도트 시각화
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _LegendDot(color: const Color(0xFF5C85D6)),
+              const SizedBox(height: 2),
+              _LegendDot(color: const Color(0xFFE8A598)),
+            ],
+          ),
+          const SizedBox(width: 6),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('나 (위 줄)', style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary)),
+              Text(
+                '${_partnerNickname ?? '파트너'} (아래 줄)',
+                style: const TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+              ),
+            ],
           ),
           const SizedBox(width: 12),
           _LegendDot(color: const Color(0xFFFF4081)),

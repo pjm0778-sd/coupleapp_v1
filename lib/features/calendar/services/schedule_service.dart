@@ -28,7 +28,7 @@ class ScheduleService {
             .from('schedules')
             .select()
             .eq('couple_id', coupleId)
-            .eq('user_id', currentUserId)
+            .or('user_id.eq.$currentUserId,is_date.eq.true')
             .gte('date', start.toIso8601String().split('T')[0])
             .lte('date', end.toIso8601String().split('T')[0])
             .order('date', ascending: true)
@@ -39,7 +39,7 @@ class ScheduleService {
             .from('schedules')
             .select()
             .eq('couple_id', coupleId)
-            .not('user_id', 'eq', currentUserId)
+            .or('user_id.neq.$currentUserId,is_date.eq.true')
             .gte('date', start.toIso8601String().split('T')[0])
             .lte('date', end.toIso8601String().split('T')[0])
             .order('date', ascending: true)
@@ -76,7 +76,7 @@ class ScheduleService {
             .from('schedules')
             .select()
             .eq('couple_id', coupleId)
-            .eq('user_id', currentUserId)
+            .or('user_id.eq.$currentUserId,is_date.eq.true')
             .eq('date', dateStr)
             .order('start_time', ascending: true);
         break;
@@ -85,7 +85,7 @@ class ScheduleService {
             .from('schedules')
             .select()
             .eq('couple_id', coupleId)
-            .not('user_id', 'eq', currentUserId)
+            .or('user_id.neq.$currentUserId,is_date.eq.true')
             .eq('date', dateStr)
             .order('start_time', ascending: true);
         break;
