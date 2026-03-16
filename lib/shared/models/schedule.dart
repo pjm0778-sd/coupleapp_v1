@@ -25,6 +25,7 @@ class Schedule {
   final bool isDate;
   final String? emoji;
   final String? repeatGroupId; // 반복 일정 그룹 ID
+  final bool isOcr; // OCR 자동등록 여부
 
   const Schedule({
     required this.id,
@@ -47,6 +48,7 @@ class Schedule {
     this.isDate = false,
     this.emoji,
     this.repeatGroupId,
+    this.isOcr = false,
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -80,6 +82,7 @@ class Schedule {
     isDate: map['is_date'] as bool? ?? false,
     emoji: map['emoji'] as String?,
     repeatGroupId: map['repeat_group_id'] as String?,
+    isOcr: map['is_ocr'] as bool? ?? false,
   );
 
   Map<String, dynamic> toMap() => {
@@ -102,6 +105,7 @@ class Schedule {
     'is_date': isDate,
     'emoji': emoji,
     'repeat_group_id': repeatGroupId,
+    'is_ocr': isOcr,
   };
 
   static TimeOfDay _parseTime(String time) {
@@ -135,6 +139,7 @@ class Schedule {
     bool? isDate,
     String? emoji,
     String? repeatGroupId,
+    bool? isOcr,
   }) {
     return Schedule(
       id: id ?? this.id,
@@ -157,6 +162,7 @@ class Schedule {
       isDate: isDate ?? this.isDate,
       emoji: emoji ?? this.emoji,
       repeatGroupId: repeatGroupId ?? this.repeatGroupId,
+      isOcr: isOcr ?? this.isOcr,
     );
   }
 }

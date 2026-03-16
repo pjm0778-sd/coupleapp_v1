@@ -300,15 +300,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _service.updateSchedule(schedule.id, result.toMap());
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정이 수정되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정이 수정되었습니다')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 수정 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
         }
       }
     }
@@ -319,15 +319,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await _service.deleteSchedule(schedule.id);
       await _loadSchedules(_focusedMonth);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('일정이 삭제되었습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('일정이 삭제되었습니다')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('일정 삭제 실패')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('일정 삭제 실패')));
       }
     }
   }
@@ -379,6 +379,56 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('일정이 삭제되었습니다.')));
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteMyOcrMonthSchedules() async {
+    if (_myUserId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('OCR 일정 삭제'),
+        content: Text(
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 OCR 자동등록 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('삭제'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final count = await _service.deleteMyOcrMonthSchedules(_focusedMonth);
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                count > 0 ? 'OCR 일정 $count개를 삭제했습니다.' : '삭제할 OCR 일정이 없습니다.',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('OCR 일정이 삭제되었습니다.')));
         }
       }
     }
@@ -473,6 +523,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.document_scanner_outlined,
+              color: Colors.orangeAccent,
+            ),
+            tooltip: '이달의 OCR 자동등록 일정 삭제',
+            onPressed: _deleteMyOcrMonthSchedules,
+          ),
           IconButton(
             icon: const Icon(
               Icons.delete_sweep_outlined,
@@ -789,7 +847,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                       color: AppTheme.textPrimary,
                                     ),
                                   ),
-                                  if (s.startDate != null && s.endDate != null && s.endDate!.isAfter(s.startDate!)) ...[
+                                  if (s.startDate != null &&
+                                      s.endDate != null &&
+                                      s.endDate!.isAfter(s.startDate!)) ...[
                                     const SizedBox(height: 2),
                                     Text(
                                       '${s.startDate!.month}/${s.startDate!.day} ~ ${s.endDate!.month}/${s.endDate!.day}',

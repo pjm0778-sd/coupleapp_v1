@@ -305,6 +305,28 @@ class ScheduleService {
     }
   }
 
+  /// 해당 월의 본인 OCR 일정만 삭제
+  Future<int> deleteMyOcrMonthSchedules(DateTime month) async {
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+      final currentUserId = supabase.auth.currentUser!.id;
+
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('is_ocr', true)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deleteMyOcrMonthSchedules error: $e');
+      rethrow;
+    }
+  }
+
   /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
     final userId = supabase.auth.currentUser!.id;
