@@ -12,13 +12,11 @@ Deno.serve(async (req) => {
     const { imageBase64, imageMediaType, targetYear, targetMonth } =
       await req.json()
 
-    // ── 시스템 메시지: 역할 고정 ──
-    const systemMessage = `당신은 달력 이미지에서 일정을 빠짐없이 정확하게 추출하는 전문가입니다.
-반드시 분석 과정을 먼저 서술한 뒤 JSON을 출력하는 방식으로 응답하세요.
-이미지는 삼성 캘린더, 아이폰 기본 캘린더, 구글 캘린더 등 다양한 앱의 캡처일 수 있습니다.`
+    const systemMessage = `당신은 달력 이미지에서 일정을 추출하는 전문가입니다.
+이미지는 삼성 캘린더, 아이폰 기본 캘린더, 구글 캘린더 등 다양한 앱의 캡처일 수 있습니다.
+JSON만 출력하세요. 설명이나 분석 텍스트는 일절 출력하지 마세요.`
 
-    // ── 공통 지침 ──
-    const instructions = `
+    const userPrompt = `
 【STEP 1 — 연도·월 파악】
 달력 상단 제목을 읽어 연도와 월을 파악하세요.
 제목이 없으면 날짜 숫자 배치와 요일로 유추하고, 그래도 모를 때만 기본값(${targetYear}년 ${targetMonth}월)을 사용하세요.
@@ -40,44 +38,19 @@ Deno.serve(async (req) => {
 
 【텍스트 읽기 원칙 — 최우선】
 이미지에 글자가 보이면 반드시 그 글자를 work_type으로 사용하세요.
-"야간", "주간", "연차", "휴무", "출장" 등 일정 위나 안에 적힌 텍스트를 정확히 읽으세요.
-색상 기반 이름(예: "파란 일정")은 텍스트가 전혀 없을 때만 사용하세요.`
+색상 기반 이름(예: "파란 일정")은 텍스트가 전혀 없을 때만 사용하세요.
 
-    const userPrompt = `${instructions}
-
-【출력 형식】
-먼저 아래 분석 섹션을 작성한 뒤, 결과 JSON을 출력하세요.
-
-## 분석
-- 연도/월: [파악한 값]
-- 1일 요일: [무슨 요일]
-- 발견한 일정 목록: [날짜: 텍스트 내용(텍스트 없으면 색상명) 형태로 행별 나열]
-
-## 결과
-{
-  "year": 연도숫자,
-  "month": 월숫자,
-  "schedules": [
-    {
-      "start_date": "YYYY-MM-DD",
-      "end_date": "YYYY-MM-DD",
-      "work_type": "일정명 또는 색상 기반 분류",
-      "color_hex": "#RRGGBB",
-      "start_time": "HH:mm",
-      "end_time": "HH:mm"
-    }
-  ]
-}
+【출력】
+아래 JSON 형식만 출력하세요. 다른 텍스트 없이 JSON만:
+{"year":연도숫자,"month":월숫자,"schedules":[{"start_date":"YYYY-MM-DD","end_date":"YYYY-MM-DD","work_type":"일정명","color_hex":"#RRGGBB","start_time":"HH:mm","end_time":"HH:mm"}]}
 
 규칙:
 - 하루짜리 일정은 start_date == end_date
 - start_time·end_time은 이미지에 시간 정보가 있을 때만 포함, 없으면 해당 필드 생략
 - color_hex는 #RRGGBB 형식
-- work_type은 이미지에 보이는 텍스트를 최우선으로 사용. 텍스트가 전혀 없을 때만 색상 기반 이름(예: "파란 일정") 사용. null 금지`
+- work_type은 이미지 텍스트 최우선, null 금지`
 
     const apiKey = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
-    console.log('API Key exists:', apiKey.length > 0, '/ Key prefix:', apiKey.substring(0, 7))
-
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY secret이 설정되지 않았습니다')
     }
@@ -91,7 +64,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
+        max_tokens: 1500,
         system: systemMessage,
         messages: [
           {
@@ -126,7 +99,6 @@ Deno.serve(async (req) => {
     const content = data.content?.[0]?.text ?? '{}'
     console.log('Claude raw response:', content)
 
-    // JSON 추출 (코드블록 및 분석 섹션 제거 후 파싱)
     const cleaned = content
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
@@ -134,15 +106,10 @@ Deno.serve(async (req) => {
     const match = cleaned.match(/\{[\s\S]*\}/)
     const resultJson = match ? JSON.parse(match[0]) : { year: targetYear, month: targetMonth, schedules: [] }
 
-    // year/month 보정
-    const finalYear = resultJson.year ?? targetYear
-    const finalMonth = resultJson.month ?? targetMonth
-    resultJson.year = finalYear
-    resultJson.month = finalMonth
+    resultJson.year = resultJson.year ?? targetYear
+    resultJson.month = resultJson.month ?? targetMonth
 
-    // start_date null 필터
     if (resultJson.schedules) {
-      console.log('schedules before fix:', JSON.stringify(resultJson.schedules.slice(0, 3)))
       resultJson.schedules = (resultJson.schedules as Record<string, unknown>[]).filter(
         (s) => s['start_date'] != null
       )

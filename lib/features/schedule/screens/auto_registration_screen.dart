@@ -35,7 +35,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 95,
+        imageQuality: 75,
+        maxWidth: 1200,
+        maxHeight: 2000,
       );
 
       if (image == null) return;
