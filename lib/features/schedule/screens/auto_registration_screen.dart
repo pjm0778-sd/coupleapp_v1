@@ -6,6 +6,7 @@ import '../../../core/supabase_client.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../../../main.dart';
 import 'ocr_review_screen.dart';
+import 'google_calendar_screen.dart';
 
 class AutoRegistrationScreen extends StatefulWidget {
   const AutoRegistrationScreen({super.key});
@@ -31,7 +32,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     _coupleId = await ScheduleService().getCoupleId();
   }
 
-  Future<void> _onUploadPressed() async {
+  Future<void> _onOcrPressed() async {
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -106,6 +107,22 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
     }
   }
 
+  void _onGoogleCalendarPressed() async {
+    if (_myUserId == null) return;
+    final saved = await Navigator.push<int>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GoogleCalendarScreen(
+          userId: _myUserId!,
+          coupleId: _coupleId,
+        ),
+      ),
+    );
+    if (saved != null && saved > 0 && mounted) {
+      TabSwitchNotification(1).dispatch(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -116,7 +133,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'OCR 이미지 업로드',
+              '방식을 선택하세요',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -125,50 +142,131 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              '달력 캡처 이미지를 선택하면 AI가 일정을 자동으로 분석합니다.\n결과를 확인하고 수정/삭제 후 제출하세요.',
+              '달력 사진을 AI로 분석하거나, 구글 캘린더에서 직접 가져올 수 있어요.',
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
             const SizedBox(height: 24),
+
+            // OCR 카드
+            _buildOptionCard(
+              icon: Icons.image_search_outlined,
+              iconColor: AppTheme.primary,
+              title: '사진 OCR 분석',
+              subtitle: '달력 캡처 이미지를 AI가 분석하여\n일정을 자동으로 추출합니다',
+              badge: 'AI',
+              badgeColor: AppTheme.primary,
+              isLoading: _isUploading,
+              onTap: _isUploading ? null : _onOcrPressed,
+            ),
+
+            const SizedBox(height: 16),
+
+            // 구글 캘린더 카드
+            _buildOptionCard(
+              icon: Icons.calendar_today_outlined,
+              iconColor: const Color(0xFF4285F4),
+              title: '구글 캘린더 연동',
+              subtitle: '구글 계정으로 로그인하여\n캘린더 일정을 직접 가져옵니다',
+              badge: '정확도 100%',
+              badgeColor: const Color(0xFF34A853),
+              isLoading: false,
+              onTap: _onGoogleCalendarPressed,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOptionCard({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String subtitle,
+    required String badge,
+    required Color badgeColor,
+    required bool isLoading,
+    required VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          children: [
             Container(
-              height: 220,
+              width: 52,
+              height: 52,
               decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: iconColor.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.border, width: 2),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.image_outlined,
-                      size: 56,
-                      color: AppTheme.textSecondary.withValues(alpha: 0.4),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _isUploading ? 'AI 분석 중...' : '달력 이미지를 선택해주세요',
-                      style: const TextStyle(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
+              child: isLoading
+                  ? Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: iconColor,
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    if (_isUploading)
-                      const CircularProgressIndicator()
-                    else
-                      ElevatedButton.icon(
-                        onPressed: _onUploadPressed,
-                        icon: const Icon(Icons.cloud_upload_outlined),
-                        label: const Text('이미지 선택'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primary,
-                          foregroundColor: Colors.white,
+                    )
+                  : Icon(icon, color: iconColor, size: 26),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimary,
                         ),
                       ),
-                  ],
-                ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: badgeColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          badge,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: badgeColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: AppTheme.textSecondary.withOpacity(0.5),
             ),
           ],
         ),
