@@ -25,15 +25,27 @@ jobs:
           channel: 'stable'
           cache: false
 
-      # 3. 패키지 설치
+      # 3. API 키 파일 생성 (gitignore된 파일을 Secret에서 복원)
+      - name: Create api_keys.dart
+        env:
+          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+        run: |
+          cat > lib/core/api_keys.dart << EOF
+          class ApiKeys {
+            static const String dataGoKr = '$DATA_GO_KR_API_KEY';
+            static bool get isConfigured => dataGoKr != 'YOUR_DATA_GO_KR_API_KEY_HERE';
+          }
+          EOF
+
+      # 4. 패키지 설치
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. 웹 빌드
+      # 5. 웹 빌드
       - name: Build Flutter Web
         run: flutter build web --release
 
-      # 5. Cloudflare Pages 배포 (wrangler 직접 실행)
+      # 6. Cloudflare Pages 배포 (wrangler 직접 실행)
       - name: Deploy to Cloudflare Pages
         run: |
           npx wrangler@3 pages deploy build/web \
