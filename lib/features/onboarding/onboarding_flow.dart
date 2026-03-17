@@ -21,7 +21,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
 
   // 온보딩에서 수집하는 데이터 (draft)
   String _nickname = '';
-  DateTime _coupleStartDate = DateTime.now();
 
   late CoupleProfile _draft;
 
@@ -60,8 +59,6 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       final service = ProfileService();
       // 닉네임 저장
       await service.saveNickname(_nickname);
-      // 사귄 날짜 저장 (couple 연결된 경우에만)
-      await service.saveCoupleStartDate(_coupleStartDate);
       // 프로필 저장 (onboarding_completed = true)
       await service.saveProfile(
         _draft.copyWith(onboardingCompleted: true),
@@ -90,9 +87,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
             OnboardingStep1Screen(
               currentStep: _currentStep,
               nickname: _nickname,
-              coupleStartDate: _coupleStartDate,
               onNicknameChanged: (v) => setState(() => _nickname = v),
-              onDateChanged: (d) => setState(() => _coupleStartDate = d),
               onNext: _goNext,
             ),
             OnboardingStep2Screen(

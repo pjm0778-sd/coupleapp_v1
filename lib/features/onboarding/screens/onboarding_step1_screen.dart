@@ -1,23 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../../../core/theme.dart';
 import '../onboarding_progress.dart';
 
 class OnboardingStep1Screen extends StatefulWidget {
   final int currentStep;
   final String nickname;
-  final DateTime coupleStartDate;
   final ValueChanged<String> onNicknameChanged;
-  final ValueChanged<DateTime> onDateChanged;
   final VoidCallback onNext;
 
   const OnboardingStep1Screen({
     super.key,
     required this.currentStep,
     required this.nickname,
-    required this.coupleStartDate,
     required this.onNicknameChanged,
-    required this.onDateChanged,
     required this.onNext,
   });
 
@@ -38,16 +33,6 @@ class _OnboardingStep1ScreenState extends State<OnboardingStep1Screen> {
   void dispose() {
     _nickCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _pickDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: widget.coupleStartDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) widget.onDateChanged(picked);
   }
 
   bool get _canProceed => _nickCtrl.text.trim().isNotEmpty;
@@ -90,32 +75,24 @@ class _OnboardingStep1ScreenState extends State<OnboardingStep1Screen> {
               ),
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            '우리가 사귄 날짜',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: _pickDate,
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppTheme.border),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.calendar_today_outlined,
-                      size: 18, color: AppTheme.textSecondary),
-                  const SizedBox(width: 12),
-                  Text(
-                    DateFormat('yyyy년 M월 d일').format(widget.coupleStartDate),
-                    style: const TextStyle(fontSize: 15),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, size: 16, color: AppTheme.primary),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '만난 날짜는 파트너 연결 후 설정에서 입력할 수 있어요',
+                    style: TextStyle(fontSize: 13, color: AppTheme.primary),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const Spacer(),

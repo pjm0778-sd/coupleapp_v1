@@ -86,7 +86,7 @@ class OnboardingStep3Screen extends StatelessWidget {
             );
           }),
 
-          // 장거리 선택 시 도시/역 설정
+          // 장거리 선택 시 내 도시/역 설정
           if (isLong) ...[
             const SizedBox(height: 8),
             Container(
@@ -105,20 +105,14 @@ class OnboardingStep3Screen extends StatelessWidget {
                     onCityChanged: (v) => onChanged(draft.copyWith(myCity: v, myStation: null)),
                     onStationChanged: (v) => onChanged(draft.copyWith(myStation: v)),
                   ),
-                  const SizedBox(height: 16),
-                  CitySelectorWidget(
-                    label: '파트너 거주 도시 / 역',
-                    selectedCity: draft.partnerCity,
-                    selectedStation: draft.partnerStation,
-                    onCityChanged: (v) => onChanged(draft.copyWith(partnerCity: v, partnerStation: null)),
-                    onStationChanged: (v) => onChanged(draft.copyWith(partnerStation: v)),
-                  ),
                   const SizedBox(height: 10),
                   const Row(children: [
                     Icon(Icons.info_outline, size: 14, color: AppTheme.textSecondary),
                     SizedBox(width: 6),
-                    Text('교통편 추천에 자동으로 활용됩니다',
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    Expanded(
+                      child: Text('파트너 거주지는 설정에서 입력할 수 있어요',
+                          style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                    ),
                   ]),
                 ],
               ),
