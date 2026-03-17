@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
+import '../../../core/services/feature_flag_service.dart';
 import '../../couple/services/couple_service.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
+import '../../profile/models/couple_profile.dart';
+import '../../profile/services/profile_service.dart';
+import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
+import '../../profile/models/shift_time.dart';
+import '../../onboarding/widgets/city_selector_widget.dart';
+import '../../onboarding/widgets/shift_time_editor.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -18,6 +25,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
   String? _coupleId;
+
+  // 프로필 설정
+  CoupleProfile? _profile;
+  final _profileService = ProfileService();
 
   @override
   void initState() {
@@ -202,11 +213,277 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _startedAt = null;
         }
       }
+      // 프로필 설정 로드
+      _profile = await _profileService.loadMyProfile();
+      if (_profile != null) FeatureFlagService().refresh(_profile!);
     } catch (e) {
       debugPrint('Settings _loadData error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _saveWorkPattern(String pattern) async {
+    final updated = (_profile ?? const CoupleProfile(
+      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
+    )).copyWith(
+      workPattern: pattern,
+      shiftTimes: getShiftDefaults(pattern),
+    );
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+  }
+
+  Future<void> _saveShiftTimes(List<ShiftTime> times) async {
+    if (_profile == null) return;
+    final updated = _profile!.copyWith(shiftTimes: times);
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+  }
+
+  Future<void> _saveDistanceType(String distanceType) async {
+    final updated = (_profile ?? const CoupleProfile(
+      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
+    )).copyWith(distanceType: distanceType);
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+  }
+
+  Future<void> _saveCityStation({
+    String? myCity,
+    String? myStation,
+    String? partnerCity,
+    String? partnerStation,
+  }) async {
+    if (_profile == null) return;
+    final updated = _profile!.copyWith(
+      myCity: myCity,
+      myStation: myStation,
+      partnerCity: partnerCity,
+      partnerStation: partnerStation,
+    );
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+  }
+
+  void _showWorkPatternPicker() {
+    const patterns = [
+      ('shift_3', '👩‍⚕️', '간호사 / 의료직 3교대'),
+      ('shift_2', '🔄', '교대 근무 2교대'),
+      ('office', '💼', '일반 직장인 (주5일)'),
+      ('other', '🎨', '기타 / 프리랜서'),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '근무 유형 선택',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              ...patterns.map((opt) {
+                final selected = (_profile?.workPattern ?? 'office') == opt.$1;
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _saveWorkPattern(opt.$1);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? AppTheme.primary.withValues(alpha: 0.08)
+                          : AppTheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: selected ? AppTheme.primary : AppTheme.border,
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(opt.$2, style: const TextStyle(fontSize: 20)),
+                        const SizedBox(width: 12),
+                        Text(
+                          opt.$3,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                          ),
+                        ),
+                        const Spacer(),
+                        if (selected)
+                          const Icon(Icons.check_circle_rounded,
+                              color: AppTheme.primary, size: 20),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDistancePicker() {
+    const distanceOptions = [
+      ('same_city', '🏙️', '같은 도시 (30분 이내)'),
+      ('near', '🚌', '근거리 (1~2시간)'),
+      ('long_distance', '🚆', '장거리 (다른 도시)'),
+    ];
+
+    // 시트 내부 임시 상태
+    String selectedType = _profile?.distanceType ?? 'same_city';
+    String? tempMyCity = _profile?.myCity;
+    String? tempMyStation = _profile?.myStation;
+    String? tempPartnerCity = _profile?.partnerCity;
+    String? tempPartnerStation = _profile?.partnerStation;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SafeArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '거리 유형 선택',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 16),
+                ...distanceOptions.map((opt) {
+                  final isSelected = selectedType == opt.$1;
+                  return GestureDetector(
+                    onTap: () => setSheet(() => selectedType = opt.$1),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppTheme.primary.withValues(alpha: 0.08)
+                            : AppTheme.surface,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isSelected ? AppTheme.primary : AppTheme.border,
+                          width: isSelected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(opt.$2, style: const TextStyle(fontSize: 20)),
+                          const SizedBox(width: 12),
+                          Text(
+                            opt.$3,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? AppTheme.primary
+                                  : AppTheme.textPrimary,
+                            ),
+                          ),
+                          const Spacer(),
+                          if (isSelected)
+                            const Icon(Icons.check_circle_rounded,
+                                color: AppTheme.primary, size: 20),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+                // 장거리 선택 시 도시/역 편집
+                if (selectedType == 'long_distance') ...[
+                  const SizedBox(height: 8),
+                  CitySelectorWidget(
+                    label: '내 도시 / 역',
+                    selectedCity: tempMyCity,
+                    selectedStation: tempMyStation,
+                    onCityChanged: (v) => setSheet(() {
+                      tempMyCity = v;
+                      tempMyStation = null;
+                    }),
+                    onStationChanged: (v) =>
+                        setSheet(() => tempMyStation = v),
+                  ),
+                  const SizedBox(height: 12),
+                  CitySelectorWidget(
+                    label: '파트너 도시 / 역',
+                    selectedCity: tempPartnerCity,
+                    selectedStation: tempPartnerStation,
+                    onCityChanged: (v) => setSheet(() {
+                      tempPartnerCity = v;
+                      tempPartnerStation = null;
+                    }),
+                    onStationChanged: (v) =>
+                        setSheet(() => tempPartnerStation = v),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      // distanceType 저장
+                      await _saveDistanceType(selectedType);
+                      // 장거리인 경우 도시/역도 저장
+                      if (selectedType == 'long_distance') {
+                        await _saveCityStation(
+                          myCity: tempMyCity,
+                          myStation: tempMyStation,
+                          partnerCity: tempPartnerCity,
+                          partnerStation: tempPartnerStation,
+                        );
+                      }
+                    },
+                    child: const Text('저장', style: TextStyle(fontSize: 15)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _breakUp() async {
@@ -646,6 +923,133 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 32),
 
+                // 근무 설정
+                _buildSectionTitle('근무 설정'),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Column(children: [
+                    ListTile(
+                      leading: const Icon(Icons.work_outline, color: AppTheme.textPrimary),
+                      title: const Text('근무 유형'),
+                      trailing: Text(
+                        shiftLabel(_profile?.workPattern ?? 'office'),
+                        style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      onTap: () => _showWorkPatternPicker(),
+                    ),
+                    if (_profile != null &&
+                        (_profile!.workPattern == 'shift_3' ||
+                            _profile!.workPattern == 'shift_2')) ...[
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('근무 시간',
+                                style: TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w500,
+                                  color: AppTheme.textSecondary,
+                                )),
+                            const SizedBox(height: 10),
+                            ShiftTimeEditor(
+                              shiftTimes: _profile!.shiftTimes,
+                              onChanged: _saveShiftTimes,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ]),
+                ),
+
+                const SizedBox(height: 32),
+
+                // 거리 설정 [GAP-FIX]
+                _buildSectionTitle('거리 설정'),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(
+                          Icons.map_outlined,
+                          color: AppTheme.textPrimary,
+                        ),
+                        title: const Text('거리 유형'),
+                        trailing: Text(
+                          _distanceTypeLabel(_profile?.distanceType ?? 'same_city'),
+                          style: const TextStyle(
+                            fontSize: 13, color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        onTap: _showDistancePicker,
+                      ),
+                      if (_profile != null &&
+                          _profile!.distanceType == 'long_distance') ...[
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.location_on_outlined,
+                            color: AppTheme.textPrimary,
+                          ),
+                          title: const Text('내 도시 / 역'),
+                          trailing: Text(
+                            [_profile!.myCity, _profile!.myStation]
+                                .whereType<String>()
+                                .join(' · ')
+                                .isNotEmpty
+                                ? [_profile!.myCity, _profile!.myStation]
+                                    .whereType<String>()
+                                    .join(' · ')
+                                : '미설정',
+                            style: const TextStyle(
+                              fontSize: 13, color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          onTap: _showDistancePicker,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.location_on_outlined,
+                            color: AppTheme.accent,
+                          ),
+                          title: const Text('파트너 도시 / 역'),
+                          trailing: Text(
+                            [_profile!.partnerCity, _profile!.partnerStation]
+                                .whereType<String>()
+                                .join(' · ')
+                                .isNotEmpty
+                                ? [_profile!.partnerCity, _profile!.partnerStation]
+                                    .whereType<String>()
+                                    .join(' · ')
+                                : '미설정',
+                            style: const TextStyle(
+                              fontSize: 13, color: AppTheme.textSecondary,
+                            ),
+                          ),
+                          onTap: _showDistancePicker,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
                 // 앱 설정
                 _buildSectionTitle('앱 설정'),
                 const SizedBox(height: 12),
@@ -793,6 +1197,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
     );
+  }
+
+  String _distanceTypeLabel(String type) {
+    switch (type) {
+      case 'same_city':
+        return '같은 도시';
+      case 'near':
+        return '근거리';
+      case 'long_distance':
+        return '장거리';
+      default:
+        return type;
+    }
   }
 
   Widget _buildSectionTitle(String title) {

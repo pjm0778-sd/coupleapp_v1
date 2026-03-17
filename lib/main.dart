@@ -4,7 +4,7 @@ import 'core/supabase_client.dart';
 import 'core/theme.dart';
 import 'core/notification_manager.dart';
 import 'features/auth/screens/login_screen.dart';
-import 'features/couple/screens/couple_connect_screen.dart';
+import 'features/onboarding/onboarding_flow.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/schedule/screens/auto_registration_screen.dart';
@@ -69,7 +69,7 @@ class AppRouter extends StatelessWidget {
           key: ValueKey(session.user.id),
           future: supabase
               .from('profiles')
-              .select('couple_id')
+              .select('couple_id, onboarding_completed')
               .eq('id', session.user.id)
               .maybeSingle(),
           builder: (context, profileSnap) {
@@ -78,8 +78,9 @@ class AppRouter extends StatelessWidget {
                 body: Center(child: CircularProgressIndicator()),
               );
             }
-            final coupleId = profileSnap.data?['couple_id'];
-            if (coupleId == null) return const CoupleConnectScreen();
+            final onboardingCompleted =
+                profileSnap.data?['onboarding_completed'] as bool? ?? false;
+            if (!onboardingCompleted) return const OnboardingFlow();
             return const MainShell();
           },
         );
