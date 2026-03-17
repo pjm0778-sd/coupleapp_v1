@@ -37,9 +37,9 @@ class TransitResult {
   String get durationLabel {
     final h = durationMinutes ~/ 60;
     final m = durationMinutes % 60;
-    if (h == 0) return '${m}분';
-    if (m == 0) return '${h}시간';
-    return '${h}시간 ${m}분';
+    if (h == 0) return '$m분';
+    if (m == 0) return '$h시간';
+    return '$h시간 $m분';
   }
 
   String get priceLabel {

@@ -1,4 +1,3 @@
-1
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
@@ -251,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Icon(
             Icons.people_outline,
             size: 64,
-            color: AppTheme.textSecondary.withOpacity(0.3),
+            color: AppTheme.textSecondary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
           const Text(
