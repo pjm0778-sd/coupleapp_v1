@@ -78,9 +78,12 @@ class AppRouter extends StatelessWidget {
                 body: Center(child: CircularProgressIndicator()),
               );
             }
+            // null  → 기존 유저(컬럼 없거나 미설정) → MainShell
+            // false → 신규 유저(온보딩 미완료)     → OnboardingFlow
+            // true  → 온보딩 완료                  → MainShell
             final onboardingCompleted =
-                profileSnap.data?['onboarding_completed'] as bool? ?? false;
-            if (!onboardingCompleted) return const OnboardingFlow();
+                profileSnap.data?['onboarding_completed'] as bool?;
+            if (onboardingCompleted == false) return const OnboardingFlow();
             return const MainShell();
           },
         );
