@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
@@ -43,6 +44,15 @@ class CoupleApp extends StatelessWidget {
           },
         ),
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('ko', 'KR'),
+        Locale('en', 'US'),
+      ],
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {'/': (_) => const AppRouter()},
