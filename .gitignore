@@ -26,6 +26,9 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# API Keys (절대 커밋하지 말 것)
+lib/core/api_keys.dart
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
