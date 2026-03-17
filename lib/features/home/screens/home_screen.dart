@@ -1,13 +1,17 @@
+1
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
+import '../../profile/models/couple_profile.dart';
+import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
 import '../widgets/dday_widget.dart';
 import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
+import '../widgets/transport_preview_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,8 +22,10 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _homeService = HomeService();
+  final _profileService = ProfileService();
 
   Map<String, dynamic> _data = {};
+  CoupleProfile? _profile;
   bool _isLoading = true;
   bool _hasLoadedOnce = false;
   RealtimeChannel? _schedulesChannel;
@@ -104,15 +110,19 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final summary = await _homeService.getHomeSummary(_coupleId!);
+      final results = await Future.wait([
+        _homeService.getHomeSummary(_coupleId!),
+        _profileService.loadMyProfile(),
+      ]);
       if (mounted) {
         setState(() {
-          _data = summary;
+          _data = results[0] as Map<String, dynamic>;
+          _profile = results[1] as CoupleProfile?;
           _isLoading = false;
         });
         _setupRealtime();
         // 데이트 알림 자동 체크
-        _checkNotifications(summary);
+        _checkNotifications(_data);
       }
     } catch (e) {
       if (mounted) {
@@ -270,6 +280,17 @@ class _HomeScreenState extends State<HomeScreen> {
             NextDateWidget(
               nextDateSchedule: _nextDate!['schedule'] as Schedule,
               daysUntil: _nextDate!['days_until'] as int,
+            ),
+            const SizedBox(height: 16),
+          ],
+          // 교통편 카드 (장거리 + 내 역 + 파트너 역 설정 시)
+          if (_profile?.hasTransportInfo == true) ...[
+            TransportPreviewCard(
+              fromStation: _profile!.myStation!,
+              toStation: _profile!.partnerStation!,
+              nextDate: _nextDate != null
+                  ? (_nextDate!['schedule'] as Schedule).date
+                  : null,
             ),
             const SizedBox(height: 16),
           ],
