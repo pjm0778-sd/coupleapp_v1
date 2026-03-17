@@ -10,6 +10,7 @@ import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabe
 import '../../profile/models/shift_time.dart';
 import '../../onboarding/widgets/city_selector_widget.dart';
 import '../../onboarding/widgets/shift_time_editor.dart';
+import '../../auth/services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -707,6 +708,134 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _deleteAccount() async {
+    // 1단계: 경고 확인
+    final goNext = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(children: [
+          Text('⚠️', style: TextStyle(fontSize: 22)),
+          SizedBox(width: 8),
+          Text('회원 탈퇴', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        ]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('탈퇴하면 아래 데이터가 모두 삭제되며\n절대 복구할 수 없어요.',
+                style: TextStyle(fontSize: 14, height: 1.5)),
+            const SizedBox(height: 16),
+            _warnItem('📅 모든 일정 및 댓글'),
+            _warnItem('🎨 색상 매핑 설정'),
+            _warnItem('💑 커플 연결 정보'),
+            _warnItem('👤 계정 및 프로필'),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Text('탈퇴 후 동일 이메일로 재가입해도\n데이터는 복구되지 않습니다.',
+                  style: TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w500)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소', style: TextStyle(color: AppTheme.textSecondary)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('계속하기'),
+          ),
+        ],
+      ),
+    );
+
+    if (goNext != true || !mounted) return;
+
+    // 2단계: "탈퇴하기" 입력 최종 확인
+    final confirmController = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text('정말 탈퇴하실 건가요?',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('확인을 위해 아래에 "탈퇴하기"를 입력해주세요.',
+                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: confirmController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '탈퇴하기',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
+                  ),
+                ),
+                onChanged: (_) => setS(() {}),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('취소', style: TextStyle(color: AppTheme.textSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: confirmController.text.trim() == '탈퇴하기'
+                    ? Colors.red
+                    : Colors.grey,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: confirmController.text.trim() == '탈퇴하기'
+                  ? () => Navigator.pop(ctx, true)
+                  : null,
+              child: const Text('탈퇴하기'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // 실제 탈퇴 처리
+    setState(() => _isLoading = true);
+    try {
+      await AuthService().deleteAccount();
+      // signOut 후 AppRouter가 자동으로 LoginScreen으로 전환
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다: $e')),
+        );
+      }
+    }
+  }
+
   Future<void> _signOut() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -1154,38 +1283,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // 계정 탈퇴
                 TextButton(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('회원 탈퇴'),
-                        content: const Text(
-                          '정말로 탈퇴하시겠습니까? 모든 데이터가 삭제되며 복구할 수 없습니다.',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('취소'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent,
-                              foregroundColor: Colors.white,
-                            ),
-                            onPressed: () async {
-                              // 탈퇴 로직
-                              Navigator.pop(ctx);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('탈퇴 처리가 완료되었습니다')),
-                              );
-                              await supabase.auth.signOut();
-                            },
-                            child: const Text('탈퇴하기'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  onPressed: _deleteAccount,
                   child: const Text(
                     '회원 탈퇴',
                     style: TextStyle(
