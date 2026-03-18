@@ -685,6 +685,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _buildCell(day, isSelected: true, isToday: false),
         todayBuilder: (ctx, day, _) =>
             _buildCell(day, isSelected: false, isToday: true),
+        markerBuilder: (_, __, ___) => const SizedBox.shrink(),
       ),
     );
   }
