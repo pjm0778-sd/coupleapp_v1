@@ -1,0 +1,686 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme.dart';
+import '../../../shared/models/schedule.dart';
+
+class ScheduleAddSheet extends StatefulWidget {
+  final DateTime initialDate;
+  final String myUserId;
+  final String? partnerId;
+  final String? partnerNickname;
+  final String coupleId;
+  final Schedule? existingSchedule; // 수정 시 전달
+
+  const ScheduleAddSheet({
+    super.key,
+    required this.initialDate,
+    required this.myUserId,
+    required this.coupleId,
+    this.partnerId,
+    this.partnerNickname,
+    this.existingSchedule,
+  });
+
+  static Future<Schedule?> show(
+    BuildContext context, {
+    required DateTime initialDate,
+    required String myUserId,
+    required String coupleId,
+    String? partnerId,
+    String? partnerNickname,
+    Schedule? existingSchedule,
+  }) {
+    return showModalBottomSheet<Schedule>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom,
+        ),
+        child: ScheduleAddSheet(
+          initialDate: initialDate,
+          myUserId: myUserId,
+          coupleId: coupleId,
+          partnerId: partnerId,
+          partnerNickname: partnerNickname,
+          existingSchedule: existingSchedule,
+        ),
+      ),
+    );
+  }
+
+  @override
+  State<ScheduleAddSheet> createState() => _ScheduleAddSheetState();
+}
+
+class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
+  final _titleController = TextEditingController();
+  final _locationController = TextEditingController();
+  final _noteController = TextEditingController();
+
+  late String _ownerType; // 'me' | 'partner' | 'couple'
+  late bool _isAllDay;
+  late DateTime _startDate;
+  late DateTime _endDate;
+  late TimeOfDay? _startTime;
+  late TimeOfDay? _endTime;
+  late String? _colorHex;
+  late String? _category;
+  late String _location;
+  late String _note;
+
+  static const _colorPalette = <String, Color>{
+    '#E53935': Color(0xFFE53935),
+    '#E91E63': Color(0xFFE91E63),
+    '#9C27B0': Color(0xFF9C27B0),
+    '#673AB7': Color(0xFF673AB7),
+    '#3F51B5': Color(0xFF3F51B5),
+    '#2196F3': Color(0xFF2196F3),
+    '#03A9F4': Color(0xFF03A9F4),
+    '#00BCD4': Color(0xFF00BCD4),
+    '#009688': Color(0xFF009688),
+    '#4CAF50': Color(0xFF4CAF50),
+    '#8BC34A': Color(0xFF8BC34A),
+    '#FFEB3B': Color(0xFFFFEB3B),
+    '#FFC107': Color(0xFFFFC107),
+    '#FF9800': Color(0xFFFF9800),
+    '#FF5722': Color(0xFFFF5722),
+    '#795548': Color(0xFF795548),
+    '#607D8B': Color(0xFF607D8B),
+    '#9E9E9E': Color(0xFF9E9E9E),
+    '#212121': Color(0xFF212121),
+  };
+
+  static const _categories = ['근무', '약속', '여행', '데이트', '기타'];
+
+  @override
+  void initState() {
+    super.initState();
+    final s = widget.existingSchedule;
+    if (s != null) {
+      _titleController.text = s.title ?? s.workType ?? '';
+      _ownerType = s.ownerType;
+      _isAllDay = s.startTime == null && s.endTime == null;
+      _startDate = s.startDate ?? s.date;
+      _endDate = s.endDate ?? s.startDate ?? s.date;
+      _startTime = s.startTime;
+      _endTime = s.endTime;
+      _colorHex = s.colorHex;
+      _category = s.category;
+      _location = s.location ?? '';
+      _note = s.note ?? '';
+    } else {
+      _ownerType = 'me';
+      _isAllDay = true;
+      _startDate = widget.initialDate;
+      _endDate = widget.initialDate;
+      _startTime = null;
+      _endTime = null;
+      _colorHex = null;
+      _category = null;
+      _location = '';
+      _note = '';
+    }
+    _locationController.text = _location;
+    _noteController.text = _note;
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _locationController.dispose();
+    _noteController.dispose();
+    super.dispose();
+  }
+
+  String get _targetUserId {
+    if (_ownerType == 'partner') return widget.partnerId ?? widget.myUserId;
+    return widget.myUserId;
+  }
+
+  void _onSave() {
+    final title = _titleController.text.trim();
+    _location = _locationController.text.trim();
+    _note = _noteController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('제목을 입력해주세요')),
+      );
+      return;
+    }
+
+    final s = widget.existingSchedule;
+    final schedule = s != null
+        ? s.copyWith(
+            date: _startDate,
+            startDate: _startDate,
+            endDate: _endDate != _startDate ? _endDate : null,
+            title: title,
+            startTime: _isAllDay ? null : _startTime,
+            endTime: _isAllDay ? null : _endTime,
+            colorHex: _colorHex,
+            category: _category,
+            location: _location.trim().isEmpty ? null : _location.trim(),
+            note: _note.trim().isEmpty ? null : _note.trim(),
+            ownerType: _ownerType,
+            isDate: _ownerType == 'couple',
+          )
+        : Schedule(
+            id: '',
+            userId: _targetUserId,
+            coupleId: widget.coupleId,
+            date: _startDate,
+            startDate: _startDate,
+            endDate: _endDate != _startDate ? _endDate : null,
+            title: title,
+            startTime: _isAllDay ? null : _startTime,
+            endTime: _isAllDay ? null : _endTime,
+            colorHex: _colorHex,
+            category: _category,
+            location: _location.trim().isEmpty ? null : _location.trim(),
+            note: _note.trim().isEmpty ? null : _note.trim(),
+            ownerType: _ownerType,
+            isDate: _ownerType == 'couple',
+            isAnniversary: false,
+          );
+
+    Navigator.pop(context, schedule);
+  }
+
+  Future<void> _pickDate({required bool isStart}) async {
+    final initial = isStart ? _startDate : _endDate;
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (isStart) {
+        _startDate = picked;
+        if (_endDate.isBefore(picked)) _endDate = picked;
+      } else {
+        _endDate = picked;
+      }
+    });
+  }
+
+  Future<void> _pickTime({required bool isStart}) async {
+    final initial = isStart
+        ? (_startTime ?? const TimeOfDay(hour: 9, minute: 0))
+        : (_endTime ?? const TimeOfDay(hour: 10, minute: 0));
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (isStart) {
+        _startTime = picked;
+      } else {
+        _endTime = picked;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final partnerLabel = widget.partnerNickname ?? '파트너';
+    final isEdit = widget.existingSchedule != null;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // ── 드래그 핸들 ──
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          // ── 헤더 ──
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 8, 0),
+            child: Row(
+              children: [
+                Text(
+                  isEdit ? '일정 수정' : '일정 추가',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+
+          // ── 내용 (스크롤) ──
+          Flexible(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. 제목
+                  TextField(
+                    controller: _titleController,
+                    autofocus: !isEdit,
+                    decoration: _inputDecoration('일정 제목을 입력하세요 *'),
+                    style: const TextStyle(fontSize: 15),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. 누구 일정?
+                  _sectionLabel('누구 일정?'),
+                  const SizedBox(height: 8),
+                  _OwnerSelector(
+                    value: _ownerType,
+                    partnerLabel: partnerLabel,
+                    onChanged: (v) => setState(() => _ownerType = v),
+                  ),
+                  if (_ownerType == 'partner') ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '$partnerLabel 대신 등록하는 일정이에요',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+
+                  // 3. 하루종일
+                  Row(
+                    children: [
+                      _sectionLabel('하루종일'),
+                      const Spacer(),
+                      Switch(
+                        value: _isAllDay,
+                        activeThumbColor: AppTheme.primary,
+                        onChanged: (v) => setState(() => _isAllDay = v),
+                      ),
+                    ],
+                  ),
+
+                  // 4. 날짜 + 시간 (하루종일 OFF 시 시간 표시)
+                  const SizedBox(height: 8),
+                  _DateTimeRow(
+                    label: '시작',
+                    date: _startDate,
+                    time: _isAllDay ? null : _startTime,
+                    showTime: !_isAllDay,
+                    onDateTap: () => _pickDate(isStart: true),
+                    onTimeTap: () => _pickTime(isStart: true),
+                  ),
+                  const SizedBox(height: 8),
+                  _DateTimeRow(
+                    label: '종료',
+                    date: _endDate,
+                    time: _isAllDay ? null : _endTime,
+                    showTime: !_isAllDay,
+                    onDateTap: () => _pickDate(isStart: false),
+                    onTimeTap: () => _pickTime(isStart: false),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 5. 색상
+                  _sectionLabel('색상'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _colorPalette.entries.map((e) {
+                      final selected = _colorHex == e.key;
+                      return GestureDetector(
+                        onTap: () => setState(() => _colorHex = e.key),
+                        child: Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: e.value,
+                            shape: BoxShape.circle,
+                            border: selected
+                                ? Border.all(
+                                    color: AppTheme.textPrimary,
+                                    width: 2.5,
+                                  )
+                                : null,
+                          ),
+                          child: selected
+                              ? const Icon(Icons.check,
+                                  color: Colors.white, size: 16)
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 6. 종류
+                  _sectionLabel('종류'),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _categories.map((c) {
+                      final selected = _category == c;
+                      return GestureDetector(
+                        onTap: () =>
+                            setState(() => _category = selected ? null : c),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.primary
+                                : AppTheme.surface,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: selected
+                                  ? AppTheme.primary
+                                  : AppTheme.border,
+                            ),
+                          ),
+                          child: Text(
+                            c,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: selected
+                                  ? Colors.white
+                                  : AppTheme.textPrimary,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 7. 장소
+                  _sectionLabel('장소 (선택)'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _locationController,
+                    onChanged: (v) => _location = v,
+                    decoration: _inputDecoration(
+                      '장소를 입력하세요',
+                      prefixIcon: Icons.location_on_outlined,
+                    ),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 8. 메모
+                  _sectionLabel('메모 (선택)'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _noteController,
+                    onChanged: (v) => _note = v,
+                    maxLines: 3,
+                    decoration: _inputDecoration('메모를 입력하세요'),
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // 저장 버튼
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: _onSave,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        isEdit ? '수정 완료' : '저장',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: AppTheme.textSecondary,
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint, {IconData? prefixIcon}) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
+      prefixIcon: prefixIcon != null
+          ? Icon(prefixIcon, size: 20, color: AppTheme.textSecondary)
+          : null,
+      filled: true,
+      fillColor: AppTheme.surface,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppTheme.border),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 소유자 선택 버튼 그룹
+// ────────────────────────────────────────────────────
+class _OwnerSelector extends StatelessWidget {
+  final String value;
+  final String partnerLabel;
+  final void Function(String) onChanged;
+
+  const _OwnerSelector({
+    required this.value,
+    required this.partnerLabel,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        _OwnerBtn(label: '나', value: 'me', selected: value == 'me', onTap: onChanged),
+        const SizedBox(width: 8),
+        _OwnerBtn(
+          label: partnerLabel,
+          value: 'partner',
+          selected: value == 'partner',
+          onTap: onChanged,
+          color: const Color(0xFF9C6FE4),
+        ),
+        const SizedBox(width: 8),
+        _OwnerBtn(
+          label: '우리',
+          value: 'couple',
+          selected: value == 'couple',
+          onTap: onChanged,
+          color: const Color(0xFFFF6B9D),
+        ),
+      ],
+    );
+  }
+}
+
+class _OwnerBtn extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool selected;
+  final void Function(String) onTap;
+  final Color color;
+
+  const _OwnerBtn({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+    this.color = const Color(0xFF4F86F7),
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(value),
+        child: Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: selected ? color : AppTheme.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selected ? color : AppTheme.border,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: selected ? Colors.white : AppTheme.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 날짜+시간 한 행
+// ────────────────────────────────────────────────────
+class _DateTimeRow extends StatelessWidget {
+  final String label;
+  final DateTime date;
+  final TimeOfDay? time;
+  final bool showTime;
+  final VoidCallback onDateTap;
+  final VoidCallback onTimeTap;
+
+  const _DateTimeRow({
+    required this.label,
+    required this.date,
+    required this.time,
+    required this.showTime,
+    required this.onDateTap,
+    required this.onTimeTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr =
+        '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
+    final timeStr = time != null
+        ? '${time!.hour.toString().padLeft(2, '0')}:${time!.minute.toString().padLeft(2, '0')}'
+        : '시간 설정';
+
+    return Row(
+      children: [
+        SizedBox(
+          width: 36,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: GestureDetector(
+            onTap: onDateTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined,
+                      size: 14, color: AppTheme.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(dateStr,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textPrimary)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (showTime) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: onTimeTap,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.surface,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppTheme.border),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.access_time,
+                      size: 14, color: AppTheme.textSecondary),
+                  const SizedBox(width: 6),
+                  Text(timeStr,
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textPrimary)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}

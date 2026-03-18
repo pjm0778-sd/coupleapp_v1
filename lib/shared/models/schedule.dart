@@ -27,6 +27,8 @@ class Schedule {
   final String? repeatGroupId; // 반복 일정 그룹 ID
   final bool isOcr; // OCR 자동등록 여부
   final bool isGoogleCalendar; // 구글 캘린더 연동 여부
+  /// 일정 소유자: 'me' | 'partner' | 'couple'
+  final String ownerType;
 
   const Schedule({
     required this.id,
@@ -51,6 +53,7 @@ class Schedule {
     this.repeatGroupId,
     this.isOcr = false,
     this.isGoogleCalendar = false,
+    this.ownerType = 'me',
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -86,6 +89,9 @@ class Schedule {
     repeatGroupId: map['repeat_group_id'] as String?,
     isOcr: map['is_ocr'] as bool? ?? false,
     isGoogleCalendar: map['is_google_calendar'] as bool? ?? false,
+    // owner_type 없으면 is_date=true → couple, 나머지 → me (하위 호환)
+    ownerType: map['owner_type'] as String?
+        ?? ((map['is_date'] as bool? ?? false) ? 'couple' : 'me'),
   );
 
   Map<String, dynamic> toMap() => {
@@ -110,6 +116,7 @@ class Schedule {
     'repeat_group_id': repeatGroupId,
     'is_ocr': isOcr,
     'is_google_calendar': isGoogleCalendar,
+    'owner_type': ownerType,
   };
 
   static TimeOfDay _parseTime(String time) {
@@ -145,6 +152,7 @@ class Schedule {
     String? repeatGroupId,
     bool? isOcr,
     bool? isGoogleCalendar,
+    String? ownerType,
   }) =>
       Schedule(
       id: id ?? this.id,
@@ -169,5 +177,6 @@ class Schedule {
       repeatGroupId: repeatGroupId ?? this.repeatGroupId,
       isOcr: isOcr ?? this.isOcr,
       isGoogleCalendar: isGoogleCalendar ?? this.isGoogleCalendar,
+      ownerType: ownerType ?? this.ownerType,
     );
 }

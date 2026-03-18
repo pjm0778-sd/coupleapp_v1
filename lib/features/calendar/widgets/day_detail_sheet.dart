@@ -1,0 +1,510 @@
+import 'package:flutter/material.dart';
+import '../../../core/theme.dart';
+import '../../../core/holiday_service.dart';
+import '../../../shared/models/schedule.dart';
+
+class DayDetailSheet extends StatelessWidget {
+  final DateTime date;
+  final List<Schedule> schedules; // 이미 sortByOwner 적용된 리스트
+  final List<Holiday> holidays;
+  final String myUserId;
+  final String? partnerNickname;
+  final Color Function(Schedule) getColor;
+  final Future<void> Function(Schedule) onEdit;
+  final Future<void> Function(Schedule) onDelete;
+  final VoidCallback onAddTap;
+
+  const DayDetailSheet({
+    super.key,
+    required this.date,
+    required this.schedules,
+    required this.holidays,
+    required this.myUserId,
+    required this.partnerNickname,
+    required this.getColor,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onAddTap,
+  });
+
+  static Future<void> show(
+    BuildContext context, {
+    required DateTime date,
+    required List<Schedule> schedules,
+    required List<Holiday> holidays,
+    required String myUserId,
+    required String? partnerNickname,
+    required Color Function(Schedule) getColor,
+    required Future<void> Function(Schedule) onEdit,
+    required Future<void> Function(Schedule) onDelete,
+    required VoidCallback onAddTap,
+  }) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.3,
+        maxChildSize: 0.88,
+        snap: true,
+        snapSizes: const [0.5, 0.88],
+        builder: (_, scrollController) => DayDetailSheet(
+          date: date,
+          schedules: schedules,
+          holidays: holidays,
+          myUserId: myUserId,
+          partnerNickname: partnerNickname,
+          getColor: getColor,
+          onEdit: onEdit,
+          onDelete: onDelete,
+          onAddTap: onAddTap,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final wd = weekdays[date.weekday - 1];
+    final now = DateTime.now();
+    final isToday =
+        date.year == now.year && date.month == now.month && date.day == now.day;
+
+    final nonAnniv = schedules.where((s) => !s.isAnniversary).toList();
+    final anniv = schedules.where((s) => s.isAnniversary).toList();
+    final publicHoliday = holidays.where(
+      (h) => h.type == HolidayType.publicHoliday,
+    );
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // ── 드래그 핸들 ──
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // ── 날짜 헤더 ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (isToday)
+                      Text(
+                        '오늘',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    Text(
+                      '${date.month}월 ${date.day}일 ($wd)',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (publicHoliday.isNotEmpty)
+                      Text(
+                        publicHoliday.first.name,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFFE53935),
+                        ),
+                      ),
+                  ],
+                ),
+                const Spacer(),
+                // 일정 추가 버튼
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(context);
+                    onAddTap();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text(
+                          '일정 추가',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+
+          // ── 일정 목록 ──
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                // 기념일 배너
+                if (anniv.isNotEmpty)
+                  _AnniversaryBanner(anniversaries: anniv),
+
+                // 일정 없을 때
+                if (nonAnniv.isEmpty && anniv.isEmpty)
+                  const _EmptyState(),
+
+                if (nonAnniv.isEmpty && anniv.isNotEmpty)
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+                    child: Text(
+                      '이날 일정이 없어요',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ),
+
+                // 일정 카드들
+                ...nonAnniv.map(
+                  (s) => _ScheduleRow(
+                    schedule: s,
+                    myUserId: myUserId,
+                    partnerNickname: partnerNickname,
+                    color: getColor(s),
+                    onEdit: () async {
+                      Navigator.pop(context);
+                      await onEdit(s);
+                    },
+                    onDelete: () async {
+                      Navigator.pop(context);
+                      await onDelete(s);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 기념일 배너
+// ────────────────────────────────────────────────────
+class _AnniversaryBanner extends StatelessWidget {
+  final List<Schedule> anniversaries;
+  const _AnniversaryBanner({required this.anniversaries});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF4081).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFFF4081).withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          const Text('🎉', style: TextStyle(fontSize: 16)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              anniversaries.map((a) => a.title ?? '').join(' · '),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFFE91E63),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 일정 없는 상태
+// ────────────────────────────────────────────────────
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.only(top: 40),
+      child: Column(
+        children: [
+          Icon(
+            Icons.event_available_outlined,
+            size: 48,
+            color: Color(0xFFCCCCCC),
+          ),
+          SizedBox(height: 12),
+          Text(
+            '이날 일정이 없어요',
+            style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),
+          ),
+          SizedBox(height: 6),
+          Text(
+            '+ 일정 추가 버튼을 눌러 등록해 보세요',
+            style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 일정 카드 한 줄
+// ────────────────────────────────────────────────────
+class _ScheduleRow extends StatelessWidget {
+  final Schedule schedule;
+  final String myUserId;
+  final String? partnerNickname;
+  final Color color;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ScheduleRow({
+    required this.schedule,
+    required this.myUserId,
+    required this.partnerNickname,
+    required this.color,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = _buildTimeStr();
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: color, width: 4),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        child: Row(
+          children: [
+            // 소유자 뱃지
+            _OwnerBadge(
+              ownerType: schedule.ownerType,
+              userId: schedule.userId,
+              myUserId: myUserId,
+              color: color,
+            ),
+            const SizedBox(width: 10),
+            // 제목 + 시간
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    schedule.title ?? schedule.workType ?? '(제목 없음)',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (timeStr.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      timeStr,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                  if (schedule.location != null &&
+                      schedule.location!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          schedule.location!,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            // ⋯ 메뉴
+            GestureDetector(
+              onTap: () => _showActionSheet(context),
+              child: const Padding(
+                padding: EdgeInsets.all(4),
+                child: Icon(
+                  Icons.more_horiz,
+                  size: 20,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _buildTimeStr() {
+    if (schedule.startTime == null && schedule.endTime == null) return '종일';
+    if (schedule.startTime == null) return '';
+    final fmt = (TimeOfDay t) =>
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    if (schedule.endTime == null) return fmt(schedule.startTime!);
+    return '${fmt(schedule.startTime!)} ~ ${fmt(schedule.endTime!)}';
+  }
+
+  void _showActionSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: const Text('수정하기'),
+              onTap: () {
+                Navigator.pop(context);
+                onEdit();
+              },
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline,
+                color: Colors.red,
+              ),
+              title: const Text(
+                '삭제하기',
+                style: TextStyle(color: Colors.red),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                onDelete();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.close),
+              title: const Text('취소'),
+              onTap: () => Navigator.pop(context),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 소유자 뱃지 (나 / 파 / 우)
+// ────────────────────────────────────────────────────
+class _OwnerBadge extends StatelessWidget {
+  final String ownerType;
+  final String userId;
+  final String myUserId;
+  final Color color;
+
+  const _OwnerBadge({
+    required this.ownerType,
+    required this.userId,
+    required this.myUserId,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, bg) = switch (ownerType) {
+      'couple' => ('우', const Color(0xFFFF6B9D)),
+      'partner' => ('파', const Color(0xFF9C6FE4)),
+      _ => userId == myUserId
+          ? ('나', const Color(0xFF4F86F7))
+          : ('파', const Color(0xFF9C6FE4)),
+    };
+
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: bg.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: bg,
+        ),
+      ),
+    );
+  }
+}

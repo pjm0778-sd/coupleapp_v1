@@ -4,58 +4,23 @@ import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/repeat_pattern.dart';
 
-enum ScheduleFilter {
-  mine, // 나만
-  partner, // 파트너만
-  both, // 우리 둘 다
-}
-
 class ScheduleService {
-  /// 해당 월의 커플 전체 일정 가져오기
+  /// 해당 월의 커플 전체 일정 가져오기 (필터 없음 — 통합 달력)
   Future<List<Schedule>> getMonthSchedules(
     String coupleId,
-    DateTime month, {
-    ScheduleFilter filter = ScheduleFilter.both,
-  }) async {
+    DateTime month,
+  ) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
-    final currentUserId = supabase.auth.currentUser!.id;
 
-    dynamic data;
-    switch (filter) {
-      case ScheduleFilter.mine:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .or('user_id.eq.$currentUserId,is_date.eq.true')
-            .gte('date', start.toIso8601String().split('T')[0])
-            .lte('date', end.toIso8601String().split('T')[0])
-            .order('date', ascending: true)
-            .order('start_time', ascending: true);
-        break;
-      case ScheduleFilter.partner:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .or('user_id.neq.$currentUserId,is_date.eq.true')
-            .gte('date', start.toIso8601String().split('T')[0])
-            .lte('date', end.toIso8601String().split('T')[0])
-            .order('date', ascending: true)
-            .order('start_time', ascending: true);
-        break;
-      case ScheduleFilter.both:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .gte('date', start.toIso8601String().split('T')[0])
-            .lte('date', end.toIso8601String().split('T')[0])
-            .order('date', ascending: true)
-            .order('start_time', ascending: true);
-        break;
-    }
+    final data = await supabase
+        .from('schedules')
+        .select()
+        .eq('couple_id', coupleId)
+        .gte('date', start.toIso8601String().split('T')[0])
+        .lte('date', end.toIso8601String().split('T')[0])
+        .order('date', ascending: true)
+        .order('start_time', ascending: true);
 
     return (data as List).map((e) => Schedule.fromMap(e)).toList();
   }
@@ -63,43 +28,41 @@ class ScheduleService {
   /// 특정 날짜의 일정 가져오기
   Future<List<Schedule>> getDateSchedules(
     String coupleId,
-    DateTime date, {
-    ScheduleFilter filter = ScheduleFilter.both,
-  }) async {
+    DateTime date,
+  ) async {
     final dateStr = date.toIso8601String().split('T')[0];
-    final currentUserId = supabase.auth.currentUser!.id;
 
-    dynamic data;
-    switch (filter) {
-      case ScheduleFilter.mine:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .or('user_id.eq.$currentUserId,is_date.eq.true')
-            .eq('date', dateStr)
-            .order('start_time', ascending: true);
-        break;
-      case ScheduleFilter.partner:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .or('user_id.neq.$currentUserId,is_date.eq.true')
-            .eq('date', dateStr)
-            .order('start_time', ascending: true);
-        break;
-      case ScheduleFilter.both:
-        data = await supabase
-            .from('schedules')
-            .select()
-            .eq('couple_id', coupleId)
-            .eq('date', dateStr)
-            .order('start_time', ascending: true);
-        break;
-    }
+    final data = await supabase
+        .from('schedules')
+        .select()
+        .eq('couple_id', coupleId)
+        .eq('date', dateStr)
+        .order('start_time', ascending: true);
 
     return (data as List).map((e) => Schedule.fromMap(e)).toList();
+  }
+
+  /// 우리(couple) → 내(me) → 파트너(partner) 순 정렬.
+  /// 같은 그룹 내에서는 시작 시간 오름차순, 시간 없으면 맨 뒤.
+  List<Schedule> sortByOwner(List<Schedule> schedules, String myUserId) {
+    return [...schedules]..sort((a, b) {
+      final oa = _ownerOrder(a, myUserId);
+      final ob = _ownerOrder(b, myUserId);
+      if (oa != ob) return oa.compareTo(ob);
+      final ta = a.startTime;
+      final tb = b.startTime;
+      if (ta == null && tb == null) return 0;
+      if (ta == null) return 1;
+      if (tb == null) return -1;
+      return (ta.hour * 60 + ta.minute) - (tb.hour * 60 + tb.minute);
+    });
+  }
+
+  int _ownerOrder(Schedule s, String myUserId) {
+    if (s.isAnniversary) return 0; // 기념일 최상단
+    if (s.ownerType == 'couple') return 1;
+    if (s.userId == myUserId) return 2;
+    return 3; // 파트너
   }
 
   /// 일정 상세 조회
