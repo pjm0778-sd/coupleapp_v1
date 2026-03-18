@@ -13,7 +13,7 @@ class _StationNode {
   const _StationNode(this.nodeId, this.nodeName);
 }
 
-/// 버스 터미널 코드 (GetExpBusTrminlList 응답)
+/// 버스 터미널 코드 (GetExpBusTrminlList / GetInterCtyBusTrminlList 응답)
 class _BusTerminal {
   final String terminalId;
   final String terminalNm;
@@ -27,11 +27,17 @@ class TransportService {
   /// 역 표시명 → nodeId 캐시
   final Map<String, String?> _nodeIdCache = {};
 
-  /// 터미널 검색어 → 터미널 목록 캐시
+  /// 고속버스 터미널 검색어 → 터미널 목록 캐시
   final Map<String, List<_BusTerminal>> _busTerminalCache = {};
 
-  /// 터미널 표시명 → terminalId 캐시
+  /// 고속버스 터미널 표시명 → terminalId 캐시
   final Map<String, String?> _busTerminalIdCache = {};
+
+  /// 시외버스 터미널 검색어 → 터미널 목록 캐시
+  final Map<String, List<_BusTerminal>> _intercityTerminalCache = {};
+
+  /// 시외버스 터미널 표시명 → terminalId 캐시
+  final Map<String, String?> _intercityTerminalIdCache = {};
 
   /// 출발역/터미널 → 도착역/터미널 교통편 통합 검색
   Future<TransportSearchResult> search({
@@ -96,16 +102,18 @@ class TransportService {
       }
     }
 
-    // ── 고속버스 조회 ──
-    // 양쪽 모두 버스 전용일 때만 버스 검색 (열차역↔버스터미널 혼합은 불가)
-    if (isBusOnlyDep && isBusOnlyArr) {
+    // ── 버스 조회 (고속 + 시외 동시) ──
+    final needsBusSearch =
+        (isBusOnlyDep && isBusOnlyArr) || (isBusOnlyDep != isBusOnlyArr && !isSrtOnly);
+
+    if (needsBusSearch) {
       if (!ApiKeys.isTagoConfigured) {
         busError = '버스 API 키가 설정되지 않았습니다';
       } else {
+        // ① 고속버스
         try {
           final depTermId = await _getBusTerminalId(fromStation);
           final arrTermId = await _getBusTerminalId(toStation);
-
           if (depTermId != null && arrTermId != null) {
             final buses = await _fetchBuses(
               depTerminalId: depTermId,
@@ -113,32 +121,31 @@ class TransportService {
               date: date,
             );
             results.addAll(buses);
-          } else {
-            busError =
-                '터미널 코드를 찾을 수 없습니다 (${depTermId == null ? fromStation : toStation})';
           }
         } catch (e) {
-          busError = e.toString();
-          debugPrint('Bus API error: $e');
+          debugPrint('ExpBus API error: $e');
+          busError = '고속버스 정보를 불러오지 못했습니다';
         }
-      }
-    } else if (isBusOnlyDep != isBusOnlyArr && !isSrtOnly) {
-      // 한쪽만 버스 전용 → 둘 다 버스 터미널로 시도
-      if (!ApiKeys.isTagoConfigured) {
-        busError = '버스 API 키가 설정되지 않았습니다';
-      } else {
+
+        // ② 시외버스
         try {
-          final depTermId = await _getBusTerminalId(fromStation);
-          final arrTermId = await _getBusTerminalId(toStation);
+          final depTermId = await _getInterCityTerminalId(fromStation);
+          final arrTermId = await _getInterCityTerminalId(toStation);
           if (depTermId != null && arrTermId != null) {
-            final buses = await _fetchBuses(
+            final buses = await _fetchInterCityBuses(
               depTerminalId: depTermId,
               arrTerminalId: arrTermId,
               date: date,
             );
             results.addAll(buses);
           }
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('InterCityBus API error: $e');
+        }
+
+        if (results.isEmpty && busError == null) {
+          busError = '터미널 코드를 찾을 수 없습니다';
+        }
       }
     }
 
@@ -328,6 +335,70 @@ class TransportService {
   }
 
   // ────────────────────────────────────────────────
+  // 시외버스 터미널 코드 조회
+  // ────────────────────────────────────────────────
+
+  /// 터미널 표시명 → TAGO InterCtyBus terminalId 조회 (캐시 활용)
+  Future<String?> _getInterCityTerminalId(String stationName) async {
+    if (_intercityTerminalIdCache.containsKey(stationName)) {
+      return _intercityTerminalIdCache[stationName];
+    }
+
+    final searchTerm = intercityBusSearchExceptions[stationName] ??
+        _deriveBusSearchTerm(stationName);
+
+    final terminals = await _searchInterCityTerminals(searchTerm);
+    final match = terminals.firstOrNull;
+    _intercityTerminalIdCache[stationName] = match?.terminalId;
+    return match?.terminalId;
+  }
+
+  /// GetInterCtyBusTrminlList: 시외버스 터미널명 검색
+  Future<List<_BusTerminal>> _searchInterCityTerminals(
+      String searchTerm) async {
+    if (_intercityTerminalCache.containsKey(searchTerm)) {
+      return _intercityTerminalCache[searchTerm]!;
+    }
+
+    final uri = Uri(
+      scheme: 'https',
+      host: 'apis.data.go.kr',
+      path: '/1613000/InterCtyBusInfo/GetInterCtyBusTrminlList',
+      queryParameters: {
+        'serviceKey': ApiKeys.tagoKey,
+        '_type': 'json',
+        'terminalNm': searchTerm,
+        'numOfRows': '10',
+        'pageNo': '1',
+      },
+    );
+
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('시외버스 터미널 조회 HTTP ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = _extractItems(
+      body['response']?['body'] as Map<String, dynamic>? ?? {},
+    );
+
+    final terminals = items
+        .map((e) {
+          final m = e as Map<String, dynamic>;
+          final id = m['terminalid']?.toString() ?? '';
+          final nm = m['terminalNm']?.toString() ?? '';
+          if (id.isEmpty || nm.isEmpty) return null;
+          return _BusTerminal(id, nm);
+        })
+        .whereType<_BusTerminal>()
+        .toList();
+
+    _intercityTerminalCache[searchTerm] = terminals;
+    return terminals;
+  }
+
+  // ────────────────────────────────────────────────
   // SRT Supabase 시간표 조회
   // ────────────────────────────────────────────────
 
@@ -465,6 +536,40 @@ class TransportService {
     return items.map(_parseBusItem).whereType<TransitResult>().toList();
   }
 
+  /// TAGO 시외버스 시간표 조회 (GetStrtpntAlocFndInterCtyBusInfo)
+  Future<List<TransitResult>> _fetchInterCityBuses({
+    required String depTerminalId,
+    required String arrTerminalId,
+    required DateTime date,
+  }) async {
+    final uri = Uri(
+      scheme: 'https',
+      host: 'apis.data.go.kr',
+      path: '/1613000/InterCtyBusInfo/GetStrtpntAlocFndInterCtyBusInfo',
+      queryParameters: {
+        'serviceKey': ApiKeys.tagoKey,
+        '_type': 'json',
+        'depTerminalId': depTerminalId,
+        'arrTerminalId': arrTerminalId,
+        'depPlandTime': _fmtDate(date),
+        'numOfRows': '50',
+        'pageNo': '1',
+      },
+    );
+
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('시외버스 조회 HTTP ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = _extractItems(
+      body['response']?['body'] as Map<String, dynamic>? ?? {},
+    );
+
+    return items.map(_parseInterCityBusItem).whereType<TransitResult>().toList();
+  }
+
   // ────────────────────────────────────────────────
   // 응답 파싱
   // ────────────────────────────────────────────────
@@ -527,6 +632,32 @@ class TransportService {
       );
     } catch (e) {
       debugPrint('Bus item parse error: $e / $raw');
+      return null;
+    }
+  }
+
+  TransitResult? _parseInterCityBusItem(dynamic raw) {
+    try {
+      final map = raw as Map<String, dynamic>;
+      final gradeName =
+          (map['busgradenam'] ?? map['busGradeNm'] ?? '').toString().trim();
+      // 우등/프리미엄 시외는 expressbus, 나머지는 intercitybus
+      final type = (gradeName.contains('우등') || gradeName.contains('프리미엄'))
+          ? TransitType.expressbus
+          : TransitType.intercitybus;
+
+      final depRaw = map['depplandtime']?.toString() ?? '';
+      final arrRaw = map['arrplandtime']?.toString() ?? '';
+
+      return TransitResult(
+        type: type,
+        trainNo: (map['busno'] ?? map['routeId'] ?? '').toString(),
+        departureTime: _parseDateTime(depRaw),
+        arrivalTime: _parseDateTime(arrRaw),
+        durationMinutes: _calcDuration(depRaw, arrRaw),
+      );
+    } catch (e) {
+      debugPrint('InterCityBus item parse error: $e / $raw');
       return null;
     }
   }

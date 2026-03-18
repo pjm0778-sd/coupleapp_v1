@@ -1,4 +1,4 @@
-enum TransitType { ktx, srt, itx, mugunghwa, expressbus, bus }
+enum TransitType { ktx, srt, itx, mugunghwa, expressbus, bus, intercitybus }
 
 class TransitResult {
   final TransitType type;
@@ -25,9 +25,11 @@ class TransitResult {
       case TransitType.mugunghwa:
         return '무궁화';
       case TransitType.expressbus:
-        return '우등';
+        return '우등고속';
       case TransitType.bus:
-        return '일반';
+        return '일반고속';
+      case TransitType.intercitybus:
+        return '시외버스';
     }
   }
 
@@ -44,4 +46,6 @@ class TransitResult {
       type == TransitType.srt ||
       type == TransitType.itx ||
       type == TransitType.mugunghwa;
+
+  bool get isIntercityBus => type == TransitType.intercitybus;
 }

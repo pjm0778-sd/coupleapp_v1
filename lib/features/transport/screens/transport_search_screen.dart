@@ -816,7 +816,9 @@ class _TransitCard extends StatelessWidget {
                     ? srtBookingUrl
                     : result.isRailway
                         ? korailBookingUrl
-                        : busBookingUrl),
+                        : result.isIntercityBus
+                            ? intercityBusBookingUrl
+                            : busBookingUrl),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -850,6 +852,8 @@ class _TransitCard extends StatelessWidget {
         return const Color(0xFF9C27B0);
       case TransitType.bus:
         return const Color(0xFF2196F3);
+      case TransitType.intercitybus:
+        return const Color(0xFF00897B);
     }
   }
 }

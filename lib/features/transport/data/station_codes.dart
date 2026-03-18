@@ -127,7 +127,17 @@ const Map<String, String> busTerminalSearchExceptions = {
 /// 버스/공항 전용 여부
 bool isBusOnly(String stationName) => busOnlyStations.contains(stationName);
 
+/// 시외버스 터미널명 → GetInterCtyBusTrminlList 검색어 예외
+const Map<String, String> intercityBusSearchExceptions = {
+  '부산종합터미널 (노포)': '노포',
+  '유스퀘어터미널': '유스퀘어',
+  '인천터미널': '인천',
+  '동서울터미널': '동서울',
+  '서울남부터미널': '남부',
+};
+
 /// 예매 사이트 URL
 const String srtBookingUrl = 'https://etk.srail.kr';
 const String korailBookingUrl = 'https://www.letskorail.com';
 const String busBookingUrl = 'https://www.kobus.co.kr';
+const String intercityBusBookingUrl = 'https://www.bustago.or.kr';
