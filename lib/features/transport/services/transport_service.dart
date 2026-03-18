@@ -23,6 +23,7 @@ class TransportService {
     required String toStation,
     required DateTime date,
   }) async {
+    _currentSearchDate = date;
     final results = <TransitResult>[];
     String? trainError;
     String? busError;
@@ -212,6 +213,8 @@ class TransportService {
   // ODsay 시간표 조회
   // ────────────────────────────────────────────────
 
+  DateTime? _currentSearchDate;
+
   Future<List<TransitResult>> _fetchTrains(int depId, int arrId) async {
     final uri = Uri.parse(_proxyBase).replace(queryParameters: {
       'endpoint': 'trainServiceTime',
@@ -243,7 +246,10 @@ class TransportService {
 
     final items = _extractList(result['station']);
     debugPrint('[ODsay] trainServiceTime ${items.length}건');
-    return items.map(_parseTrainItem).whereType<TransitResult>().toList();
+    return items
+        .map((e) => _parseTrainItem(e, filterDate: _currentSearchDate))
+        .whereType<TransitResult>()
+        .toList();
   }
 
   Future<List<TransitResult>> _fetchBuses(
@@ -336,17 +342,44 @@ class TransportService {
   // 응답 파싱
   // ────────────────────────────────────────────────
 
-  TransitResult? _parseTrainItem(dynamic raw) {
+  TransitResult? _parseTrainItem(dynamic raw, {DateTime? filterDate}) {
     try {
       final map = raw as Map<String, dynamic>;
-      final railName =
-          (map['railName'] ?? map['trainClass'] ?? '').toString().toUpperCase();
-      final type = _railNameToType(railName);
+      // ODsay는 trainClass 필드 사용 (railName은 없음)
+      final trainClass =
+          (map['trainClass'] ?? map['railName'] ?? '').toString().toUpperCase();
+      final type = _railNameToType(trainClass);
+
+      // runDay 필터링: 선택한 날짜에 운행하지 않는 열차 제외
+      if (filterDate != null) {
+        final runDay = map['runDay']?.toString() ?? '';
+        if (!_matchesRunDay(runDay, filterDate)) return null;
+      }
+
       // ODsay는 "0500" (HHmm 4자리) 또는 "05:00" (HH:mm) 모두 반환 가능
       final depTime = _normalizeTime(map['departureTime']?.toString() ?? '--:--');
       final arrTime = _normalizeTime(map['arrivalTime']?.toString() ?? '--:--');
       final waste = (map['wasteTime'] as num?)?.toInt() ??
           _calcDurationFromTimeStr(depTime, arrTime);
+
+      // 열차 요금 추출 (fare 배열 또는 단일 값)
+      int? fare;
+      final fareRaw = map['fare'];
+      if (fareRaw is num) {
+        fare = fareRaw.toInt();
+      } else if (fareRaw is List && fareRaw.isNotEmpty) {
+        // fare 배열인 경우 일반실 요금 (첫 번째)
+        final first = fareRaw.first;
+        if (first is Map) {
+          fare = (first['general'] as num?)?.toInt() ??
+              (first['fare'] as num?)?.toInt();
+        } else if (first is num) {
+          fare = first.toInt();
+        }
+      } else if (fareRaw is Map) {
+        fare = (fareRaw['general'] as num?)?.toInt() ??
+            (fareRaw['fare'] as num?)?.toInt();
+      }
 
       return TransitResult(
         type: type,
@@ -354,6 +387,7 @@ class TransportService {
         departureTime: depTime,
         arrivalTime: arrTime,
         durationMinutes: waste,
+        fare: fare,
       );
     } catch (e) {
       debugPrint('[ODsay] Train parse error: $e / $raw');
@@ -405,6 +439,35 @@ class TransportService {
   // ────────────────────────────────────────────────
   // 유틸
   // ────────────────────────────────────────────────
+
+  /// ODsay runDay 필드 기준 운행 여부 확인
+  /// runDay 예시: "매일", "월~금", "월,수,금", "토,일", "주말", "평일"
+  bool _matchesRunDay(String runDay, DateTime date) {
+    if (runDay.isEmpty || runDay == '매일') return true;
+    final wd = date.weekday; // 1=월 ~ 7=일
+    final isWeekend = wd >= 6; // 토=6, 일=7
+    final isWeekday = wd <= 5;
+
+    if (runDay == '평일' || runDay == '월~금') return isWeekday;
+    if (runDay == '주말' || runDay == '토,일' || runDay == '토~일') return isWeekend;
+
+    // 요일 개별 매핑
+    const dayMap = {'월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6, '일': 7};
+    // "월,수,금" 형식
+    if (runDay.contains(',')) {
+      final days = runDay.split(',').map((d) => dayMap[d.trim()]).whereType<int>();
+      return days.contains(wd);
+    }
+    // "월~금" 범위 형식 (이미 위에서 처리)
+    if (runDay.contains('~')) {
+      final parts = runDay.split('~');
+      final from = dayMap[parts[0].trim()] ?? 1;
+      final to = dayMap[parts[1].trim()] ?? 7;
+      return wd >= from && wd <= to;
+    }
+    // 단일 요일
+    return dayMap[runDay.trim()] == wd;
+  }
 
   /// ODsay 시간 정규화: "0500" → "05:00", "05:00" → "05:00"
   String _normalizeTime(String raw) {
