@@ -1204,7 +1204,10 @@ class _TransitCard extends StatelessWidget {
 
 Future<void> _launchUrl(String url) async {
   final uri = Uri.parse(url);
-  if (await canLaunchUrl(uri)) {
+  try {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } catch (_) {
+    // 외부 브라우저 실패 시 in-app 모드로 재시도
+    await launchUrl(uri, mode: LaunchMode.inAppWebView);
   }
 }

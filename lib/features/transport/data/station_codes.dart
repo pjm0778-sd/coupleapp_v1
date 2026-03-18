@@ -106,7 +106,8 @@ String buildSrtBookingUrl({
 
   final dateStr =
       '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
-  final timeStr = (departureTime ?? '00:00').replaceAll(':', '');
+  // SRT는 HHMMSS (6자리) 형식 요구 — "09:30" → "093000"
+  final timeStr = '${(departureTime ?? '00:00').replaceAll(':', '')}00';
 
   return Uri.https('etk.srail.kr', '/hpg/hra/01/selectScheduleList.do', {
     'dptRsStnCdNm': toSrtName(fromStation),
