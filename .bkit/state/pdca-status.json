@@ -1,8 +1,12 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-11T14:57:22.968Z",
+  "lastUpdated": "2026-03-17T18:00:52.238Z",
   "activeFeatures": [
-    "ocr-schedule"
+    "ocr-schedule",
+    "coupleduty",
+    "schedule-table-ocr",
+    "excel-schedule-parse",
+    "couple-profile-setup"
   ],
   "primaryFeature": "ocr-schedule",
   "features": {
@@ -15,9 +19,62 @@
       "documents": {},
       "timestamps": {
         "started": "2026-03-09T12:36:26.541Z",
-        "lastUpdated": "2026-03-11T14:57:22.968Z"
+        "lastUpdated": "2026-03-16T14:30:07.244Z"
       },
-      "lastFile": "C:\\Users\\정민\\Desktop\\app개발\\coupleapp_v1\\supabase\\functions\\ocr-schedule\\index.ts"
+      "lastFile": "D:\\app개발\\coupleapp_v1\\supabase\\functions\\ocr-schedule\\index.ts"
+    },
+    "coupleduty": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-16T15:06:44.368Z",
+        "lastUpdated": "2026-03-16T15:06:44.368Z"
+      },
+      "lastFile": "D:\\app개발\\coupleapp_v1\\android\\app\\src\\main\\kotlin\\com\\coupleduty\\app\\MainActivity.kt"
+    },
+    "schedule-table-ocr": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-16T18:24:29.534Z",
+        "lastUpdated": "2026-03-16T18:52:54.005Z"
+      },
+      "lastFile": "D:\\app개발\\coupleapp_v1\\supabase\\functions\\schedule-table-ocr\\index.ts"
+    },
+    "excel-schedule-parse": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-16T18:24:54.332Z",
+        "lastUpdated": "2026-03-16T18:24:54.332Z"
+      },
+      "lastFile": "D:\\app개발\\coupleapp_v1\\supabase\\functions\\excel-schedule-parse\\index.ts"
+    },
+    "couple-profile-setup": {
+      "phase": "act",
+      "phaseNumber": 5,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-17T18:00:52.236Z",
+        "lastUpdated": "2026-03-17T18:00:52.238Z"
+      },
+      "previousPhase": "check",
+      "autoAdvanced": true
     }
   },
   "pipeline": {
@@ -28,7 +85,7 @@
   "session": {
     "startedAt": "2026-03-09T12:34:38.455Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-03-11T14:57:22.968Z"
+    "lastActivity": "2026-03-17T18:00:52.238Z"
   },
   "history": [
     {
@@ -65,6 +122,108 @@
       "timestamp": "2026-03-11T14:57:22.968Z",
       "feature": "ocr-schedule",
       "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T15:43:51.611Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T15:49:58.797Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T16:02:41.017Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T16:07:38.610Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T16:07:43.685Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-14T16:07:48.848Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T13:42:23.332Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T14:13:09.883Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T14:13:44.382Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T14:30:07.244Z",
+      "feature": "ocr-schedule",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T15:06:44.368Z",
+      "feature": "coupleduty",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T18:24:29.534Z",
+      "feature": "schedule-table-ocr",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T18:24:54.332Z",
+      "feature": "excel-schedule-parse",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T18:36:20.769Z",
+      "feature": "schedule-table-ocr",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T18:36:28.330Z",
+      "feature": "schedule-table-ocr",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-16T18:52:54.005Z",
+      "feature": "schedule-table-ocr",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-17T18:00:52.238Z",
+      "feature": "couple-profile-setup",
+      "phase": "act",
       "action": "updated"
     }
   ]

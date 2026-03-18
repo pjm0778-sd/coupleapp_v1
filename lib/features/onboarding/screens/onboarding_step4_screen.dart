@@ -53,8 +53,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
   @override
   Widget build(BuildContext context) {
     final draft = widget.draft;
-    final showShiftEditor =
-        draft.workPattern == 'shift_3' || draft.workPattern == 'shift_2';
+    const showShiftEditor = true;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),

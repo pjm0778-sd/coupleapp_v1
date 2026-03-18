@@ -492,47 +492,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   Future<void> _deleteGoogleCalendarMonthSchedules() async {
     if (_myUserId == null) return;
 
-    // 누구의 구글 캘린더 일정을 삭제할지 선택
-    String targetUserId = _myUserId!;
-    String targetLabel = '내';
-    if (_partnerId != null) {
-      final choice = await showDialog<String>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('누구의 구글 캘린더 일정을 삭제할까요?'),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.person),
-                title: const Text('나의 구글 캘린더 일정'),
-                onTap: () => Navigator.pop(context, 'me'),
-              ),
-              ListTile(
-                leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
-                title: Text('${_partnerNickname ?? '파트너'}의 구글 캘린더 일정'),
-                onTap: () => Navigator.pop(context, 'partner'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (choice == null || !mounted) return;
-      if (choice == 'partner') {
-        targetUserId = _partnerId!;
-        targetLabel = '${_partnerNickname ?? '파트너'}의';
-      }
-    }
-
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('구글 캘린더 일정 삭제'),
         content: Text(
-          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 $targetLabel 구글 캘린더 연동 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 내 구글 캘린더 연동 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
@@ -554,19 +519,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
     if (confirmed == true) {
       try {
-        final int count;
-        if (targetUserId == _myUserId) {
-          count = await _service.deleteMyGoogleCalendarMonthSchedules(
-            _focusedMonth,
-            _coupleId!,
-          );
-        } else {
-          count = await _service.deletePartnerGoogleCalendarMonthSchedules(
-            _focusedMonth,
-            targetUserId,
-            _coupleId!,
-          );
-        }
+        final count = await _service.deleteMyGoogleCalendarMonthSchedules(
+          _focusedMonth,
+          _coupleId!,
+        );
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

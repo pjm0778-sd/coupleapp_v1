@@ -87,43 +87,6 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
 
       if (!mounted) return;
 
-      // 파트너가 있으면 누구의 일정인지 선택
-      String targetUserId = widget.userId;
-      if (widget.partnerId != null) {
-        final choice = await showDialog<String>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('누구의 일정인가요?'),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.person),
-                  title: const Text('나의 일정'),
-                  onTap: () => Navigator.pop(context, 'me'),
-                ),
-                ListTile(
-                  leading: const Icon(
-                    Icons.favorite,
-                    color: Colors.pinkAccent,
-                  ),
-                  title: Text(
-                    '${widget.partnerNickname ?? '파트너'}의 일정',
-                  ),
-                  onTap: () => Navigator.pop(context, 'partner'),
-                ),
-              ],
-            ),
-          ),
-        );
-        if (choice == null || !mounted) return;
-        targetUserId =
-            choice == 'partner' ? widget.partnerId! : widget.userId;
-      }
-
       final saved = await Navigator.push<int>(
         context,
         MaterialPageRoute(
@@ -131,7 +94,7 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
             schedules: events,
             ocrYear: _selectedYear,
             ocrMonth: _selectedMonth,
-            userId: targetUserId,
+            userId: widget.userId,
             coupleId: widget.coupleId,
             isGoogleCalendar: true,
           ),

@@ -4,6 +4,7 @@ import '../../../core/notification_manager.dart';
 import '../../../core/supabase_client.dart';
 import '../models/notification.dart';
 import '../models/notification_settings.dart';
+import '../../profile/models/shift_time.dart';
 
 class NotificationService {
   final NotificationManager _manager = NotificationManager();
@@ -20,6 +21,7 @@ class NotificationService {
     await _manager.initialize();
     await _subscribeToSchedules();
     await _subscribeToComments();
+    await _schedulePartnerCommuteAlerts();
   }
 
   Future<void> _subscribeToSchedules() async {
@@ -187,6 +189,46 @@ class NotificationService {
           },
         )
         .subscribe();
+  }
+
+  /// 파트너 출퇴근 알림 스케줄링
+  /// 파트너 프로필의 shiftTimes를 읽어 매일 반복 로컬 알림 예약
+  Future<void> _schedulePartnerCommuteAlerts() async {
+    final myUserId = supabase.auth.currentUser?.id;
+    if (myUserId == null) return;
+
+    final coupleId = await _getCoupleId();
+    if (coupleId == null) return;
+
+    final coupleData = await supabase
+        .from('couples')
+        .select('user1_id, user2_id')
+        .eq('id', coupleId)
+        .maybeSingle();
+    if (coupleData == null) return;
+
+    final partnerId = coupleData['user1_id'] == myUserId
+        ? coupleData['user2_id'] as String?
+        : coupleData['user1_id'] as String?;
+    if (partnerId == null) return;
+
+    final partnerData = await supabase
+        .from('profiles')
+        .select('nickname, shift_times')
+        .eq('id', partnerId)
+        .maybeSingle();
+    if (partnerData == null) return;
+
+    final partnerName = partnerData['nickname'] as String? ?? '파트너';
+    final rawShifts = partnerData['shift_times'];
+    final shiftTimes = rawShifts is List
+        ? rawShifts.cast<Map<String, dynamic>>().map(ShiftTime.fromMap).toList()
+        : <ShiftTime>[];
+
+    await _manager.schedulePartnerCommuteAlerts(
+      partnerName: partnerName,
+      shiftTimes: shiftTimes,
+    );
   }
 
   Future<String?> _getCoupleId() async {

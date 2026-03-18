@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
-import '../../../core/supabase_client.dart';
 import '../../../core/services/feature_flag_service.dart';
 import '../../couple/services/couple_service.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
@@ -58,10 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (date != null && _coupleId != null) {
       try {
-        await supabase
-            .from('couples')
-            .update({'started_at': date.toIso8601String().split('T')[0]})
-            .eq('id', _coupleId!);
+        await CoupleService().updateStartedAt(_coupleId!, date);
         if (mounted) {
           setState(() => _startedAt = date);
           ScaffoldMessenger.of(
@@ -107,32 +103,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (newName != null && newName.isNotEmpty) {
       try {
-        final userId = supabase.auth.currentUser!.id;
-
         if (isMyProfile) {
-          await supabase
-              .from('profiles')
-              .update({'nickname': newName})
-              .eq('id', userId);
-          setState(() => _myNickname = newName);
+          await _profileService.saveNickname(newName);
+          if (mounted) setState(() => _myNickname = newName);
         } else {
           // 파트너 닉네임 설정 (다른 사용자의 프로필 업데이트)
           if (_coupleId != null) {
-            final couple = await supabase
-                .from('couples')
-                .select('user1_id, user2_id')
-                .eq('id', _coupleId!)
-                .single();
-            final partnerId = couple['user1_id'] == userId
-                ? couple['user2_id']
-                : couple['user1_id'];
-            if (partnerId != null) {
-              await supabase
-                  .from('profiles')
-                  .update({'nickname': newName})
-                  .eq('id', partnerId);
-              setState(() => _partnerNickname = newName);
-            }
+            await _profileService.savePartnerNickname(
+              coupleId: _coupleId!,
+              nickname: newName,
+            );
+            if (mounted) setState(() => _partnerNickname = newName);
           }
         }
 
@@ -153,67 +134,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadData() async {
     try {
-      final userId = supabase.auth.currentUser!.id;
-
-      // 내 프로필 조회
-      Map<String, dynamic>? profile;
-      try {
-        profile = await supabase
-            .from('profiles')
-            .select('nickname, couple_id')
-            .eq('id', userId)
-            .maybeSingle();
-      } catch (e) {
-        debugPrint('Error loading profile: $e');
-      }
-
-      // 프로필이 없으면 생성 (트리거가 작동 안 했을 경우 대비)
-      if (profile == null) {
-        final nickname =
-            supabase.auth.currentUser!.userMetadata?['nickname'] as String? ??
-            '사용자';
-        await supabase.from('profiles').insert({
-          'id': userId,
-          'nickname': nickname,
-        });
-        _myNickname = nickname;
-        _coupleId = null;
-      } else {
-        _myNickname = profile['nickname'] as String?;
-        _coupleId = profile['couple_id'] as String?;
-      }
+      // 내 프로필 기본 정보 로드 (없으면 자동 생성)
+      final basic = await _profileService.loadBasicProfile();
+      _myNickname = basic.nickname;
+      _coupleId = basic.coupleId;
 
       // 커플 정보 로드
       if (_coupleId != null) {
-        final couple = await supabase
-            .from('couples')
-            .select('started_at, user1_id, user2_id')
-            .eq('id', _coupleId!)
-            .maybeSingle();
-
-        if (couple != null) {
-          if (couple['started_at'] != null) {
-            _startedAt = DateTime.parse(couple['started_at'] as String);
+        final coupleInfo = await CoupleService().getCoupleInfo();
+        if (coupleInfo != null) {
+          if (coupleInfo['started_at'] != null) {
+            _startedAt = DateTime.parse(coupleInfo['started_at'] as String);
           }
-          final partnerId = couple['user1_id'] == userId
-              ? couple['user2_id']
-              : couple['user1_id'];
-
-          if (partnerId != null && (partnerId as String).isNotEmpty) {
-            final partner = await supabase
-                .from('profiles')
-                .select('nickname')
-                .eq('id', partnerId)
-                .maybeSingle();
-            _partnerNickname = partner?['nickname'] as String?;
-          } else {
-            _partnerNickname = null;
-          }
+          _partnerNickname =
+              await _profileService.loadPartnerNickname(_coupleId!);
         } else {
           _partnerNickname = null;
           _startedAt = null;
         }
       }
+
       // 프로필 설정 로드
       _profile = await _profileService.loadMyProfile();
       if (_profile != null) FeatureFlagService().refresh(_profile!);
@@ -684,7 +624,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         );
-        await supabase.auth.signOut();
+        await AuthService().signOut();
       }
     } catch (e) {
       if (mounted) {
@@ -865,7 +805,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    if (confirm == true) await supabase.auth.signOut();
+    if (confirm == true) await AuthService().signOut();
   }
 
   @override
@@ -1073,9 +1013,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       onTap: () => _showWorkPatternPicker(),
                     ),
-                    if (_profile != null &&
-                        (_profile!.workPattern == 'shift_3' ||
-                            _profile!.workPattern == 'shift_2')) ...[
+                    if (_profile != null) ...[
                       const Divider(height: 1),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),

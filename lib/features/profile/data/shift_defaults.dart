@@ -63,7 +63,17 @@ const Map<String, List<Map<String, dynamic>>> _shiftDefaultMaps = {
       'is_next_day': false,
     },
   ],
-  'other': [],
+  'other': [
+    {
+      'shift_type': 'work',
+      'label': '근무',
+      'start_h': 9,
+      'start_m': 0,
+      'end_h': 18,
+      'end_m': 0,
+      'is_next_day': false,
+    },
+  ],
 };
 
 /// 패턴명으로 기본 ShiftTime 목록 반환 (타입드)

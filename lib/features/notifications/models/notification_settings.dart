@@ -6,6 +6,7 @@ class NotificationSettings {
   final bool bothOff;
   final bool dateBefore;
   final bool dateToday;
+  final bool partnerCommuteAlerts; // 파트너 출퇴근 알림
 
   const NotificationSettings({
     this.scheduleAdded = true,
@@ -15,6 +16,7 @@ class NotificationSettings {
     this.bothOff = true,
     this.dateBefore = true,
     this.dateToday = true,
+    this.partnerCommuteAlerts = true,
   });
 
   factory NotificationSettings.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class NotificationSettings {
       bothOff: json['both_off'] as bool? ?? true,
       dateBefore: json['date_before'] as bool? ?? true,
       dateToday: json['date_today'] as bool? ?? true,
+      partnerCommuteAlerts: json['partner_commute_alerts'] as bool? ?? true,
     );
   }
 
@@ -38,6 +41,7 @@ class NotificationSettings {
       'both_off': bothOff,
       'date_before': dateBefore,
       'date_today': dateToday,
+      'partner_commute_alerts': partnerCommuteAlerts,
     };
   }
 
@@ -49,6 +53,7 @@ class NotificationSettings {
     bool? bothOff,
     bool? dateBefore,
     bool? dateToday,
+    bool? partnerCommuteAlerts,
   }) {
     return NotificationSettings(
       scheduleAdded: scheduleAdded ?? this.scheduleAdded,
@@ -58,6 +63,7 @@ class NotificationSettings {
       bothOff: bothOff ?? this.bothOff,
       dateBefore: dateBefore ?? this.dateBefore,
       dateToday: dateToday ?? this.dateToday,
+      partnerCommuteAlerts: partnerCommuteAlerts ?? this.partnerCommuteAlerts,
     );
   }
 

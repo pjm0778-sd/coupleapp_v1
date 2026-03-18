@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../calendar/services/schedule_service.dart';
+import '../../profile/models/shift_time.dart';
+import '../../profile/services/profile_service.dart';
 import '../../../main.dart';
 import 'ocr_review_screen.dart';
 import 'google_calendar_screen.dart';
@@ -22,6 +24,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   String? _coupleId;
   String? _partnerId;
   String? _partnerNickname;
+  List<ShiftTime> _shiftTimes = [];
   bool _isUploading = false;
   final ImagePicker _imagePicker = ImagePicker();
   late TabController _tabController;
@@ -41,6 +44,12 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   }
 
   Future<void> _init() async {
+    // 교대 시간 설정 로드
+    final profile = await ProfileService().loadMyProfile();
+    if (profile != null && mounted) {
+      setState(() => _shiftTimes = profile.shiftTimes);
+    }
+
     _coupleId = await ScheduleService().getCoupleId();
     if (_coupleId != null && _myUserId != null) {
       final coupleData = await supabase
@@ -67,6 +76,38 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
         }
       }
     }
+  }
+
+  /// OCR 결과에 교대 시간 설정 적용
+  /// work_type이 ShiftTime의 shiftType 또는 label과 일치하면 start/end time 채움
+  /// 이미 시간이 있는 항목은 OCR 결과 유지
+  List<Map<String, dynamic>> _applyShiftTimes(
+    List<Map<String, dynamic>> schedules,
+  ) {
+    if (_shiftTimes.isEmpty) return schedules;
+    return schedules.map((s) {
+      final existing = s['start_time'] as String?;
+      if (existing != null && existing.isNotEmpty) return s;
+
+      final workType = (s['work_type'] as String? ?? '').toLowerCase().trim();
+      if (workType.isEmpty) return s;
+
+      ShiftTime? matched;
+      for (final shift in _shiftTimes) {
+        if (shift.shiftType.toLowerCase() == workType ||
+            shift.label.toLowerCase() == workType) {
+          matched = shift;
+          break;
+        }
+      }
+      if (matched == null) return s;
+
+      final pad = (int v) => v.toString().padLeft(2, '0');
+      final updated = Map<String, dynamic>.from(s);
+      updated['start_time'] = '${pad(matched.startHour)}:${pad(matched.startMinute)}';
+      updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
+      return updated;
+    }).toList();
   }
 
   /// 파트너가 있으면 "누구의 일정?" 선택 다이얼로그 표시 후 userId 반환
@@ -150,11 +191,13 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
         final targetUserId = await _selectTargetUser();
         if (targetUserId == null || !mounted) return;
 
+        final mappedSchedules = _applyShiftTimes(schedulesList);
+
         final saved = await Navigator.push<int>(
           context,
           MaterialPageRoute(
             builder: (_) => OcrReviewScreen(
-              schedules: schedulesList,
+              schedules: mappedSchedules,
               ocrYear: ocrYear,
               ocrMonth: ocrMonth,
               userId: targetUserId,

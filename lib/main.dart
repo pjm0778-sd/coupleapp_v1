@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
 import 'core/notification_manager.dart';
+import 'features/notifications/services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/home/screens/home_screen.dart';
@@ -112,6 +113,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   int _currentIndex = 0;
   DateTime? _lastBackPressedTime;
+  final _notificationService = NotificationService();
 
   static const List<Widget> _screens = [
     HomeScreen(),
@@ -126,11 +128,13 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     NotificationManager().clearAllNotifications();
+    _notificationService.initialize();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notificationService.dispose();
     super.dispose();
   }
 

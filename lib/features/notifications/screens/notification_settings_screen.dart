@@ -105,6 +105,18 @@ class _NotificationSettingsScreenState
 
           const SizedBox(height: 8),
 
+          // 출퇴근 알림
+          _buildSectionHeader('파트너 출퇴근 알림'),
+          _buildSwitchTile(
+            title: '파트너 출퇴근 알림',
+            subtitle: '파트너의 출근·퇴근 시간에 맞춰 매일 알림',
+            value: settings.partnerCommuteAlerts,
+            onChanged: (value) =>
+                manager.updateSettings(settings.copyWith(partnerCommuteAlerts: value)),
+          ),
+
+          const SizedBox(height: 8),
+
           // 스케줄링 알림
           _buildSectionHeader('스케줄링 알림'),
           _buildSwitchTile(
@@ -287,9 +299,11 @@ class _NotificationSettingsScreenState
         scheduleAdded: value,
         scheduleDeleted: value,
         scheduleUpdated: value,
+        commentAdded: value,
         bothOff: value,
         dateBefore: value,
         dateToday: value,
+        partnerCommuteAlerts: value,
       ),
     );
     setState(() {});

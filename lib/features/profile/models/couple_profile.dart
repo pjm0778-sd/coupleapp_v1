@@ -1,5 +1,38 @@
 import 'shift_time.dart';
 
+/// 거리 유형 — DB 값: 'same_city' | 'near' | 'long_distance'
+enum DistanceType {
+  sameCity('same_city'),
+  near('near'),
+  longDistance('long_distance');
+
+  const DistanceType(this.value);
+  final String value;
+
+  static DistanceType fromValue(String value) =>
+      DistanceType.values.firstWhere(
+        (e) => e.value == value,
+        orElse: () => DistanceType.sameCity,
+      );
+}
+
+/// 근무 유형 — DB 값: 'shift_3' | 'shift_2' | 'office' | 'other'
+enum WorkPatternType {
+  shift3('shift_3'),
+  shift2('shift_2'),
+  office('office'),
+  other('other');
+
+  const WorkPatternType(this.value);
+  final String value;
+
+  static WorkPatternType fromValue(String value) =>
+      WorkPatternType.values.firstWhere(
+        (e) => e.value == value,
+        orElse: () => WorkPatternType.office,
+      );
+}
+
 class CoupleProfile {
   // [GAP-FIX] 추가된 identity 필드
   final String? id;

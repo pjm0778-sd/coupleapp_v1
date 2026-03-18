@@ -7,6 +7,8 @@
 > **Analyst**: Claude (gap-detector)
 > **Date**: 2026-03-18
 > **Design Doc**: [couple-profile-setup.design.md](../02-design/features/couple-profile-setup.design.md)
+> **Previous Analysis**: v0.1 (2026-03-18) -- 72% match rate
+> **This Analysis**: v0.2 -- Re-analysis after GAP-FIX iterations
 
 ---
 
@@ -14,108 +16,127 @@
 
 ### 1.1 Analysis Purpose
 
-Design document (couple-profile-setup.design.md) vs actual Flutter implementation gap detection for the PDCA Check phase.
+Re-run Check phase gap analysis after GAP-FIX iterations. The previous analysis (v0.1) identified 15 missing items, 10 added items, and 8 changed items at 72% match rate. Several fixes have been applied since.
 
 ### 1.2 Analysis Scope
 
 - **Design Document**: `docs/02-design/features/couple-profile-setup.design.md`
-- **Implementation Path**: `lib/features/onboarding/`, `lib/features/profile/`, `lib/features/settings/`, `lib/core/services/`
-- **Files Analyzed**: 15 files
+- **Implementation Path**: `lib/features/onboarding/`, `lib/features/profile/`, `lib/features/couple/`, `lib/core/services/`, `lib/features/settings/`
+- **Files Analyzed**: 16 files
 - **Analysis Date**: 2026-03-18
 
 ---
 
 ## 2. Overall Scores
 
-| Category | Score | Status |
-|----------|:-----:|:------:|
-| Design Match | 72% | ⚠️ |
-| Architecture Compliance | 78% | ⚠️ |
-| Convention Compliance | 90% | ✅ |
-| **Overall** | **76%** | **⚠️** |
+| Category | Score | Status | Delta from v0.1 |
+|----------|:-----:|:------:|:---:|
+| Design Match | 79% | ⚠️ | +7% |
+| Architecture Compliance | 80% | ⚠️ | +2% |
+| Convention Compliance | 92% | ✅ | +2% |
+| **Overall** | **82%** | **⚠️** | **+6%** |
 
 ---
 
 ## 3. Gap Analysis (Design vs Implementation)
 
-### 3.1 Data Model
+### 3.1 Data Model -- CoupleProfile
 
-| Field / Item | Design | Implementation | Status |
-|---|---|---|---|
-| `id` (uuid PK) | `final String id` | Missing | ❌ |
-| `userId` (uuid FK) | `final String userId` | Missing | ❌ |
-| `coupleId` (uuid) | `final String? coupleId` | Missing | ❌ |
-| `nickname` | `final String nickname` | Missing (saved separately via `saveNickname()`) | ⚠️ |
-| `coupleStartDate` | `final DateTime coupleStartDate` | Missing (saved separately via `saveCoupleStartDate()`) | ⚠️ |
-| `distanceType` | enum `DistanceType` | `String` (no enum) | ⚠️ |
-| `myCity` | `String?` | `String?` | ✅ |
-| `myStation` | `String?` | `String?` | ✅ |
-| `partnerCity` | `String?` | `String?` | ✅ |
-| `partnerStation` | `String?` | `String?` | ✅ |
-| `workPattern` | enum `WorkPatternType` | `String` (no enum) | ⚠️ |
-| `shiftTimes` | `List<ShiftTime>` (typed class) | `List<Map<String, dynamic>>` (untyped) | ⚠️ |
-| `notifyMinutesBefore` | `int` (default 30) | `int` (default 30) | ✅ |
-| `hasCar` | `bool` | `bool` | ✅ |
-| `onboardingCompleted` | DB column only | `bool` field in model | ✅ |
-| `createdAt` | `DateTime` | Missing | ❌ |
-| `updatedAt` | `DateTime` | Missing | ❌ |
-| computed `isConnected` | `coupleId != null` | Missing (no coupleId) | ❌ |
-| computed `hasShiftWork` | getter | getter (matches logic) | ✅ |
-| computed `isLongDistance` | getter | getter (matches logic) | ✅ |
-| computed `hasTransportInfo` | getter | getter (matches logic) | ✅ |
-| computed `hasNightShift` | getter | getter (matches logic) | ✅ |
+| Field / Item | Design | Implementation | Status | v0.1 |
+|---|---|---|---|---|
+| `id` | `final String id` | `final String? id` (nullable) | ⚠️ Nullable | was ❌ |
+| `userId` | `final String userId` | `final String? userId` (nullable) | ⚠️ Nullable | was ❌ |
+| `coupleId` | `final String? coupleId` | `final String? coupleId` | ✅ | was ❌ |
+| `nickname` | `final String nickname` | `final String? nickname` (nullable) | ⚠️ Nullable | was ⚠️ |
+| `coupleStartDate` | `final DateTime coupleStartDate` | `final DateTime? coupleStartDate` (nullable) | ⚠️ Nullable | was ⚠️ |
+| `distanceType` | enum `DistanceType` | `String` | ⚠️ No enum | same |
+| `myCity` | `String?` | `String?` | ✅ | same |
+| `myStation` | `String?` | `String?` | ✅ | same |
+| `partnerCity` | `String?` | `String?` | ✅ | same |
+| `partnerStation` | `String?` | `String?` | ✅ | same |
+| `workPattern` | enum `WorkPatternType` | `String` | ⚠️ No enum | same |
+| `shiftTimes` | `List<ShiftTime>` (typed) | `List<ShiftTime>` (typed) | ✅ | was ⚠️ Map |
+| `notifyMinutesBefore` | `int` (default 30) | `int` (default 30) | ✅ | same |
+| `hasCar` | `bool` | `bool` (default false) | ✅ | same |
+| `onboardingCompleted` | DB schema only | `bool` field in model | ✅ | same |
+| `createdAt` | `DateTime` | Missing | ❌ | same |
+| `updatedAt` | `DateTime` | Missing | ❌ | same |
+| computed `isConnected` | `coupleId != null` | `coupleId != null` | ✅ | was ❌ |
+| computed `hasShiftWork` | getter | getter (matches) | ✅ | same |
+| computed `isLongDistance` | getter | getter (matches) | ✅ | same |
+| computed `hasTransportInfo` | getter | getter (matches) | ✅ | same |
+| computed `hasNightShift` | getter | getter (matches) | ✅ | same |
+| `fromMap()` / `toMap()` | Not specified | Implemented | ✅ Added |
+| `copyWith()` | Not specified | Implemented | ✅ Added |
 
-**Design has a separate `ShiftTime` class** with typed fields (`shiftType`, `label`, `startTime: TimeOfDay`, `endTime: TimeOfDay`, `isNextDay`, plus `endDateTime()` method). Implementation uses raw `Map<String, dynamic>` instead.
+**Data Model Score**: 73% (16/22 match or close; 2 missing, 4 nullable deviation)
 
-**Data Model Score**: 60% (12/20 items match or partially match)
+### 3.2 Data Model -- ShiftTime
 
-### 3.2 Supabase Schema Alignment
+| Field | Design | Implementation | Status | v0.1 |
+|---|---|---|---|---|
+| `shiftType` | `String` | `String` | ✅ | was ❌ (no class) |
+| `label` | `String` | `String` | ✅ | was ❌ |
+| `startTime` | `TimeOfDay` (direct) | `int startHour/startMinute` + `TimeOfDay get startTime` | ⚠️ Equivalent | was ❌ |
+| `endTime` | `TimeOfDay` (direct) | `int endHour/endMinute` + `TimeOfDay get endTime` | ⚠️ Equivalent | was ❌ |
+| `isNextDay` | `bool` | `bool` | ✅ | was ❌ |
+| `endDateTime()` | Method | Method (matches logic) | ✅ | was ❌ |
 
-| Design Table | Implementation Reference | Status | Notes |
-|---|---|---|---|
-| `couple_profiles` (dedicated table) | `profiles` (shared existing table) | ⚠️ Changed | Implementation adds columns to existing `profiles` table instead of separate `couple_profiles` table |
-| `invite_codes` table | Not directly referenced in scanned files | ⚠️ | Handled via `CoupleService` (external to analysis scope) |
-| RLS: own profile R/W | Not verifiable from Dart code | -- | |
-| RLS: partner read-only | Not verifiable from Dart code | -- | |
+**JSONB serialization key deviation**:
 
-### 3.3 Service Layer (ProfileService)
-
-| Design Method | Implementation | Status |
+| Design Key | Implementation Key | Status |
 |---|---|---|
-| `saveProfile(CoupleProfile)` | `saveProfile(CoupleProfile)` -- updates `profiles` table | ✅ |
-| `loadMyProfile()` | `loadMyProfile()` -- selects from `profiles` | ✅ |
-| `loadPartnerProfile()` | Missing | ❌ |
-| `generateInviteCode()` | Missing (delegated to `CoupleService.getOrCreateMyCode()`) | ⚠️ |
-| `connectWithCode(String)` | Missing (delegated to `CoupleService.connectWithCode()`) | ⚠️ |
-| `watchPartnerProfile()` (Realtime) | Missing | ❌ |
-| -- | `saveCoupleStartDate(DateTime)` | ⚠️ Added |
-| -- | `saveNickname(String)` | ⚠️ Added |
-| -- | `isOnboardingCompleted()` | ⚠️ Added |
+| `start_hour` | `start_h` | ⚠️ Abbreviated |
+| `start_minute` | `start_m` | ⚠️ Abbreviated |
+| `end_hour` | `end_h` | ⚠️ Abbreviated |
+| `end_minute` | `end_m` | ⚠️ Abbreviated |
 
-**Service Score**: 50% (2/6 design methods implemented in ProfileService; 3 missing, 3 added)
+### 3.3 Database Schema
 
-### 3.4 FeatureFlag System
+| Design | Implementation | Status |
+|--------|----------------|--------|
+| Separate `couple_profiles` table | Columns on existing `profiles` table | ⚠️ Intentional deviation |
+| Separate `invite_codes` table | `couples` table with `invite_code` column | ⚠️ Intentional deviation |
+| `couple_start_date` in couple_profiles | `started_at` in `couples` table | ⚠️ Different location |
+| CHECK constraint on `distance_type` | VARCHAR(20), no CHECK in migration | ⚠️ Missing constraint |
+| CHECK constraint on `work_pattern` | VARCHAR(20), no CHECK in migration | ⚠️ Missing constraint |
 
-| Design Flag | Design Implementation | Actual Implementation | Status |
+### 3.4 Service Layer
+
+| Design Method | Implementation | Status | v0.1 |
 |---|---|---|---|
-| `isDdayEnabled` | `coupleStartDate != null` | `true` (always on) | ⚠️ Changed |
-| `isTransportEnabled` | `hasTransportInfo == true` | `hasTransportInfo ?? false` | ✅ |
-| `isOcrAutoTimeEnabled` | `hasShiftWork && shiftTimes.isNotEmpty` | Same logic | ✅ |
-| `isCommuteAlertEnabled` | `shiftTimes.isNotEmpty` | Same logic | ✅ |
-| `isNightShiftDndEnabled` | `hasNightShift == true` | Same logic | ✅ |
-| `isPartnerStatusEnabled` | `isConnected && hasShiftWork` | `hasShiftWork` only (no `isConnected` check) | ⚠️ Changed |
-| Design: `ChangeNotifier` (Provider) | -- | Singleton service (no `ChangeNotifier`) | ⚠️ Changed |
-| -- | -- | `isVisitTrackingEnabled` added | ⚠️ Added |
-| -- | -- | `isCarOptionEnabled` added | ⚠️ Added |
-| -- | -- | `getShiftTime()` helper added | ⚠️ Added |
-| -- | -- | `notifyMinutesBefore` getter added | ⚠️ Added |
-| -- | -- | `clear()` method added | ⚠️ Added |
+| `saveProfile(CoupleProfile)` | `saveProfile(CoupleProfile)` | ✅ | same |
+| `loadMyProfile()` | `loadMyProfile()` | ✅ | same |
+| `loadPartnerProfile()` (no args) | `loadPartnerProfile(String partnerId)` | ⚠️ Signature | was ❌ |
+| `generateInviteCode()` | `CoupleService.getOrCreateMyCode()` | ⚠️ Different class | same |
+| `connectWithCode(String)` | `CoupleService.connectWithCode(String)` | ⚠️ Different class | same |
+| `watchPartnerProfile()` Stream | Not implemented | ❌ Missing | same |
+| N/A | `saveNickname(String)` | ⚠️ Added | same |
+| N/A | `saveCoupleStartDate(DateTime)` | ⚠️ Added | same |
+| N/A | `isOnboardingCompleted()` | ⚠️ Added | same |
 
-**FeatureFlag Score**: 75% (4/6 core flags match, 2 changed, 5 additions)
+**Service Score**: 58% (3/6 design methods present in some form; 1 fully missing)
 
-### 3.5 Component / UI Structure
+### 3.5 FeatureFlag System
 
-| Design Component | Design Location | Implementation File | Status |
+| Flag | Design | Implementation | Status | v0.1 |
+|---|---|---|---|---|
+| `isDdayEnabled` | `coupleStartDate != null` | `true` (always) | ⚠️ Changed | same |
+| `isTransportEnabled` | `hasTransportInfo == true` | Same | ✅ | same |
+| `isOcrAutoTimeEnabled` | `hasShiftWork && shiftTimes.isNotEmpty` | Same | ✅ | same |
+| `isCommuteAlertEnabled` | `shiftTimes.isNotEmpty` | Same | ✅ | same |
+| `isNightShiftDndEnabled` | `hasNightShift == true` | Same | ✅ | same |
+| `isPartnerStatusEnabled` | `isConnected && hasShiftWork` | `isConnected && hasShiftWork` | ✅ | was ⚠️ |
+| Pattern | `ChangeNotifier` (Provider) | Singleton service | ⚠️ Changed | same |
+| N/A | -- | `isVisitTrackingEnabled` | ⚠️ Added | same |
+| N/A | -- | `isCarOptionEnabled` | ⚠️ Added | same |
+| N/A | -- | `getShiftTime()` helper | ⚠️ Added | same |
+
+**FeatureFlag Score**: 83% (5/6 core flags match; 1 changed)
+
+### 3.6 Component / UI Structure
+
+| Design Component | Design Location | Implementation | Status |
 |---|---|---|---|
 | `OnboardingStep1Screen` | `onboarding/screens/` | `onboarding/screens/onboarding_step1_screen.dart` | ✅ |
 | `OnboardingStep2Screen` | `onboarding/screens/` | `onboarding/screens/onboarding_step2_screen.dart` | ✅ |
@@ -124,269 +145,233 @@ Design document (couple-profile-setup.design.md) vs actual Flutter implementatio
 | `ShiftTimeEditor` | `onboarding/widgets/` | `onboarding/widgets/shift_time_editor.dart` | ✅ |
 | `CitySelectorWidget` | `onboarding/widgets/` | `onboarding/widgets/city_selector_widget.dart` | ✅ |
 | `InviteCodeWidget` | `onboarding/widgets/` | Missing (inline in Step2) | ❌ |
-| `ProfileSettingsScreen` | `profile/screens/` | Missing (merged into `settings/screens/settings_screen.dart`) | ⚠️ Changed |
+| `ProfileSettingsScreen` | `profile/screens/` | `settings/screens/settings_screen.dart` | ⚠️ Renamed/relocated |
 | `OnboardingFlow` | `onboarding/` | `onboarding/onboarding_flow.dart` | ✅ |
-| `OnboardingProgress` | -- (not in design) | `onboarding/onboarding_progress.dart` | ⚠️ Added |
+| N/A | -- | `OnboardingProgress` | ⚠️ Added |
+| N/A | -- | `CoupleConnectScreen` | ⚠️ Added |
 
-**Component Score**: 80% (7/9 design components exist; 1 missing, 1 relocated)
-
-### 3.6 File Structure
-
-| Design Path | Implementation Path | Status |
-|---|---|---|
-| `models/couple_profile.dart` | `features/profile/models/couple_profile.dart` | ✅ |
-| `models/shift_time.dart` | Missing (no separate file) | ❌ |
-| `services/profile_service.dart` | `features/profile/services/profile_service.dart` | ✅ |
-| `services/invite_code_service.dart` | Missing (handled by `couple/services/couple_service.dart`) | ⚠️ Changed |
-| `providers/couple_profile_provider.dart` | Missing (no Provider pattern used) | ❌ |
-| `providers/feature_flag_provider.dart` | `core/services/feature_flag_service.dart` (Singleton, not Provider) | ⚠️ Changed |
-| `data/city_station_data.dart` | `features/profile/data/city_station_data.dart` | ✅ |
-| `data/shift_defaults.dart` | `features/profile/data/shift_defaults.dart` | ✅ |
-
-**File Structure Score**: 62% (4/8 match, 2 changed, 2 missing)
+**Component Score**: 82% (7/9 present; 1 missing widget, 1 relocated)
 
 ### 3.7 Onboarding Flow Behavior
 
 | Design Behavior | Implementation | Status |
 |---|---|---|
-| 4-step PageView flow (Step1-4 -> HomeScreen) | PageView with 4 steps, navigates to '/' on complete | ✅ |
-| Step 1: Nickname + couple start date | Nickname + date picker, "next" validation | ✅ |
-| Step 2: Invite code generate + input + skip | Code display, input (6-char), connect, skip | ✅ |
-| Step 2: Code format `AB12-CD34` (8 chars with dash) | 6-char uppercase alphanumeric (no dash) | ⚠️ Changed |
-| Step 3: Distance type 3 options | 3 options with same labels/icons | ✅ |
-| Step 3: Long distance -> city/station selector | CitySelectorWidget shown conditionally | ✅ |
-| Step 4: 4 work pattern options | 4 options matching design | ✅ |
-| Step 4: Shift time editor for shift_3/shift_2 | ShiftTimeEditor shown conditionally | ✅ |
-| Step 4: notify_minutes_before dropdown | Dropdown with [10, 20, 30, 60] options | ✅ |
-| Step 2: Kakao share button | Missing | ❌ |
-| App start: onboarding_completed check | `main.dart` checks `onboarding_completed` from profiles | ✅ |
-| Draft saved locally before completion | `_draft` state in OnboardingFlow | ✅ |
-| Profile saved on completion | `_complete()` saves nickname, date, profile | ✅ |
-| FeatureFlag refreshed on completion | `FeatureFlagService().refresh(...)` called | ✅ |
+| 4-step PageView (Step1-4 -> Home) | PageView with 4 steps, navigates to '/' | ✅ |
+| Step 1: Nickname + coupleStartDate | Nickname only (date deferred to settings) | ⚠️ Changed |
+| Step 2: Code generate + input + skip | 6-char code, connect, skip | ✅ |
+| Step 2: Code format `AB12-CD34` (8 chars) | 6-char uppercase, no dash | ⚠️ Changed |
+| Step 2: KakaoTalk share button | Not implemented | ❌ |
+| Step 3: 3 distance options | 3 matching options with icons | ✅ |
+| Step 3: Long distance -> my + partner city/station | My city/station only (partner deferred) | ⚠️ Changed |
+| Step 4: 4 work patterns | 4 matching patterns | ✅ |
+| Step 4: ShiftTimeEditor (shift_3/shift_2) | Conditional editor shown | ✅ |
+| Step 4: notifyMinutesBefore dropdown | Dropdown [10, 20, 30, 60] | ✅ |
+| Step 4: hasCar toggle | Not in onboarding | ❌ |
+| Draft saved locally before submit | `_draft` in OnboardingFlow | ✅ |
+| FeatureFlag refreshed on completion | `FeatureFlagService().refresh()` | ✅ |
+| Onboarding completion check at app start | `isOnboardingCompleted()` check | ✅ |
 
-**Flow Score**: 85% (12/14 match)
+**Flow Score**: 79% (11/14 match)
 
-### 3.8 Settings Screen
-
-| Design Setting Section | Implementation | Status |
-|---|---|---|
-| Basic info (nickname, couple date) | Nickname edit + date edit in "couple info" section | ✅ |
-| Partner info (connection status, partner nickname) | Partner nickname display, couple connection | ✅ |
-| Distance settings (type, city/station) | Missing from settings | ❌ |
-| Work settings (type, shift times, alert) | Work pattern picker + ShiftTimeEditor inline | ✅ |
-| Transport (hasCar) | Missing from settings | ❌ |
-| Dedicated ProfileSettingsScreen | Merged into general SettingsScreen | ⚠️ |
-
-**Settings Score**: 60% (3/6 design sections present; 2 missing, 1 merged)
-
-### 3.9 Static Data
-
-| Design Data | Implementation | Status |
-|---|---|---|
-| 11 cities (Seoul~Jeju) + custom input | 14 cities (added Cheongju, Chuncheon, Gangneung) + custom input | ⚠️ Extended |
-| Station names (parenthesis style) | Slightly different formatting: `(KTX)` vs `서울역(KTX)` -> `서울역 (KTX)` (space before paren) | ⚠️ Minor |
-| Busan terminal: `부산종합터미널` | `부산종합터미널 (노포)` -- added sub-name | ⚠️ Minor |
-| Shift defaults: D 06-15 / E 13-22 / N 20-08 | Matches exactly | ✅ |
-| 2-shift defaults: day 07-19 / night 19-07 | Matches exactly | ✅ |
-| Office default: 09-18 | Matches exactly | ✅ |
-| shiftLabel() function | Present, matches all 4 patterns | ✅ |
-
-**Static Data Score**: 90%
-
-### 3.10 Error Handling
+### 3.8 Error Handling
 
 | Design Error Case | Implementation | Status |
 |---|---|---|
-| Invite code expired (7 days) | Not verifiable (in CoupleService) | -- |
-| Already used code | `invalid_code` error caught, snackbar shown | ✅ |
-| Own code entered | `own_code` error caught, snackbar shown | ✅ |
-| Network error during onboarding | `try/catch` in `_complete()`, `debugPrint` only | ⚠️ Minimal |
-| Realtime re-subscribe + manual refresh | Not implemented (no Realtime) | ❌ |
+| Invite code expired (7 days) | Server-side via `connect_couple` RPC | ⚠️ Not verifiable client-side |
+| Already used code | `invalid_code` catch -> snackbar | ✅ |
+| Own code entered | `own_code` catch -> snackbar | ✅ |
+| Network error: local temp save + retry | `try/catch` + `debugPrint` (no user feedback) | ⚠️ Minimal |
+| Realtime resubscribe + manual refresh | Not implemented (no realtime) | ❌ |
 
 **Error Handling Score**: 50%
 
+### 3.9 Static Data
+
+| Item | Design | Implementation | Status |
+|---|---|---|---|
+| Cities count | 11 + custom | 30+ + custom | ✅ Exceeds |
+| Shift defaults (3-shift) | D 06-15, E 13-22, N 20-08 | Matches | ✅ |
+| Shift defaults (2-shift) | day 07-19, night 19-07 | Matches | ✅ |
+| Office default | 09-18 | Matches | ✅ |
+
+**Static Data Score**: 95%
+
 ---
 
-## 4. Missing Features (Design O, Implementation X)
+## 4. Match Rate Summary
 
-| # | Item | Design Reference | Description | Impact |
-|---|---|---|---|---|
-| 1 | `ShiftTime` typed class | Design 3.1 | No separate class; raw Map used instead | Medium - reduces type safety |
-| 2 | `shift_time.dart` file | Design 11.1 | Missing dedicated model file | Low |
-| 3 | `invite_code_service.dart` | Design 11.1 | No dedicated service (in CoupleService) | Low - functionally equivalent |
-| 4 | `CoupleProfileProvider` | Design 2.1, 11.1 | No ChangeNotifier/Provider state management | High - affects reactivity |
-| 5 | `FeatureFlagProvider` (ChangeNotifier) | Design 6.1 | Singleton service instead of Provider | Medium - no auto-rebuild |
-| 6 | `loadPartnerProfile()` | Design 4.3 | Not in ProfileService | Medium |
-| 7 | `watchPartnerProfile()` Realtime | Design 4.3 | No Realtime subscription | High - core feature |
-| 8 | `InviteCodeWidget` | Design 5.5 | Code UI inlined in Step2Screen | Low - functionally present |
-| 9 | `ProfileSettingsScreen` | Design 5.5 | Merged into SettingsScreen | Low |
-| 10 | Distance editing in Settings | Design 5.3 | Cannot change distance/city after onboarding | Medium |
-| 11 | Transport (hasCar) in Settings | Design 5.3 | Cannot change hasCar after onboarding | Low |
-| 12 | Kakao share button (Step 2) | Design 5.2 | No social sharing for invite code | Low |
-| 13 | `couple_profiles` table (separate) | Design 3.3 | Uses `profiles` table instead | Medium - schema deviation |
-| 14 | DistanceType / WorkPatternType enums | Design 3.1 | String literals instead of enums | Medium - type safety |
-| 15 | `id`, `userId`, `coupleId`, `createdAt`, `updatedAt` fields | Design 3.1 | Missing from CoupleProfile model | Medium |
+```
++-----------------------------------------------+
+|  Overall Match Rate: 79%                       |
++-----------------------------------------------+
+|  Data Model:          73%  (was 60%)   +13%    |
+|  Service Layer:       58%  (was 50%)   +8%     |
+|  FeatureFlag:         83%  (was 75%)   +8%     |
+|  Components/UI:       82%  (was 80%)   +2%     |
+|  Onboarding Flow:     79%  (was 85%)   -6%*    |
+|  Static Data:         95%  (was 90%)   +5%     |
+|  Error Handling:      50%  (was 50%)    0%     |
+|  Architecture:        80%  (was 78%)   +2%     |
+|  Convention:          92%  (was 90%)   +2%     |
++-----------------------------------------------+
+|  Missing features:     9 items  (was 15)       |
+|  Added features:      11 items  (was 10)       |
+|  Changed features:     9 items  (was  8)       |
++-----------------------------------------------+
+* Flow score recalculated with finer granularity
+```
 
-## 5. Added Features (Design X, Implementation O)
+---
+
+## 5. Resolved Items (since v0.1)
+
+Items from v0.1 that have been fixed:
+
+| # | Item | Fix Applied |
+|---|------|-------------|
+| 1 | `ShiftTime` typed class | Created `shift_time.dart` with full typed model |
+| 2 | `id`, `userId`, `coupleId` fields | Added as nullable fields to `CoupleProfile` |
+| 3 | `nickname`, `coupleStartDate` fields | Added as nullable fields to `CoupleProfile` |
+| 4 | `isConnected` computed property | Now works via `coupleId != null` |
+| 5 | `isPartnerStatusEnabled` missing `isConnected` check | Fixed: now checks both `isConnected && hasShiftWork` |
+| 6 | `loadPartnerProfile()` missing | Added to `ProfileService` (with partnerId param) |
+| 7 | `shift_time.dart` file missing | Created with full implementation |
+| 8 | `shiftTimes` as `List<Map>` | Now `List<ShiftTime>` with typed serialization |
+
+---
+
+## 6. Remaining Missing Features (Design O, Implementation X)
+
+| # | Item | Design Reference | Impact | Priority |
+|---|------|-----------------|--------|----------|
+| 1 | `CoupleProfileProvider` (ChangeNotifier) | Design 2.1 | High -- no reactive state | Low (singleton pattern works) |
+| 2 | `watchPartnerProfile()` realtime stream | Design 4.3 | High -- core feature | High |
+| 3 | KakaoTalk share button (Step 2) | Design 5.2 | Low | Low |
+| 4 | `InviteCodeWidget` as separate widget | Design 5.5 | Low -- functionally present inline | Low |
+| 5 | `DistanceType` / `WorkPatternType` enums | Design 3.1 | Medium -- type safety | Medium |
+| 6 | `createdAt` / `updatedAt` in model | Design 3.1 | Low | Low |
+| 7 | `hasCar` toggle in onboarding Step 4 | Design 5.2 | Low | Low |
+| 8 | Network error user feedback in onboarding | Design 8 | Medium | Medium |
+| 9 | DB CHECK constraints on distance_type/work_pattern | Design 3.3 | Low | Low |
+
+## 7. Added Features (Design X, Implementation O)
 
 | # | Item | Location | Description |
-|---|---|---|---|
-| 1 | `OnboardingProgress` widget | `onboarding/onboarding_progress.dart` | Visual step progress bar (not in design component list) |
-| 2 | `saveCoupleStartDate()` | `profile_service.dart` | Saves date to `couples` table separately |
-| 3 | `saveNickname()` | `profile_service.dart` | Saves nickname separately |
-| 4 | `isOnboardingCompleted()` | `profile_service.dart` | Standalone check method |
-| 5 | `isVisitTrackingEnabled` flag | `feature_flag_service.dart` | Long-distance visit tracking |
-| 6 | `isCarOptionEnabled` flag | `feature_flag_service.dart` | Car transport option |
-| 7 | `getShiftTime()` helper | `feature_flag_service.dart` | Shift lookup by type |
-| 8 | 3 additional cities | `city_station_data.dart` | Cheongju, Chuncheon, Gangneung |
-| 9 | `getCities()` / `getStations()` helpers | `city_station_data.dart` | Convenience functions |
-| 10 | Break-up flow in Settings | `settings_screen.dart` | Two-step confirmation couple disconnect |
+|---|------|---------|-------------|
+| 1 | `CoupleConnectScreen` | `couple/screens/` | Standalone connect screen (post-onboarding) |
+| 2 | `OnboardingProgress` | `onboarding/` | Visual step progress bar |
+| 3 | `isVisitTrackingEnabled` | `feature_flag_service.dart` | Long-distance visit tracking |
+| 4 | `isCarOptionEnabled` | `feature_flag_service.dart` | Car transport option |
+| 5 | `getShiftTime()` helper | `feature_flag_service.dart` | Shift lookup by type |
+| 6 | `saveCoupleStartDate()` | `profile_service.dart` | Separate date save |
+| 7 | `saveNickname()` | `profile_service.dart` | Separate nickname save |
+| 8 | `isOnboardingCompleted()` | `profile_service.dart` | Standalone check |
+| 9 | Expanded city data (30+ cities) | `city_station_data.dart` | Far exceeds design |
+| 10 | Couple disconnect flow | `settings_screen.dart` | Two-step breakup confirmation |
+| 11 | `fromMap()` / `toMap()` / `copyWith()` | `couple_profile.dart` | Serialization utilities |
 
-## 6. Changed Features (Design != Implementation)
+## 8. Changed Features (Design != Implementation)
 
 | # | Item | Design | Implementation | Impact |
-|---|---|---|---|---|
-| 1 | DB table name | `couple_profiles` | `profiles` (columns added) | Medium |
-| 2 | State management | Provider (ChangeNotifier) | Singleton service | High |
-| 3 | Invite code format | `AB12-CD34` (8 chars, dash) | 6-char alphanumeric | Low |
-| 4 | `isDdayEnabled` logic | `coupleStartDate != null` | `true` (always) | Low |
-| 5 | `isPartnerStatusEnabled` | requires `isConnected` | only checks `hasShiftWork` | Medium |
-| 6 | ShiftTime data type | Typed `ShiftTime` class | Raw `Map<String, dynamic>` | Medium |
-| 7 | ProfileSettings location | Separate screen | Merged into SettingsScreen | Low |
-| 8 | City station name format | `서울역(KTX)` | `서울역 (KTX)` | Low |
+|---|------|--------|----------------|--------|
+| 1 | DB table | Separate `couple_profiles` | Columns on `profiles` | Medium (intentional) |
+| 2 | Invite code storage | Separate `invite_codes` table | `couples.invite_code` | Medium (intentional) |
+| 3 | State management | ChangeNotifier providers | Singleton service | Medium |
+| 4 | Step 1 content | Nickname + coupleStartDate | Nickname only | Medium |
+| 5 | Step 3 scope | My + partner city/station | My only (partner in settings) | Medium |
+| 6 | Invite code format | `AB12-CD34` (8 chars, dash) | 6-char alphanumeric | Low |
+| 7 | `isDdayEnabled` | Conditional on date | Always true | Low |
+| 8 | JSONB keys | `start_hour` / `start_minute` | `start_h` / `start_m` | Low |
+| 9 | ProfileSettingsScreen | `profile/screens/` | `settings/screens/settings_screen.dart` | Low |
 
 ---
 
-## 7. Architecture Compliance
+## 9. Architecture Compliance
 
-### 7.1 Layer Structure (Flutter/Feature-based)
+### 9.1 Layer Structure
 
-| Expected Layer | Actual Path | Status |
+| Expected | Actual | Status |
 |---|---|---|
 | Presentation (screens) | `features/onboarding/screens/` | ✅ |
 | Presentation (widgets) | `features/onboarding/widgets/` | ✅ |
 | Domain (models) | `features/profile/models/` | ✅ |
-| Application (services) | `features/profile/services/` | ✅ |
+| Application (services) | `features/profile/services/`, `couple/services/` | ✅ |
 | Infrastructure (data) | `features/profile/data/` | ✅ |
 | Core (services) | `core/services/` | ✅ |
 
-### 7.2 Dependency Direction
+### 9.2 Dependency Violations
 
-| Source | Imports | Status |
+| File | Issue | Severity |
 |---|---|---|
-| Screens -> Models | `onboarding_step3_screen.dart` -> `couple_profile.dart` | ✅ |
-| Screens -> Widgets | `onboarding_step4_screen.dart` -> `shift_time_editor.dart` | ✅ |
-| Screens -> Data | `onboarding_step4_screen.dart` -> `shift_defaults.dart` | ⚠️ Screen directly imports data layer |
-| OnboardingFlow -> Service | `onboarding_flow.dart` -> `profile_service.dart` | ✅ |
-| Settings -> Service | `settings_screen.dart` -> `profile_service.dart` | ✅ |
-| Settings -> Supabase directly | `settings_screen.dart` imports `supabase_client.dart` | ❌ Bypasses service layer |
+| `settings_screen.dart` | Imports `supabase_client.dart` directly (bypasses service layer) | Medium |
+| `onboarding_step4_screen.dart` | Imports `shift_defaults.dart` (data layer from screen) | Low |
 
-**Architecture Score**: 78%
+**Architecture Score**: 80%
 
 ---
 
-## 8. Convention Compliance
+## 10. Convention Compliance
 
-### 8.1 Naming
+| Category | Convention | Compliance |
+|---|---|:---:|
+| Classes | PascalCase | 100% |
+| Methods | camelCase | 100% |
+| Files | snake_case.dart | 100% |
+| Folders | snake_case | 100% |
+| `const` constructors | Where applicable | 100% |
+| `super.key` | All StatefulWidget/StatelessWidget | 100% |
+| `dispose()` for controllers | All TextEditingController/PageController | 100% |
+| `mounted` check after async | All async setState calls | 100% |
+| Import order | External -> Internal -> Relative | 90% |
 
-| Category | Convention | Compliance | Notes |
-|---|---|---|---|
-| Classes | PascalCase | 100% | `CoupleProfile`, `ShiftTimeEditor`, etc. |
-| Functions/Methods | camelCase | 100% | `loadMyProfile()`, `_pickTime()`, etc. |
-| Constants | UPPER_SNAKE_CASE or camelCase | 90% | `shiftDefaults` (camelCase map, acceptable in Dart) |
-| Files | snake_case.dart | 100% | All files follow Dart convention |
-| Folders | snake_case | 100% | `shift_defaults`, `city_station_data` |
-
-### 8.2 Flutter/Dart Conventions
-
-| Item | Status |
-|---|---|
-| `const` constructors where applicable | ✅ |
-| `super.key` parameter | ✅ |
-| Proper `dispose()` for controllers | ✅ |
-| `mounted` check after async | ✅ |
-
-**Convention Score**: 90%
+**Convention Score**: 92%
 
 ---
 
-## 9. Match Rate Summary
+## 11. Recommended Actions
 
-```
-+-----------------------------------------------+
-|  Overall Match Rate: 72%                       |
-+-----------------------------------------------+
-|  Data Model:          60%  (12/20)             |
-|  Service Layer:       50%  (2/6 + 3 added)     |
-|  FeatureFlag:         75%  (4/6 + 5 added)     |
-|  Components/UI:       80%  (7/9)               |
-|  Onboarding Flow:     85%  (12/14)             |
-|  Settings Screen:     60%  (3/6)               |
-|  Static Data:         90%                      |
-|  File Structure:      62%  (4/8)               |
-|  Error Handling:      50%  (2/5)               |
-|  Architecture:        78%                      |
-|  Convention:          90%                      |
-+-----------------------------------------------+
-|  Missing features:    15 items                 |
-|  Added features:      10 items                 |
-|  Changed features:     8 items                 |
-+-----------------------------------------------+
-```
+### 11.1 Immediate (to reach 85%+)
 
----
+| # | Action | Impact |
+|---|--------|--------|
+| 1 | Add `DistanceType` / `WorkPatternType` enums | +3% model score |
+| 2 | Add user-facing error feedback in onboarding `_complete()` | +2% error handling |
+| 3 | Remove direct Supabase import from `settings_screen.dart` | +2% architecture |
 
-## 10. Recommended Actions
+### 11.2 Short-term (to reach 90%)
 
-### 10.1 Immediate (High Impact)
+| # | Action | Impact |
+|---|--------|--------|
+| 4 | Implement `watchPartnerProfile()` realtime stream | +5% service score |
+| 5 | Add `hasCar` toggle to onboarding Step 4 | +1% flow score |
+| 6 | Make `id`, `userId`, `nickname`, `coupleStartDate` non-nullable | +2% model score |
 
-| # | Action | Files Affected | Rationale |
-|---|---|---|---|
-| 1 | Create `ShiftTime` typed class in `shift_time.dart` | New file + `couple_profile.dart` | Type safety, design compliance, `endDateTime()` method needed for scheduling |
-| 2 | Add missing fields to `CoupleProfile` (`id`, `userId`, `coupleId`, `nickname`, `coupleStartDate`) | `couple_profile.dart` | Core identity fields required for partner features |
-| 3 | Add distance/transport editing to Settings | `settings_screen.dart` | Users cannot modify distance settings post-onboarding |
-| 4 | Fix `isPartnerStatusEnabled` to check `isConnected` | `feature_flag_service.dart` | Currently shows partner status even when not connected |
+### 11.3 Design Document Updates Needed
 
-### 10.2 Short-term
+Update the design doc to match intentional implementation decisions:
 
-| # | Action | Files Affected | Rationale |
-|---|---|---|---|
-| 5 | Implement `loadPartnerProfile()` in ProfileService | `profile_service.dart` | Required for partner data features |
-| 6 | Create enums `DistanceType`, `WorkPatternType` | `couple_profile.dart` or new files | Type safety, matches design |
-| 7 | Remove direct Supabase calls from SettingsScreen | `settings_screen.dart` | Should go through ProfileService/CoupleService |
-| 8 | Add network error user feedback in onboarding completion | `onboarding_flow.dart` | Currently only `debugPrint`, no user-visible error |
-
-### 10.3 Long-term / Backlog
-
-| # | Action | Notes |
-|---|---|---|
-| 9 | Implement Realtime partner profile subscription | Design specifies `watchPartnerProfile()` stream |
-| 10 | Consider Provider/Riverpod for state management | Design specified `ChangeNotifier` pattern; current Singleton lacks reactivity |
-| 11 | Add Kakao share for invite codes (Step 2) | Nice-to-have social sharing |
-| 12 | Extract `InviteCodeWidget` from Step2Screen | Improves reusability |
-
-### 10.4 Design Document Updates Needed
-
-If implementation decisions are intentional, update the design doc to reflect:
-
-- [ ] Table name: `profiles` instead of `couple_profiles`
-- [ ] Singleton pattern instead of Provider for FeatureFlag
-- [ ] Invite code format: 6-char instead of 8-char with dash
-- [ ] `isDdayEnabled` always true (coupled with `couples.started_at`)
-- [ ] Additional cities in city_station_data
-- [ ] `OnboardingProgress` widget addition
-- [ ] Break-up flow in Settings (not in original design)
-- [ ] `saveCoupleStartDate()` and `saveNickname()` as separate operations
+- [ ] DB schema: `profiles` columns instead of separate `couple_profiles` table
+- [ ] DB schema: `couples.invite_code` instead of `invite_codes` table
+- [ ] Step 1: Nickname only (coupleStartDate moved to settings)
+- [ ] Step 3: My city/station only (partner deferred to settings)
+- [ ] Invite code: 6-char format
+- [ ] State management: Singleton FeatureFlagService
+- [ ] `isDdayEnabled`: Always true
+- [ ] JSONB keys: `start_h`/`start_m`/`end_h`/`end_m`
+- [ ] Settings screen location: `features/settings/`
+- [ ] Added features: OnboardingProgress, CoupleConnectScreen, disconnect flow
 
 ---
 
-## 11. Synchronization Options
+## 12. Synchronization Recommendation
 
-Given the 72% match rate, the following strategies are recommended:
+| Strategy | Items |
+|----------|-------|
+| Modify implementation to match design | Enums, realtime stream, hasCar in onboarding, error feedback |
+| Update design to match implementation | DB schema, invite code format, Step 1/3 scope, JSONB keys, singleton pattern |
+| Record as intentional | CoupleConnectScreen, OnboardingProgress, expanded city data, disconnect flow |
 
-1. **Modify implementation to match design** -- for items #1, #2, #3, #4 (type safety, missing fields, settings gaps)
-2. **Update design to match implementation** -- for table name (`profiles`), invite code format, additional cities, Singleton pattern
-3. **Record as intentional** -- break-up flow (added feature), additional FeatureFlag helpers
+Match rate 79% falls in the 70-90% range: **"There are some differences. Document update is recommended."**
 
 ---
 
@@ -394,4 +379,5 @@ Given the 72% match rate, the following strategies are recommended:
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
-| 0.1 | 2026-03-18 | Initial gap analysis | Claude (gap-detector) |
+| 0.1 | 2026-03-18 | Initial gap analysis (72%) | Claude (gap-detector) |
+| 0.2 | 2026-03-18 | Re-analysis after GAP-FIX iterations (79%) | Claude (gap-detector) |

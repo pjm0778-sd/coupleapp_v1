@@ -67,6 +67,14 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       FeatureFlagService().refresh(_draft.copyWith(onboardingCompleted: true));
     } catch (e) {
       debugPrint('Onboarding save error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('저장 중 오류가 발생했습니다. 다시 시도해 주세요.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
