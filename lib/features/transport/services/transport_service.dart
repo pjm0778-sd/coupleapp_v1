@@ -4,13 +4,11 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/transit_result.dart';
 import '../data/station_codes.dart';
+import '../../../core/supabase_client.dart' show supabaseUrl, supabaseAnonKey;
 
 class TransportService {
   // ODsay API는 Supabase Edge Function을 통해 프록시 (CORS 우회 + API 키 서버 관리)
-  static String get _proxyBase {
-    final url = Supabase.instance.client.supabaseUrl;
-    return '$url/functions/v1/odsay-proxy';
-  }
+  static const String _proxyBase = '$supabaseUrl/functions/v1/odsay-proxy';
 
   // ODsay stationID 캐시
   final Map<String, int?> _trainIdCache = {};
@@ -161,7 +159,7 @@ class TransportService {
         uri,
         headers: {
           'Authorization': 'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
-          'apikey': Supabase.instance.client.supabaseKey,
+          'apikey': supabaseAnonKey,
         },
       ).timeout(const Duration(seconds: 15));
 
@@ -186,9 +184,22 @@ class TransportService {
         return null;
       }
 
-      final stations = result['station'];
+      // Terminal endpoints return result as a direct List
+      // e.g., {"result": [{"stationID": 3300128, "stationName": "서울", ...}]}
+      if (result is List) {
+        if (result.isEmpty) {
+          debugPrint('[ODsay] $endpoint "$name" → 검색결과 없음');
+          return null;
+        }
+        final id = (result.first['stationID'] as num?)?.toInt();
+        debugPrint('[ODsay] $endpoint "$name" → stationID=$id (${result.length}건)');
+        return id;
+      }
+
+      // Fallback: some endpoints may wrap in a map
+      final stations = result is Map ? result['station'] : null;
       if (stations == null) {
-        debugPrint('[ODsay] $endpoint station=null, keys=${result.keys.toList()}');
+        debugPrint('[ODsay] $endpoint result type=${result.runtimeType}');
         return null;
       }
 
@@ -359,7 +370,9 @@ class TransportService {
       // ODsay는 "0500" (HHmm 4자리) 또는 "05:00" (HH:mm) 모두 반환 가능
       final depTime = _normalizeTime(map['departureTime']?.toString() ?? '--:--');
       final arrTime = _normalizeTime(map['arrivalTime']?.toString() ?? '--:--');
-      final waste = (map['wasteTime'] as num?)?.toInt() ??
+      // ODsay wasteTime may be int minutes or "HH:MM" duration string
+      final wasteRaw = map['wasteTime'];
+      final waste = _parseWasteMinutes(wasteRaw) ??
           _calcDurationFromTimeStr(depTime, arrTime);
 
       // 열차 요금 추출 (fare 배열 또는 단일 값)
@@ -377,8 +390,13 @@ class TransportService {
           fare = first.toInt();
         }
       } else if (fareRaw is Map) {
-        fare = (fareRaw['general'] as num?)?.toInt() ??
-            (fareRaw['fare'] as num?)?.toInt();
+        // ODsay fare values may be string ("13000") or num
+        final generalRaw = fareRaw['general'] ?? fareRaw['fare'];
+        if (generalRaw is num) {
+          fare = generalRaw.toInt();
+        } else if (generalRaw != null) {
+          fare = int.tryParse(generalRaw.toString());
+        }
       }
 
       return TransitResult(
@@ -517,6 +535,20 @@ class TransportService {
     return '${nh.toString().padLeft(2, '0')}:${nm.toString().padLeft(2, '0')}';
   }
 
+  /// ODsay wasteTime: int minutes OR "HH:MM" duration string (e.g. "02:34" = 154분)
+  int? _parseWasteMinutes(dynamic raw) {
+    if (raw is num) return raw.toInt();
+    if (raw is String && raw.contains(':')) {
+      final parts = raw.split(':');
+      if (parts.length >= 2) {
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = int.tryParse(parts[1]) ?? 0;
+        return h * 60 + m;
+      }
+    }
+    return null;
+  }
+
   int _calcDurationFromTimeStr(String dep, String arr) {
     if (dep.length < 5 || arr.length < 5) return 0;
     final dh = int.tryParse(dep.substring(0, 2)) ?? 0;
@@ -533,7 +565,7 @@ class TransportService {
     return {
       'Authorization':
           'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
-      'apikey': Supabase.instance.client.supabaseKey,
+      'apikey': supabaseAnonKey,
     };
   }
 }

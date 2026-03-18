@@ -17,7 +17,7 @@ const Map<String, String> odsayTrainSearchExceptions = {
 
 /// ODsay 시외버스 터미널 검색어 예외
 const Map<String, String> odsayIntercityBusSearchExceptions = {
-  '부산종합터미널 (노포)': '노포',
+  '부산종합터미널 (노포)': '부산종합',
   '유스퀘어터미널': '유스퀘어',
   '인천터미널': '인천',
   '동서울터미널': '동서울',
@@ -26,7 +26,7 @@ const Map<String, String> odsayIntercityBusSearchExceptions = {
 
 /// ODsay 고속버스 터미널 검색어 예외
 const Map<String, String> odsayExpressBusSearchExceptions = {
-  '부산종합터미널 (노포)': '노포',
+  '부산종합터미널 (노포)': '부산종합',
   '유스퀘어터미널': '유스퀘어',
   '인천터미널': '인천',
 };

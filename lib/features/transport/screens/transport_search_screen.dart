@@ -339,7 +339,7 @@ class _RouteBox extends StatelessWidget {
   }
 }
 
-// ── 역 검색 시트 ──
+// ── 역 검색 시트 (검색 + 지역 선택 탭) ──
 class _StationSearchSheet extends StatefulWidget {
   final String title;
   final String excludeStation;
@@ -355,13 +355,18 @@ class _StationSearchSheet extends StatefulWidget {
   State<_StationSearchSheet> createState() => _StationSearchSheetState();
 }
 
-class _StationSearchSheetState extends State<_StationSearchSheet> {
+class _StationSearchSheetState extends State<_StationSearchSheet>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
   final _searchCtrl = TextEditingController();
   String _query = '';
 
-  // 전체 역 목록: city → [station, ...]
+  // 지역 선택 상태
+  String? _province;
+  String? _city;
+
   static final _allStations = cityStations.entries
-      .where((e) => e.key != '직접 입력' && e.value.isNotEmpty)
+      .where((e) => e.value.isNotEmpty)
       .expand((e) => e.value.map((s) => _StationEntry(city: e.key, station: s)))
       .toList();
 
@@ -377,17 +382,27 @@ class _StationSearchSheetState extends State<_StationSearchSheet> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
   void dispose() {
+    _tabController.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
 
+  void _select(String station) {
+    Navigator.pop(context);
+    widget.onSelected(station);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = _filtered;
-
     return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
+      height: MediaQuery.of(context).size.height * 0.88,
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -396,107 +411,290 @@ class _StationSearchSheetState extends State<_StationSearchSheet> {
         children: [
           // 핸들
           const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppTheme.border,
-              borderRadius: BorderRadius.circular(2),
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
-          // 타이틀
+          const SizedBox(height: 14),
+          // 타이틀 + 닫기
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
                 Text(widget.title,
-                    style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
                 const Spacer(),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, size: 22,
-                      color: AppTheme.textSecondary),
+                  child: const Icon(Icons.close, size: 22, color: AppTheme.textSecondary),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          // 검색창
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _searchCtrl,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: '역명, 터미널, 도시명으로 검색',
-                prefixIcon: const Icon(Icons.search,
-                    size: 20, color: AppTheme.textSecondary),
-                suffixIcon: _query.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchCtrl.clear();
-                          setState(() => _query = '');
-                        },
-                        child: const Icon(Icons.clear,
-                            size: 18, color: AppTheme.textSecondary),
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppTheme.surface,
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (v) => setState(() => _query = v),
-            ),
+          const SizedBox(height: 10),
+          // 탭바
+          TabBar(
+            controller: _tabController,
+            tabs: const [Tab(text: '검색'), Tab(text: '지역 선택')],
+            labelColor: AppTheme.primary,
+            unselectedLabelColor: AppTheme.textSecondary,
+            indicatorColor: AppTheme.primary,
+            indicatorWeight: 2.5,
           ),
-          const SizedBox(height: 8),
-          // 결과 카운트
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Text(
-                  _query.isEmpty ? '전체 ${filtered.length}개' : '검색결과 ${filtered.length}개',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 4),
           const Divider(height: 1),
-          // 목록
+          // 탭뷰
           Expanded(
-            child: filtered.isEmpty
-                ? const Center(
-                    child: Text('검색 결과가 없습니다',
-                        style: TextStyle(color: AppTheme.textSecondary)),
-                  )
-                : ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (_, i) {
-                      final e = filtered[i];
-                      final isExcluded = e.station == widget.excludeStation;
-                      return _StationItem(
-                        entry: e,
-                        isExcluded: isExcluded,
-                        onTap: isExcluded
-                            ? null
-                            : () {
-                                Navigator.pop(context);
-                                widget.onSelected(e.station);
-                              },
-                      );
-                    },
-                  ),
+            child: TabBarView(
+              controller: _tabController,
+              children: [_buildSearchTab(), _buildRegionTab()],
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  // ─── 검색 탭 ───
+  Widget _buildSearchTab() {
+    final filtered = _filtered;
+    return Column(
+      children: [
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: TextField(
+            controller: _searchCtrl,
+            autofocus: false,
+            decoration: InputDecoration(
+              hintText: '역명, 터미널, 도시명으로 검색',
+              prefixIcon: const Icon(Icons.search, size: 20, color: AppTheme.textSecondary),
+              suffixIcon: _query.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () {
+                        _searchCtrl.clear();
+                        setState(() => _query = '');
+                      },
+                      child: const Icon(Icons.clear, size: 18, color: AppTheme.textSecondary),
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppTheme.surface,
+              contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 6, 20, 6),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _query.isEmpty ? '전체 ${filtered.length}개' : '검색결과 ${filtered.length}개',
+              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: filtered.isEmpty
+              ? const Center(
+                  child: Text('검색 결과가 없습니다',
+                      style: TextStyle(color: AppTheme.textSecondary)),
+                )
+              : ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (_, i) {
+                    final e = filtered[i];
+                    final excluded = e.station == widget.excludeStation;
+                    return _StationItem(
+                      entry: e,
+                      isExcluded: excluded,
+                      onTap: excluded ? null : () => _select(e.station),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  // ─── 지역 선택 탭 ───
+  Widget _buildRegionTab() {
+    return Column(
+      children: [
+        // 도/광역시 칩 행
+        _ProvinceChips(
+          selected: _province,
+          onSelect: (p) => setState(() {
+            _province = p;
+            _city = null;
+          }),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: _province == null
+              ? _buildProvinceHint()
+              : _city == null
+                  ? _buildCityList(_province!)
+                  : _buildStationList(_city!),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildProvinceHint() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.map_outlined, size: 52,
+              color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          const Text('위에서 도/광역시를 선택하세요',
+              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+        ],
+      ),
+    );
+  }
+
+  // 시/군 목록 (cityStations에 등록된 곳만)
+  Widget _buildCityList(String province) {
+    final cities = getCitiesInProvince(province)
+        .where((c) => cityStations.containsKey(c))
+        .toList();
+
+    if (cities.isEmpty) {
+      return const Center(
+        child: Text('등록된 역/터미널이 없습니다',
+            style: TextStyle(color: AppTheme.textSecondary)),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      itemCount: cities.length,
+      itemBuilder: (_, i) {
+        final city = cities[i];
+        final stations = cityStations[city]!;
+        final subtitle = stations
+            .map((s) => s.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim())
+            .join(' · ');
+
+        return InkWell(
+          onTap: () {
+            if (stations.length == 1) {
+              final st = stations.first;
+              if (st != widget.excludeStation) _select(st);
+            } else {
+              setState(() => _city = city);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+            child: Row(
+              children: [
+                Container(
+                  width: 38, height: 38,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      city.substring(0, 1),
+                      style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w700,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(city,
+                          style: const TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(subtitle,
+                          style: const TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Icon(
+                  stations.length > 1
+                      ? Icons.chevron_right
+                      : Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: AppTheme.textSecondary,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // 역/터미널 목록 (시 선택 후)
+  Widget _buildStationList(String city) {
+    final stations = cityStations[city] ?? [];
+    return Column(
+      children: [
+        // 뒤로가기 헤더
+        InkWell(
+          onTap: () => setState(() => _city = null),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                const Icon(Icons.arrow_back_ios_new_rounded,
+                    size: 14, color: AppTheme.primary),
+                const SizedBox(width: 6),
+                Text(city,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary)),
+                const SizedBox(width: 6),
+                const Text('역/터미널 선택',
+                    style: TextStyle(
+                        fontSize: 13, color: AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView.builder(
+            itemCount: stations.length,
+            itemBuilder: (_, i) {
+              final st = stations[i];
+              final entry = _StationEntry(city: city, station: st);
+              final excluded = st == widget.excludeStation;
+              return _StationItem(
+                entry: entry,
+                isExcluded: excluded,
+                onTap: excluded ? null : () => _select(st),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
@@ -596,6 +794,54 @@ class _StationItem extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── 도/광역시 칩 선택 ──
+class _ProvinceChips extends StatelessWidget {
+  final String? selected;
+  final ValueChanged<String> onSelect;
+
+  const _ProvinceChips({required this.selected, required this.onSelect});
+
+  @override
+  Widget build(BuildContext context) {
+    final provinces = getProvinces();
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        itemCount: provinces.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final p = provinces[i];
+          final active = p == selected;
+          return GestureDetector(
+            onTap: () => onSelect(p),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: active ? AppTheme.primary : AppTheme.surface,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: active ? AppTheme.primary : AppTheme.border,
+                ),
+              ),
+              child: Text(
+                p,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: active ? Colors.white : AppTheme.textSecondary,
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
