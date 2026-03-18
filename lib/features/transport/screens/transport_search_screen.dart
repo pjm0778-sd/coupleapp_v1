@@ -249,15 +249,24 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
                           _ResultList(
                               results: _result?.results ?? [],
                               searchResult: _result,
-                              filterType: null),
+                              filterType: null,
+                              fromStation: _from,
+                              toStation: _to,
+                              date: _date),
                           _ResultList(
                               results: _result?.trainResults ?? [],
                               searchResult: _result,
-                              filterType: 'train'),
+                              filterType: 'train',
+                              fromStation: _from,
+                              toStation: _to,
+                              date: _date),
                           _ResultList(
                               results: _result?.busResults ?? [],
                               searchResult: _result,
-                              filterType: 'bus'),
+                              filterType: 'bus',
+                              fromStation: _from,
+                              toStation: _to,
+                              date: _date),
                         ],
                       ),
           ),
@@ -852,11 +861,17 @@ class _ResultList extends StatelessWidget {
   final List<TransitResult> results;
   final TransportSearchResult? searchResult;
   final String? filterType;
+  final String fromStation;
+  final String toStation;
+  final DateTime date;
 
   const _ResultList({
     required this.results,
     required this.searchResult,
     required this.filterType,
+    required this.fromStation,
+    required this.toStation,
+    required this.date,
   });
 
   @override
@@ -887,7 +902,12 @@ class _ResultList extends StatelessWidget {
             body: '해당 날짜에 운행 편이 없거나\n노선이 없을 수 있습니다.',
           )
         else
-          ...results.map((r) => _TransitCard(result: r)),
+          ...results.map((r) => _TransitCard(
+                result: r,
+                fromStation: fromStation,
+                toStation: toStation,
+                date: date,
+              )),
       ],
     );
   }
@@ -997,7 +1017,16 @@ class _InfoCard extends StatelessWidget {
 
 class _TransitCard extends StatelessWidget {
   final TransitResult result;
-  const _TransitCard({required this.result});
+  final String fromStation;
+  final String toStation;
+  final DateTime date;
+
+  const _TransitCard({
+    required this.result,
+    required this.fromStation,
+    required this.toStation,
+    required this.date,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1067,14 +1096,7 @@ class _TransitCard extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => _launchUrl(
-                result.type == TransitType.srt
-                    ? srtBookingUrl
-                    : result.isRailway
-                        ? korailBookingUrl
-                        : result.isIntercityBus
-                            ? intercityBusBookingUrl
-                            : busBookingUrl),
+            onTap: () => _launchUrl(_bookingUrl()),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -1092,6 +1114,27 @@ class _TransitCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _bookingUrl() {
+    if (result.type == TransitType.srt) {
+      return buildSrtBookingUrl(
+        fromStation: fromStation,
+        toStation: toStation,
+        date: date,
+        departureTime: result.departureTime,
+      );
+    }
+    if (result.isRailway) {
+      return buildKorailBookingUrl(
+            fromStation: fromStation,
+            toStation: toStation,
+            date: date,
+            departureTime: result.departureTime,
+          ) ??
+          korailBookingUrl;
+    }
+    return result.isIntercityBus ? intercityBusBookingUrl : busBookingUrl;
   }
 
   Color _typeColor(TransitType type) {
