@@ -1,11 +1,3 @@
-/// SRT 전용 역 (예매 배너 표시용)
-const Set<String> srtOnlyStations = {
-  '수서역 (SRT)',
-  '판교역 (SRT)',
-  '평택지제역 (SRT)',
-  '동탄역 (SRT)',
-};
-
 /// ODsay 열차 터미널 검색어 예외
 /// 자동 변환(괄호 제거 + '역' 제거)이 ODsay 역명과 다를 때만 등록
 const Map<String, String> odsayTrainSearchExceptions = {

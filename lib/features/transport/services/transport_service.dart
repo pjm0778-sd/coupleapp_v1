@@ -44,29 +44,6 @@ class TransportService {
       debugPrint('[ODsay] train error: $e');
     }
 
-    // ── SRT Supabase 보완 (ODsay SRT 미지원 시 폴백) ──
-    try {
-      final srtList = await _fetchSrtFromSupabase(
-        fromStation: fromStation,
-        toStation: toStation,
-        date: date,
-      );
-      for (final srt in srtList) {
-        if (!results.any(
-            (r) => r.trainNo == srt.trainNo && r.type == TransitType.srt)) {
-          results.add(srt);
-        }
-      }
-      if (srtList.isNotEmpty) hasSrtStation = true;
-    } catch (e) {
-      debugPrint('[SRT] Supabase error: $e');
-    }
-
-    // ── SRT 전용 역 배너 ──
-    if (srtOnlyStations.contains(fromStation) ||
-        srtOnlyStations.contains(toStation)) {
-      hasSrtStation = true;
-    }
 
     // ── 고속버스 (ODsay searchInterBusSchedule, stationClass=4) ──
     try {
@@ -307,49 +284,6 @@ class TransportService {
   }
 
   // ────────────────────────────────────────────────
-  // SRT Supabase 폴백
-  // ────────────────────────────────────────────────
-
-  Future<List<TransitResult>> _fetchSrtFromSupabase({
-    required String fromStation,
-    required String toStation,
-    required DateTime date,
-  }) async {
-    final depName = _stripStationSuffix(fromStation);
-    final arrName = _stripStationSuffix(toStation);
-
-    final rows = await Supabase.instance.client
-        .from('srt_timetable')
-        .select()
-        .eq('dep_station', depName)
-        .eq('arr_station', arrName)
-        .order('dep_time');
-
-    final weekday = date.weekday;
-    final isWeekend = weekday >= 5;
-
-    return (rows as List)
-        .where((r) {
-          final runDays = r['run_days'] as String? ?? '매일';
-          if (runDays == '매일') return true;
-          if (runDays == '금토일') return isWeekend;
-          return true;
-        })
-        .map((r) {
-          final depTime = _normalizeTime(r['dep_time'] as String? ?? '--:--');
-          final arrTime = _normalizeTime(r['arr_time'] as String? ?? '--:--');
-          return TransitResult(
-            type: TransitType.srt,
-            trainNo: r['train_no'] as String? ?? '',
-            departureTime: depTime,
-            arrivalTime: arrTime,
-            durationMinutes: _calcDurationFromTimeStr(depTime, arrTime),
-          );
-        })
-        .toList();
-  }
-
-  // ────────────────────────────────────────────────
   // 응답 파싱
   // ────────────────────────────────────────────────
 
@@ -513,11 +447,6 @@ class TransportService {
     return name;
   }
 
-  String _stripStationSuffix(String stationName) {
-    var name = stationName.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
-    if (name.endsWith('역')) name = name.substring(0, name.length - 1);
-    return name;
-  }
 
   List<dynamic> _extractList(dynamic data) {
     if (data == null) return [];
