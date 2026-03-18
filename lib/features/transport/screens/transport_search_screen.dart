@@ -51,15 +51,16 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
     super.dispose();
   }
 
+  // 파라미터가 바뀌었지만 아직 검색하지 않은 상태
+  bool _isDirty = false;
+
   void _swapRoute() {
     setState(() {
       final temp = _from;
       _from = _to;
       _to = temp;
-      _result = null;
-      _hasSearched = false;
+      _isDirty = true;
     });
-    _search();
   }
 
   Future<void> _pickDate() async {
@@ -72,10 +73,8 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
     if (picked != null && picked != _date) {
       setState(() {
         _date = picked;
-        _result = null;
-        _hasSearched = false;
+        _isDirty = true;
       });
-      _search();
     }
   }
 
@@ -94,17 +93,15 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
             } else {
               _to = station;
             }
-            _result = null;
-            _hasSearched = false;
+            _isDirty = true;
           });
-          _search();
         },
       ),
     );
   }
 
   Future<void> _search() async {
-    setState(() => _isLoading = true);
+    setState(() { _isLoading = true; _isDirty = false; });
     try {
       final result = await _service.search(
         fromStation: _from,
@@ -182,43 +179,87 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
                   ],
                 ),
                 const SizedBox(height: 12),
-                // 날짜 선택
-                GestureDetector(
-                  onTap: _pickDate,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surface,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.border),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_month_outlined,
-                            size: 18, color: AppTheme.primary),
-                        const SizedBox(width: 8),
-                        Text(
-                          _formatDate(_date),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
+                // 날짜 + 검색 버튼 행
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _pickDate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: AppTheme.border),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.calendar_month_outlined,
+                                  size: 18, color: AppTheme.primary),
+                              const SizedBox(width: 8),
+                              Text(
+                                _formatDate(_date),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(Icons.chevron_right,
+                                  size: 18, color: AppTheme.textSecondary),
+                            ],
                           ),
                         ),
-                        const Spacer(),
-                        const Text(
-                          '날짜 변경',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 검색 버튼 (_isDirty 시 강조)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      decoration: BoxDecoration(
+                        color: _isDirty
+                            ? AppTheme.primary
+                            : AppTheme.primary.withValues(alpha: 0.6),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: _isDirty
+                            ? [
+                                BoxShadow(
+                                  color:
+                                      AppTheme.primary.withValues(alpha: 0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                )
+                              ]
+                            : null,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _isLoading ? null : _search,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.search_rounded,
+                                    size: 18, color: Colors.white),
+                                const SizedBox(width: 4),
+                                const Text('검색',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    )),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.chevron_right,
-                            size: 18, color: AppTheme.textSecondary),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -242,7 +283,11 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : !_hasSearched
-                    ? const SizedBox.shrink()
+                    ? const _InfoCard(
+                        icon: Icons.train_outlined,
+                        title: '검색 버튼을 눌러주세요',
+                        body: '출발지, 도착지, 날짜를 선택한 뒤\n검색 버튼을 눌러 조회하세요.',
+                      )
                     : TabBarView(
                         controller: _tabController,
                         children: [

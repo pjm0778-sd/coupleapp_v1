@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/transit_result.dart';
 import '../data/station_codes.dart';
@@ -10,10 +11,17 @@ class TransportService {
   // ODsay API는 Supabase Edge Function을 통해 프록시 (CORS 우회 + API 키 서버 관리)
   static const String _proxyBase = '$supabaseUrl/functions/v1/odsay-proxy';
 
-  // ODsay stationID 캐시
+  // SharedPreferences 캐시 키 접두사 (터미널 ID 영구 저장)
+  static const String _prefPrefix = 'odsay_id_';
+
+  // 세션 내 메모리 캐시 (SharedPreferences 중복 호출 방지)
   final Map<String, int?> _trainIdCache = {};
   final Map<String, int?> _expBusIdCache = {};
   final Map<String, int?> _intercityBusIdCache = {};
+
+  // 검색 결과 30분 캐시 (같은 구간+날짜 재검색 시 API 호출 0회)
+  static const Duration _resultCacheTtl = Duration(minutes: 30);
+  final Map<String, _SearchCache> _resultCache = {};
 
   /// 출발역/터미널 → 도착역/터미널 통합 검색
   Future<TransportSearchResult> search({
@@ -21,6 +29,15 @@ class TransportService {
     required String toStation,
     required DateTime date,
   }) async {
+    // ── 결과 캐시 확인 (30분 유효) ──
+    final cacheKey =
+        '${fromStation}_${toStation}_${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
+    final cached = _resultCache[cacheKey];
+    if (cached != null && cached.isValid) {
+      debugPrint('[ODsay] 캐시 히트: $cacheKey');
+      return cached.result;
+    }
+
     _currentSearchDate = date;
     final results = <TransitResult>[];
     String? trainError;
@@ -78,45 +95,72 @@ class TransportService {
 
     results.sort((a, b) => a.departureTime.compareTo(b.departureTime));
 
-    return TransportSearchResult(
+    final searchResult = TransportSearchResult(
       results: results,
       hasSrtStation: hasSrtStation,
       trainError: trainError,
       busError: busError,
     );
+
+    // 결과 캐시 저장
+    _resultCache[cacheKey] = _SearchCache(result: searchResult);
+
+    return searchResult;
   }
 
   // ────────────────────────────────────────────────
   // ODsay 터미널 ID 조회
   // ────────────────────────────────────────────────
 
-  Future<int?> _getTrainId(String stationName) async {
-    if (_trainIdCache.containsKey(stationName)) return _trainIdCache[stationName];
-    final term = odsayTrainSearchExceptions[stationName] ??
-        _deriveTrainSearchTerm(stationName);
-    final id = await _searchTerminalId(endpoint: 'trainTerminals', name: term);
-    _trainIdCache[stationName] = id;
-    return id;
-  }
+  Future<int?> _getTrainId(String stationName) => _getCachedId(
+        stationName: stationName,
+        endpoint: 'trainTerminals',
+        memCache: _trainIdCache,
+        searchTerm: odsayTrainSearchExceptions[stationName] ??
+            _deriveTrainSearchTerm(stationName),
+      );
 
-  Future<int?> _getExpBusId(String stationName) async {
-    if (_expBusIdCache.containsKey(stationName)) return _expBusIdCache[stationName];
-    final term = odsayExpressBusSearchExceptions[stationName] ??
-        _deriveBusSearchTerm(stationName);
-    final id = await _searchTerminalId(endpoint: 'expressBusTerminals', name: term);
-    _expBusIdCache[stationName] = id;
-    return id;
-  }
+  Future<int?> _getExpBusId(String stationName) => _getCachedId(
+        stationName: stationName,
+        endpoint: 'expressBusTerminals',
+        memCache: _expBusIdCache,
+        searchTerm: odsayExpressBusSearchExceptions[stationName] ??
+            _deriveBusSearchTerm(stationName),
+      );
 
-  Future<int?> _getIntercityBusId(String stationName) async {
-    if (_intercityBusIdCache.containsKey(stationName)) {
-      return _intercityBusIdCache[stationName];
+  Future<int?> _getIntercityBusId(String stationName) => _getCachedId(
+        stationName: stationName,
+        endpoint: 'intercityBusTerminals',
+        memCache: _intercityBusIdCache,
+        searchTerm: odsayIntercityBusSearchExceptions[stationName] ??
+            _deriveBusSearchTerm(stationName),
+      );
+
+  /// 터미널 ID 3단계 캐시 조회:
+  ///  1) 메모리 캐시 → 2) SharedPreferences → 3) ODsay API
+  Future<int?> _getCachedId({
+    required String stationName,
+    required String endpoint,
+    required Map<String, int?> memCache,
+    required String searchTerm,
+  }) async {
+    // 1) 메모리 캐시
+    if (memCache.containsKey(stationName)) return memCache[stationName];
+
+    // 2) SharedPreferences (앱 재시작 후에도 유효)
+    final prefKey = '$_prefPrefix${endpoint}_$stationName';
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(prefKey)) {
+      final stored = prefs.getInt(prefKey);
+      memCache[stationName] = stored;
+      debugPrint('[ODsay] prefs 캐시: $endpoint "$stationName" → $stored');
+      return stored;
     }
-    final term = odsayIntercityBusSearchExceptions[stationName] ??
-        _deriveBusSearchTerm(stationName);
-    final id =
-        await _searchTerminalId(endpoint: 'intercityBusTerminals', name: term);
-    _intercityBusIdCache[stationName] = id;
+
+    // 3) API 호출
+    final id = await _searchTerminalId(endpoint: endpoint, name: searchTerm);
+    memCache[stationName] = id;
+    if (id != null) await prefs.setInt(prefKey, id);
     return id;
   }
 
@@ -503,6 +547,16 @@ class TransportService {
       'apikey': supabaseAnonKey,
     };
   }
+}
+
+class _SearchCache {
+  final TransportSearchResult result;
+  final DateTime _createdAt;
+
+  _SearchCache({required this.result}) : _createdAt = DateTime.now();
+
+  bool get isValid =>
+      DateTime.now().difference(_createdAt) < TransportService._resultCacheTtl;
 }
 
 class TransportSearchResult {
