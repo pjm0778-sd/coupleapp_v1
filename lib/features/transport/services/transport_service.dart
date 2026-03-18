@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/api_keys.dart';
 import '../models/transit_result.dart';
 import '../data/station_codes.dart';
@@ -43,7 +44,20 @@ class TransportService {
     String? busError;
     bool hasSrtStation = false;
 
-    // ── SRT 전용 역 체크 ──
+    // ── SRT Supabase 시간표 조회 (항상 시도) ──
+    try {
+      final srtResults = await _fetchSrtFromSupabase(
+        fromStation: fromStation,
+        toStation: toStation,
+        date: date,
+      );
+      results.addAll(srtResults);
+      if (srtResults.isNotEmpty) hasSrtStation = true;
+    } catch (e) {
+      debugPrint('SRT Supabase error: $e');
+    }
+
+    // ── SRT 전용 역이 포함된 경우 예매 배너 표시 ──
     if (srtOnlyStations.contains(fromStation) ||
         srtOnlyStations.contains(toStation)) {
       hasSrtStation = true;
@@ -311,6 +325,72 @@ class TransportService {
 
     _busTerminalCache[searchTerm] = terminals;
     return terminals;
+  }
+
+  // ────────────────────────────────────────────────
+  // SRT Supabase 시간표 조회
+  // ────────────────────────────────────────────────
+
+  /// Supabase srt_timetable 에서 출발→도착 직행 목록 조회
+  Future<List<TransitResult>> _fetchSrtFromSupabase({
+    required String fromStation,
+    required String toStation,
+    required DateTime date,
+  }) async {
+    final depName = _stripStationSuffix(fromStation);
+    final arrName = _stripStationSuffix(toStation);
+
+    final rows = await Supabase.instance.client
+        .from('srt_timetable')
+        .select()
+        .eq('dep_station', depName)
+        .eq('arr_station', arrName)
+        .order('dep_time');
+
+    // 운행일 필터: 금토일 = 금(5) 토(6) 일(7) in Dart weekday
+    final weekday = date.weekday;
+    final isWeekend = weekday >= 5; // 5=금, 6=토, 7=일
+
+    return (rows as List)
+        .where((r) {
+          final runDays = r['run_days'] as String? ?? '매일';
+          if (runDays == '매일') return true;
+          if (runDays == '금토일') return isWeekend;
+          return true;
+        })
+        .map((r) {
+          final depTime = r['dep_time'] as String? ?? '--:--';
+          final arrTime = r['arr_time'] as String? ?? '--:--';
+          return TransitResult(
+            type: TransitType.srt,
+            trainNo: r['train_no'] as String? ?? '',
+            departureTime: depTime,
+            arrivalTime: arrTime,
+            durationMinutes: _calcDurationFromTimeStr(depTime, arrTime),
+          );
+        })
+        .toList();
+  }
+
+  /// "HH:MM" 두 문자열로 소요시간(분) 계산
+  int _calcDurationFromTimeStr(String dep, String arr) {
+    if (dep.length < 5 || arr.length < 5) return 0;
+    final dh = int.tryParse(dep.substring(0, 2)) ?? 0;
+    final dm = int.tryParse(dep.substring(3, 5)) ?? 0;
+    final ah = int.tryParse(arr.substring(0, 2)) ?? 0;
+    final am = int.tryParse(arr.substring(3, 5)) ?? 0;
+    var depMin = dh * 60 + dm;
+    var arrMin = ah * 60 + am;
+    if (arrMin < depMin) arrMin += 24 * 60;
+    return arrMin - depMin;
+  }
+
+  /// 역 표시명에서 DB 저장명 추출
+  /// "수서역 (SRT)" → "수서", "동대구역 (KTX)" → "동대구"
+  String _stripStationSuffix(String stationName) {
+    var name = stationName.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
+    if (name.endsWith('역')) name = name.substring(0, name.length - 1);
+    return name;
   }
 
   // ────────────────────────────────────────────────

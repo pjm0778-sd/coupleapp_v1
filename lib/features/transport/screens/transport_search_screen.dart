@@ -655,41 +655,32 @@ class _SrtBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFF003580).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
+        color: const Color(0xFF003580).withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
         border:
-            Border.all(color: const Color(0xFF003580).withValues(alpha: 0.3)),
+            Border.all(color: const Color(0xFF003580).withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.train, size: 18, color: Color(0xFF003580)),
-          const SizedBox(width: 10),
+          const Icon(Icons.info_outline, size: 15, color: Color(0xFF003580)),
+          const SizedBox(width: 8),
           const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('SRT는 별도 예매가 필요합니다',
-                    style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF003580))),
-                Text('SRT 공공 API를 제공하지 않습니다.',
-                    style: TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary)),
-              ],
+            child: Text(
+              'SRT 시간표는 참고용입니다. 예매는 SRT 앱·홈페이지에서 해주세요.',
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
             ),
           ),
           TextButton(
             onPressed: () => _launchUrl(srtBookingUrl),
             style: TextButton.styleFrom(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 minimumSize: Size.zero),
-            child: const Text('SRT 예매',
+            child: const Text('예매',
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     color: Color(0xFF003580),
                     fontWeight: FontWeight.w600)),
           ),
@@ -821,7 +812,11 @@ class _TransitCard extends StatelessWidget {
           ),
           GestureDetector(
             onTap: () => _launchUrl(
-                result.isRailway ? korailBookingUrl : busBookingUrl),
+                result.type == TransitType.srt
+                    ? srtBookingUrl
+                    : result.isRailway
+                        ? korailBookingUrl
+                        : busBookingUrl),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
