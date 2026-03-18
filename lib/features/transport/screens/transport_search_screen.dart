@@ -627,11 +627,11 @@ class _ResultList extends StatelessWidget {
           const SizedBox(height: 12),
         ],
         if (searchResult?.trainError != null && filterType != 'bus') ...[
-          const _ErrorBanner(message: '열차 정보를 불러오지 못했습니다.'),
+          _ErrorBanner(message: searchResult!.trainError!),
           const SizedBox(height: 8),
         ],
         if (searchResult?.busError != null && filterType != 'train') ...[
-          const _ErrorBanner(message: '버스 정보를 불러오지 못했습니다.'),
+          _ErrorBanner(message: searchResult!.busError!),
           const SizedBox(height: 8),
         ],
         if (results.isEmpty)

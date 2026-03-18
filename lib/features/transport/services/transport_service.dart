@@ -29,14 +29,17 @@ class TransportService {
     try {
       final depId = await _getTrainId(fromStation);
       final arrId = await _getTrainId(toStation);
+      debugPrint('[ODsay] train IDs: dep=$depId arr=$arrId ($fromStation → $toStation)');
       if (depId != null && arrId != null) {
         final trains = await _fetchTrains(depId, arrId);
         results.addAll(trains);
         if (trains.any((t) => t.type == TransitType.srt)) hasSrtStation = true;
+      } else {
+        debugPrint('[ODsay] 열차 역 ID 미발견: dep=$depId arr=$arrId');
       }
     } catch (e) {
-      trainError = '열차 정보를 불러오지 못했습니다';
-      debugPrint('ODsay train error: $e');
+      trainError = '열차 정보를 불러오지 못했습니다 ($e)';
+      debugPrint('[ODsay] train error: $e');
     }
 
     // ── SRT Supabase 보완 (ODsay SRT 미지원 시 폴백) ──
@@ -68,25 +71,31 @@ class TransportService {
     try {
       final depId = await _getExpBusId(fromStation);
       final arrId = await _getExpBusId(toStation);
+      debugPrint('[ODsay] express bus IDs: dep=$depId arr=$arrId');
       if (depId != null && arrId != null) {
         final buses = await _fetchBuses(depId, arrId, stationClass: 4);
         results.addAll(buses);
+      } else {
+        debugPrint('[ODsay] 고속버스 터미널 ID 미발견');
       }
     } catch (e) {
-      busError = '고속버스 정보를 불러오지 못했습니다';
-      debugPrint('ODsay express bus error: $e');
+      busError = '고속버스 정보를 불러오지 못했습니다 ($e)';
+      debugPrint('[ODsay] express bus error: $e');
     }
 
     // ── 시외버스 (ODsay searchInterBusSchedule, stationClass=6) ──
     try {
       final depId = await _getIntercityBusId(fromStation);
       final arrId = await _getIntercityBusId(toStation);
+      debugPrint('[ODsay] intercity bus IDs: dep=$depId arr=$arrId');
       if (depId != null && arrId != null) {
         final buses = await _fetchBuses(depId, arrId, stationClass: 6);
         results.addAll(buses);
+      } else {
+        debugPrint('[ODsay] 시외버스 터미널 ID 미발견');
       }
     } catch (e) {
-      debugPrint('ODsay intercity bus error: $e');
+      debugPrint('[ODsay] intercity bus error: $e');
     }
 
     results.sort((a, b) => a.departureTime.compareTo(b.departureTime));
@@ -137,28 +146,56 @@ class TransportService {
     required String endpoint,
     required String name,
   }) async {
-    final uri =
-        Uri.parse('$_base/$endpoint').replace(queryParameters: {
-      'apiKey': ApiKeys.odsayKey,
-      'terminalName': name,
-    });
+    // API 키의 '/'가 %2F로 인코딩되지 않도록 URI를 직접 조합
+    final uri = Uri.parse(
+        '$_base/$endpoint?apiKey=${Uri.encodeComponent(ApiKeys.odsayKey)}&terminalName=${Uri.encodeComponent(name)}');
 
-    final response = await http.get(uri).timeout(const Duration(seconds: 10));
-    if (response.statusCode != 200) return null;
+    debugPrint('[ODsay] $endpoint?terminalName=$name → $uri');
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final result = body['result'];
-    if (result == null) return null;
+    try {
+      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      debugPrint('[ODsay] $endpoint status=${response.statusCode} body=${response.body.length > 200 ? response.body.substring(0, 200) : response.body}');
 
-    final stations = result['station'];
-    if (stations == null) return null;
+      if (response.statusCode != 200) {
+        debugPrint('[ODsay] $endpoint HTTP error ${response.statusCode}');
+        return null;
+      }
 
-    if (stations is List && stations.isNotEmpty) {
-      return (stations.first['stationID'] as num?)?.toInt();
-    } else if (stations is Map) {
-      return (stations['stationID'] as num?)?.toInt();
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+
+      // ODsay 에러 코드 체크
+      if (body['error'] != null) {
+        debugPrint('[ODsay] $endpoint API error: ${body['error']}');
+        return null;
+      }
+
+      final result = body['result'];
+      if (result == null) {
+        debugPrint('[ODsay] $endpoint result=null (no route?)');
+        return null;
+      }
+
+      final stations = result['station'];
+      if (stations == null) {
+        debugPrint('[ODsay] $endpoint station=null, result keys: ${result.keys.toList()}');
+        return null;
+      }
+
+      if (stations is List && stations.isNotEmpty) {
+        final id = (stations.first['stationID'] as num?)?.toInt();
+        debugPrint('[ODsay] $endpoint "$name" → stationID=$id (${stations.length}건)');
+        return id;
+      } else if (stations is Map) {
+        final id = (stations['stationID'] as num?)?.toInt();
+        debugPrint('[ODsay] $endpoint "$name" → stationID=$id (single)');
+        return id;
+      }
+      debugPrint('[ODsay] $endpoint stations type=${stations.runtimeType}');
+      return null;
+    } catch (e) {
+      debugPrint('[ODsay] $endpoint EXCEPTION: $e');
+      rethrow;
     }
-    return null;
   }
 
   // ────────────────────────────────────────────────
@@ -166,23 +203,28 @@ class TransportService {
   // ────────────────────────────────────────────────
 
   Future<List<TransitResult>> _fetchTrains(int depId, int arrId) async {
-    final uri =
-        Uri.parse('$_base/trainServiceTime').replace(queryParameters: {
-      'apiKey': ApiKeys.odsayKey,
-      'startStationID': depId.toString(),
-      'endStationID': arrId.toString(),
-    });
+    final uri = Uri.parse(
+        '$_base/trainServiceTime?apiKey=${Uri.encodeComponent(ApiKeys.odsayKey)}&startStationID=$depId&endStationID=$arrId');
 
+    debugPrint('[ODsay] trainServiceTime dep=$depId arr=$arrId');
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    debugPrint('[ODsay] trainServiceTime status=${response.statusCode} body=${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+
     if (response.statusCode != 200) {
       throw Exception('열차 조회 HTTP ${response.statusCode}');
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['error'] != null) {
+      debugPrint('[ODsay] trainServiceTime API error: ${body['error']}');
+      return [];
+    }
+
     final result = body['result'];
     if (result == null) return [];
 
     final items = _extractList(result['station']);
+    debugPrint('[ODsay] trainServiceTime ${items.length}건');
     return items.map(_parseTrainItem).whereType<TransitResult>().toList();
   }
 
@@ -191,25 +233,29 @@ class TransportService {
     int arrId, {
     required int stationClass,
   }) async {
-    final uri =
-        Uri.parse('$_base/searchInterBusSchedule').replace(queryParameters: {
-      'apiKey': ApiKeys.odsayKey,
-      'startStationID': depId.toString(),
-      'endStationID': arrId.toString(),
-      'stationClass': stationClass.toString(),
-    });
+    final uri = Uri.parse(
+        '$_base/searchInterBusSchedule?apiKey=${Uri.encodeComponent(ApiKeys.odsayKey)}&startStationID=$depId&endStationID=$arrId&stationClass=$stationClass');
 
+    debugPrint('[ODsay] searchInterBusSchedule dep=$depId arr=$arrId class=$stationClass');
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    debugPrint('[ODsay] searchInterBusSchedule status=${response.statusCode} body=${response.body.length > 300 ? response.body.substring(0, 300) : response.body}');
+
     if (response.statusCode != 200) {
       throw Exception('버스 조회 HTTP ${response.statusCode}');
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['error'] != null) {
+      debugPrint('[ODsay] searchInterBusSchedule API error: ${body['error']}');
+      return [];
+    }
+
     final result = body['result'];
     if (result == null) return [];
 
     final items = _extractList(result['schedule']);
     final isIntercity = stationClass == 6;
+    debugPrint('[ODsay] searchInterBusSchedule ${items.length}건 (class=$stationClass)');
     return items
         .map((e) => _parseBusItem(e, isIntercity: isIntercity))
         .whereType<TransitResult>()
