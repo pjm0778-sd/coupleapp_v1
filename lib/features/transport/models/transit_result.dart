@@ -4,14 +4,17 @@ class TransitResult {
   final TransitType type;
   final String trainNo;
   final String departureTime; // "08:00"
-  final String arrivalTime; // "10:30"
+  final String arrivalTime;   // "10:30"
   final int durationMinutes;
+  final int? fare;             // 요금 (원), ODsay 제공 시
+
   const TransitResult({
     required this.type,
     required this.trainNo,
     required this.departureTime,
     required this.arrivalTime,
     required this.durationMinutes,
+    this.fare,
   });
 
   String get typeLabel {
@@ -39,6 +42,15 @@ class TransitResult {
     if (h == 0) return '$m분';
     if (m == 0) return '$h시간';
     return '$h시간 $m분';
+  }
+
+  String get fareLabel {
+    if (fare == null || fare == 0) return '';
+    final formatted = fare.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+$)'),
+      (m) => '${m[1]},',
+    );
+    return '$formatted원';
   }
 
   bool get isRailway =>

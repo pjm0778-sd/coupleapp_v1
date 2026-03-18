@@ -85,7 +85,7 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _StationSearchSheet(
-        title: isDeparture ? '출발역 선택' : '도착역 선택',
+        title: isDeparture ? '출발지 선택' : '도착지 선택',
         excludeStation: isDeparture ? _to : _from,
         onSelected: (station) {
           setState(() {
@@ -615,12 +615,8 @@ class _ResultList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (searchResult?.apiKeyNotConfigured == true) {
-      return const _InfoCard(
-        icon: Icons.vpn_key_outlined,
-        title: 'API 키 설정이 필요합니다',
-        body: 'lib/core/api_keys.dart 파일에\ndata.go.kr 서비스 키를 입력해 주세요.',
-      );
+    if (searchResult == null) {
+      return const SizedBox.shrink();
     }
 
     return ListView(
@@ -801,12 +797,26 @@ class _TransitCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                    result.durationMinutes > 0
-                        ? result.durationLabel
-                        : '소요시간 미제공',
-                    style: const TextStyle(
-                        fontSize: 12, color: AppTheme.textSecondary)),
+                Row(
+                  children: [
+                    Text(
+                        result.durationMinutes > 0
+                            ? result.durationLabel
+                            : '소요시간 미제공',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppTheme.textSecondary)),
+                    if (result.fareLabel.isNotEmpty) ...[
+                      const Text(' · ',
+                          style: TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary)),
+                      Text(result.fareLabel,
+                          style: const TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ],
+                ),
               ],
             ),
           ),
@@ -853,7 +863,7 @@ class _TransitCard extends StatelessWidget {
       case TransitType.bus:
         return const Color(0xFF2196F3);
       case TransitType.intercitybus:
-        return const Color(0xFF00897B);
+        return const Color(0xFF00897B); // teal
     }
   }
 }
