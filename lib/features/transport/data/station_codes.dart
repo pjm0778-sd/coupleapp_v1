@@ -1,54 +1,38 @@
-/// 앱 표시명 → KORAIL 열차운행정보 API 역명 매핑
-/// API: https://apis.data.go.kr/B551457/run/v2/travelerTrainRunPlan2
-/// 파라미터: cond[dptre_stn_nm::EQ], cond[arvl_stn_nm::EQ]
-///
-/// SRT_ONLY: 공공 API 없음 → etk.srail.kr 링크 제공
-const Map<String, String> korailApiStationNames = {
-  // 서울
-  '서울역 (KTX)': '서울',
-  '수서역 (SRT)': 'SRT_ONLY',
-  // 부산
-  '부산역 (KTX)': '부산',
-  // 대구
-  '동대구역 (KTX)': '동대구',
-  // 광주
-  '광주송정역 (KTX)': '광주송정',
-  // 대전
-  '대전역 (KTX)': '대전',
-  // 울산
-  '울산역 (KTX)': '울산',
-  // 인천
-  '부평역': '부평',
-  // 수원/경기
-  '수원역': '수원',
-  '판교역 (SRT)': 'SRT_ONLY',
-  '평택지제역 (SRT)': 'SRT_ONLY',
-  // 천안
-  '천안아산역 (KTX/SRT)': '천안아산',
-  // 강원
-  '원주역': '원주',
-  '춘천역': '춘천',
-  '강릉역 (KTX)': '강릉',
-  '동해역': '동해',
-  // 충청
-  '오송역 (KTX)': '오송',
-  '제천역': '제천',
-  // 전라
-  '전주역': '전주',
-  '익산역 (KTX)': '익산',
-  '목포역 (KTX)': '목포',
+/// TAGO 1613000/TrainInfo API 역 코드 조회용 시도 코드
+/// GetCtyAcctoTrainSttnList 파라미터: cityCode
+const Map<String, String> cityProvinceCodes = {
+  // 특별/광역시
+  '서울': '11',
+  '부산': '21',
+  '대구': '22',
+  '인천': '23',
+  '광주': '24',
+  '대전': '25',
+  '울산': '26',
+  // 도
+  '경기': '31',
+  '강원': '32',
+  '충북': '33',
+  '충남': '34',
+  '전북': '35',
+  '전남': '36',
+  '경북': '37',
+  '경남': '38',
+  '제주': '39',
+};
+
+/// SRT 전용 역 (TAGO KORAIL API 미지원 → etk.srail.kr 링크 제공)
+const Set<String> srtOnlyStations = {
+  '수서역 (SRT)',
+  '판교역 (SRT)',
+  '평택지제역 (SRT)',
+};
+
+/// 역 표시명 → API nodename 예외 매핑
+/// 자동 변환(괄호 제거 + '역' 제거)이 실제 API명과 다를 때만 등록
+const Map<String, String> stationApiNameExceptions = {
   '여수엑스포역 (KTX)': '여수EXPO',
-  '순천역 (KTX)': '순천',
-  // 경상
-  '창원역': '창원',
-  '마산역': '마산',
-  '진주역': '진주',
-  '포항역 (KTX)': '포항',
-  '신경주역 (KTX)': '신경주',
-  '구미역': '구미',
-  '안동역': '안동',
-  '김천구미역 (KTX)': '김천구미',
-  '밀양역 (KTX)': '밀양',
+  '천안아산역 (KTX/SRT)': '천안아산',
 };
 
 /// 앱 표시명 → 고속버스 터미널 코드 매핑
@@ -85,6 +69,13 @@ const Map<String, String> busTerminalCodes = {
   '안동버스터미널': '064',
   '인천터미널': '006',
 };
+
+/// 버스/공항 전용 여부 (역 API 조회 불필요)
+bool isBusOnly(String stationName) {
+  return busTerminalCodes.containsKey(stationName) &&
+      !stationApiNameExceptions.containsKey(stationName) &&
+      !srtOnlyStations.contains(stationName);
+}
 
 /// 예매 사이트 URL
 const String srtBookingUrl = 'https://etk.srail.kr';

@@ -29,11 +29,14 @@ jobs:
       - name: Create api_keys.dart
         env:
           DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
+          TAGO_API_KEY: ${{ secrets.TAGO_API_KEY }}
         run: |
           cat > lib/core/api_keys.dart << EOF
           class ApiKeys {
             static const String dataGoKr = '$DATA_GO_KR_API_KEY';
+            static const String tagoKey = '$TAGO_API_KEY';
             static bool get isConfigured => dataGoKr != 'YOUR_DATA_GO_KR_API_KEY_HERE';
+            static bool get isTagoConfigured => tagoKey != 'YOUR_TAGO_API_KEY_HERE';
           }
           EOF
 
