@@ -4,7 +4,7 @@ import '../../../shared/models/schedule.dart';
 import '../../../shared/models/schedule_comment.dart';
 import '../services/schedule_service.dart';
 import '../services/comment_service.dart';
-import 'schedule_add_dialog.dart';
+import 'schedule_add_sheet.dart';
 
 class ScheduleDetailScreen extends StatefulWidget {
   final Schedule schedule;
@@ -73,10 +73,12 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   }
 
   Future<void> _editSchedule() async {
-    final result = await showDialog<Schedule>(
-      context: context,
-      builder: (context) =>
-          ScheduleAddDialog(existingSchedule: _currentSchedule),
+    final result = await ScheduleAddSheet.show(
+      context,
+      initialDate: _currentSchedule.date,
+      myUserId: _scheduleService.currentUserId,
+      coupleId: _currentSchedule.coupleId ?? '',
+      existingSchedule: _currentSchedule,
     );
     if (result != null && mounted) {
       try {
