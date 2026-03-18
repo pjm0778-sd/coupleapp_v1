@@ -5,19 +5,32 @@ import '../../../core/api_keys.dart';
 import '../models/transit_result.dart';
 import '../data/station_codes.dart';
 
-/// 역 코드 정보 (GetCtyAcctoTrainSttnList 응답)
+/// 열차 역 코드 (GetCtyAcctoTrainSttnList 응답)
 class _StationNode {
   final String nodeId;
   final String nodeName;
   const _StationNode(this.nodeId, this.nodeName);
 }
 
+/// 버스 터미널 코드 (GetExpBusTrminlList 응답)
+class _BusTerminal {
+  final String terminalId;
+  final String terminalNm;
+  const _BusTerminal(this.terminalId, this.terminalNm);
+}
+
 class TransportService {
-  /// 시도 코드별 역 목록 캐시 (앱 세션 내)
+  /// 시도 코드별 열차 역 목록 캐시
   final Map<String, List<_StationNode>> _stationCache = {};
 
   /// 역 표시명 → nodeId 캐시
   final Map<String, String?> _nodeIdCache = {};
+
+  /// 터미널 검색어 → 터미널 목록 캐시
+  final Map<String, List<_BusTerminal>> _busTerminalCache = {};
+
+  /// 터미널 표시명 → terminalId 캐시
+  final Map<String, String?> _busTerminalIdCache = {};
 
   /// 출발역/터미널 → 도착역/터미널 교통편 통합 검색
   Future<TransportSearchResult> search({
@@ -58,7 +71,8 @@ class TransportService {
             );
             results.addAll(trains);
           } else {
-            trainError = '역 코드를 찾을 수 없습니다 (${depNodeId == null ? fromStation : toStation})';
+            trainError =
+                '역 코드를 찾을 수 없습니다 (${depNodeId == null ? fromStation : toStation})';
           }
         } catch (e) {
           trainError = e.toString();
@@ -68,20 +82,25 @@ class TransportService {
     }
 
     // ── 고속버스 조회 ──
-    final depBus = busTerminalCodes[fromStation];
-    final arrBus = busTerminalCodes[toStation];
-
-    if (depBus != null && arrBus != null) {
-      if (!ApiKeys.isConfigured) {
+    if (isBusOnlyDep && isBusOnlyArr) {
+      if (!ApiKeys.isTagoConfigured) {
         busError = '버스 API 키가 설정되지 않았습니다';
       } else {
         try {
-          final buses = await _fetchBuses(
-            depCode: depBus,
-            arrCode: arrBus,
-            date: date,
-          );
-          results.addAll(buses);
+          final depTermId = await _getBusTerminalId(fromStation);
+          final arrTermId = await _getBusTerminalId(toStation);
+
+          if (depTermId != null && arrTermId != null) {
+            final buses = await _fetchBuses(
+              depTerminalId: depTermId,
+              arrTerminalId: arrTermId,
+              date: date,
+            );
+            results.addAll(buses);
+          } else {
+            busError =
+                '터미널 코드를 찾을 수 없습니다 (${depTermId == null ? fromStation : toStation})';
+          }
         } catch (e) {
           busError = e.toString();
           debugPrint('Bus API error: $e');
@@ -99,17 +118,18 @@ class TransportService {
     );
   }
 
+  // ────────────────────────────────────────────────
+  // 열차 역 코드 조회
+  // ────────────────────────────────────────────────
+
   /// 역 표시명 → TAGO nodeId 조회 (캐시 활용)
   Future<String?> _getNodeId(String stationName) async {
     if (_nodeIdCache.containsKey(stationName)) {
       return _nodeIdCache[stationName];
     }
 
-    // 예외 매핑 또는 자동 변환으로 API nodename 결정
     final apiName = stationApiNameExceptions[stationName] ??
         _deriveApiName(stationName);
-
-    // 도시명 추출 (역명 앞부분)
     final cityName = _extractCityName(apiName);
     final cityCode = cityProvinceCodes[cityName];
 
@@ -119,29 +139,19 @@ class TransportService {
       return null;
     }
 
-    // 시도 코드별 역 목록 조회
     final stations = await _getProvinceStations(cityCode);
-
-    // nodename 매칭
     final match = stations.where((s) => s.nodeName == apiName).firstOrNull;
     _nodeIdCache[stationName] = match?.nodeId;
     return match?.nodeId;
   }
 
-  /// 앱 표시명 → API nodename 자동 변환
-  /// 예) '서울역 (KTX)' → '서울', '부산역 (KTX)' → '부산'
   String _deriveApiName(String stationName) {
-    // 괄호 내용 제거: '서울역 (KTX)' → '서울역'
     var name = stationName.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
-    // '역' 접미사 제거
     if (name.endsWith('역')) name = name.substring(0, name.length - 1);
     return name;
   }
 
-  /// API nodename에서 도시명 추출
-  /// 예) '서울' → '서울', '동대구' → '대구', '광주송정' → '광주'
   String _extractCityName(String apiName) {
-    // 광역시/특별시 직접 매핑
     const directMatch = {
       '서울': '서울', '수서': '서울',
       '부산': '부산', '동부산': '부산',
@@ -153,12 +163,10 @@ class TransportService {
     };
     if (directMatch.containsKey(apiName)) return directMatch[apiName]!;
 
-    // 도 단위: cityProvinceCodes 키 순서로 접두사 매칭
     for (final city in cityProvinceCodes.keys) {
       if (apiName.startsWith(city)) return city;
     }
 
-    // 기타: 첫 2글자로 도시 추정
     if (apiName.length >= 2) {
       final prefix = apiName.substring(0, 2);
       if (cityProvinceCodes.containsKey(prefix)) return prefix;
@@ -167,7 +175,6 @@ class TransportService {
     return apiName;
   }
 
-  /// 시도 코드 → 역 목록 조회 (GetCtyAcctoTrainSttnList)
   Future<List<_StationNode>> _getProvinceStations(String cityCode) async {
     if (_stationCache.containsKey(cityCode)) {
       return _stationCache[cityCode]!;
@@ -192,7 +199,7 @@ class TransportService {
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = _extractItems1613(
+    final items = _extractItems(
       body['response']?['body'] as Map<String, dynamic>? ?? {},
     );
 
@@ -210,6 +217,88 @@ class TransportService {
     _stationCache[cityCode] = stations;
     return stations;
   }
+
+  // ────────────────────────────────────────────────
+  // 버스 터미널 코드 조회
+  // ────────────────────────────────────────────────
+
+  /// 터미널 표시명 → TAGO terminalId 조회 (캐시 활용)
+  Future<String?> _getBusTerminalId(String stationName) async {
+    if (_busTerminalIdCache.containsKey(stationName)) {
+      return _busTerminalIdCache[stationName];
+    }
+
+    final searchTerm = busTerminalSearchExceptions[stationName] ??
+        _deriveBusSearchTerm(stationName);
+
+    final terminals = await _searchBusTerminals(searchTerm);
+    final match = terminals.firstOrNull;
+    _busTerminalIdCache[stationName] = match?.terminalId;
+    return match?.terminalId;
+  }
+
+  /// 터미널 표시명 → API 검색어 자동 변환
+  /// 예) '동서울터미널' → '동서울', '춘천고속버스터미널' → '춘천'
+  String _deriveBusSearchTerm(String stationName) {
+    var name = stationName.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
+    for (final suffix in [
+      '종합버스터미널', '고속버스터미널', '시외버스터미널', '종합터미널', '버스터미널', '터미널'
+    ]) {
+      if (name.endsWith(suffix)) {
+        name = name.substring(0, name.length - suffix.length).trim();
+        break;
+      }
+    }
+    return name;
+  }
+
+  /// GetExpBusTrminlList: 터미널명 검색
+  Future<List<_BusTerminal>> _searchBusTerminals(String searchTerm) async {
+    if (_busTerminalCache.containsKey(searchTerm)) {
+      return _busTerminalCache[searchTerm]!;
+    }
+
+    final uri = Uri(
+      scheme: 'https',
+      host: 'apis.data.go.kr',
+      path: '/1613000/ExpBusInfo/GetExpBusTrminlList',
+      queryParameters: {
+        'serviceKey': ApiKeys.tagoKey,
+        '_type': 'json',
+        'terminalNm': searchTerm,
+        'numOfRows': '10',
+        'pageNo': '1',
+      },
+    );
+
+    final response = await http.get(uri).timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('터미널 조회 HTTP ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final items = _extractItems(
+      body['response']?['body'] as Map<String, dynamic>? ?? {},
+    );
+
+    final terminals = items
+        .map((e) {
+          final m = e as Map<String, dynamic>;
+          final id = m['terminalid']?.toString() ?? '';
+          final nm = m['terminalNm']?.toString() ?? '';
+          if (id.isEmpty || nm.isEmpty) return null;
+          return _BusTerminal(id, nm);
+        })
+        .whereType<_BusTerminal>()
+        .toList();
+
+    _busTerminalCache[searchTerm] = terminals;
+    return terminals;
+  }
+
+  // ────────────────────────────────────────────────
+  // API 호출
+  // ────────────────────────────────────────────────
 
   /// TAGO 열차 시간표 조회 (GetStrtpntAlocFndTrainInfo)
   Future<List<TransitResult>> _fetchTrains({
@@ -238,48 +327,53 @@ class TransportService {
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final items = _extractItems1613(
+    final items = _extractItems(
       body['response']?['body'] as Map<String, dynamic>? ?? {},
     );
 
     return items.map(_parseTrainItem).whereType<TransitResult>().toList();
   }
 
+  /// TAGO 고속버스 시간표 조회 (GetStrtpntAlocFndExpbusInfo)
   Future<List<TransitResult>> _fetchBuses({
-    required String depCode,
-    required String arrCode,
+    required String depTerminalId,
+    required String arrTerminalId,
     required DateTime date,
   }) async {
     final uri = Uri(
       scheme: 'https',
       host: 'apis.data.go.kr',
-      path: '/1613000/ExpBusInfoService/getExpBusTrminlSchdl',
+      path: '/1613000/ExpBusInfo/GetStrtpntAlocFndExpbusInfo',
       queryParameters: {
-        'serviceKey': ApiKeys.dataGoKr,
-        'numOfRows': '30',
-        'pageNo': '1',
+        'serviceKey': ApiKeys.tagoKey,
         '_type': 'json',
-        'depTerminalId': depCode,
-        'arrTerminalId': arrCode,
+        'depTerminalId': depTerminalId,
+        'arrTerminalId': arrTerminalId,
         'depPlandTime': _fmtDate(date),
+        'numOfRows': '50',
+        'pageNo': '1',
       },
     );
 
     final response = await http.get(uri).timeout(const Duration(seconds: 10));
     if (response.statusCode != 200) {
-      throw Exception('HTTP ${response.statusCode}');
+      throw Exception('버스 조회 HTTP ${response.statusCode}');
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final resBody = body['response']?['body'] as Map<String, dynamic>?;
-    if (resBody == null) throw Exception('응답 형식 오류');
+    final items = _extractItems(
+      body['response']?['body'] as Map<String, dynamic>? ?? {},
+    );
 
-    final items = _extractItems1613(resBody);
     return items.map(_parseBusItem).whereType<TransitResult>().toList();
   }
 
-  /// 1613000 API 공통 items 추출: item 이 1건=Map, 여러 건=List
-  List<dynamic> _extractItems1613(Map<String, dynamic> body) {
+  // ────────────────────────────────────────────────
+  // 응답 파싱
+  // ────────────────────────────────────────────────
+
+  /// TAGO 공통 items 추출: item 이 1건=Map, 여러 건=List
+  List<dynamic> _extractItems(Map<String, dynamic> body) {
     final items = body['items'];
     if (items == null || items is String) return [];
     final item = (items as Map<String, dynamic>)['item'];
@@ -292,27 +386,18 @@ class TransportService {
     try {
       final map = raw as Map<String, dynamic>;
 
-      // 열차 종별: traingradename (예: "KTX", "무궁화호", "ITX-새마을")
       final grade = (map['traingradename'] ?? '').toString().toUpperCase();
       final type = _trainGradeToType(grade);
 
-      // 출발/도착 시각: depplandtime / arrplandtime (YYYYMMDDHHmmss)
       final depRaw = map['depplandtime']?.toString() ?? '';
       final arrRaw = map['arrplandtime']?.toString() ?? '';
 
-      final depTime = _parseDateTime(depRaw);
-      final arrTime = _parseDateTime(arrRaw);
-      final duration = _calcDuration(depRaw, arrRaw);
-
-      // 열차번호
-      final trainNo = (map['trainno'] ?? '').toString();
-
       return TransitResult(
         type: type,
-        trainNo: trainNo,
-        departureTime: depTime,
-        arrivalTime: arrTime,
-        durationMinutes: duration,
+        trainNo: (map['trainno'] ?? '').toString(),
+        departureTime: _parseDateTime(depRaw),
+        arrivalTime: _parseDateTime(arrRaw),
+        durationMinutes: _calcDuration(depRaw, arrRaw),
       );
     } catch (e) {
       debugPrint('Train item parse error: $e / $raw');
@@ -323,20 +408,25 @@ class TransportService {
   TransitResult? _parseBusItem(dynamic raw) {
     try {
       final map = raw as Map<String, dynamic>;
-      final gradeName = (map['busGradeName'] as String? ?? '').trim();
-      final type = gradeName.contains('우등') || gradeName.contains('프리미엄')
-          ? TransitType.expressbus
-          : TransitType.bus;
-      final depTime = _parseBusTime(map['depPlandTime']);
-      final arrTime = _parseBusTime(map['arrPlandTime']);
-      final duration = _calcBusDuration(depTime, arrTime);
+
+      // 버스 등급: busgradenam (우등, 일반, 프리미엄 등)
+      final gradeName = (map['busgradenam'] ?? map['busGradeNm'] ?? '')
+          .toString()
+          .trim();
+      final type =
+          gradeName.contains('우등') || gradeName.contains('프리미엄')
+              ? TransitType.expressbus
+              : TransitType.bus;
+
+      final depRaw = map['depplandtime']?.toString() ?? '';
+      final arrRaw = map['arrplandtime']?.toString() ?? '';
 
       return TransitResult(
         type: type,
-        trainNo: map['routeId']?.toString() ?? '',
-        departureTime: depTime,
-        arrivalTime: arrTime,
-        durationMinutes: duration,
+        trainNo: (map['busno'] ?? map['routeId'] ?? '').toString(),
+        departureTime: _parseDateTime(depRaw),
+        arrivalTime: _parseDateTime(arrRaw),
+        durationMinutes: _calcDuration(depRaw, arrRaw),
       );
     } catch (e) {
       debugPrint('Bus item parse error: $e / $raw');
@@ -381,28 +471,6 @@ class TransportService {
     var arrMin = ah * 60 + am;
     if (arrMin < depMin) arrMin += 24 * 60;
     return arrMin - depMin;
-  }
-
-  String _parseBusTime(dynamic val) {
-    final s = (val?.toString() ?? '').padLeft(4, '0');
-    if (s.length < 4) return '--:--';
-    return '${s.substring(0, 2)}:${s.substring(2, 4)}';
-  }
-
-  int _calcBusDuration(String dep, String arr) {
-    if (dep == '--:--' || arr == '--:--') return 0;
-    try {
-      final dh = int.parse(dep.substring(0, 2));
-      final dm = int.parse(dep.substring(3, 5));
-      final ah = int.parse(arr.substring(0, 2));
-      final am = int.parse(arr.substring(3, 5));
-      var depMin = dh * 60 + dm;
-      var arrMin = ah * 60 + am;
-      if (arrMin < depMin) arrMin += 24 * 60;
-      return arrMin - depMin;
-    } catch (_) {
-      return 0;
-    }
   }
 }
 
