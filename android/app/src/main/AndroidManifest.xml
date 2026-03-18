@@ -72,5 +72,8 @@
             <action android:name="android.intent.action.VIEW"/>
             <data android:scheme="http"/>
         </intent>
+        <!-- 예매 앱 설치 여부 확인 -->
+        <package android:name="com.srail.www"/>
+        <package android:name="com.korail.talk"/>
     </queries>
 </manifest>

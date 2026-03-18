@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme.dart';
@@ -1141,7 +1142,7 @@ class _TransitCard extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => _launchUrl(_bookingUrl()),
+            onTap: () => _openBooking(),
             child: Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -1180,6 +1181,43 @@ class _TransitCard extends StatelessWidget {
           korailBookingUrl;
     }
     return result.isIntercityBus ? intercityBusBookingUrl : busBookingUrl;
+  }
+
+  /// 앱이 설치돼 있으면 앱으로, 없으면 브라우저로 예매 페이지 열기.
+  ///
+  /// Android: Intent URL의 browser_fallback_url 메커니즘 활용
+  ///   → 앱 미설치 시 OS가 자동으로 browser_fallback_url을 브라우저로 엶
+  /// iOS: externalApplication 모드로 웹 URL 실행
+  ///   → SRT/Korail 앱이 Universal Links 등록 시 자동으로 앱이 열림
+  Future<void> _openBooking() async {
+    final webUrl = _bookingUrl();
+
+    if (Platform.isAndroid) {
+      // 기차(SRT/KTX) 일 때만 앱 열기 시도
+      final package = result.type == TransitType.srt
+          ? 'com.srail.www'
+          : result.isRailway
+              ? 'com.korail.talk'
+              : null;
+
+      if (package != null) {
+        final fallback = Uri.encodeComponent(webUrl);
+        final intentUri = Uri.parse(
+          'intent://#Intent;package=$package;'
+          'S.browser_fallback_url=$fallback;end',
+        );
+        try {
+          if (await canLaunchUrl(intentUri)) {
+            await launchUrl(intentUri);
+            return;
+          }
+        } catch (_) {}
+      }
+    }
+
+    // iOS 또는 Android fallback: 웹 URL로 브라우저 열기
+    // iOS Universal Links가 등록된 경우 앱이 자동으로 가로챔
+    await _launchUrl(webUrl);
   }
 
   Color _typeColor(TransitType type) {
