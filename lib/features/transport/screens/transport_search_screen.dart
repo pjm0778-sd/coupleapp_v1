@@ -1193,7 +1193,9 @@ class _TransitCard extends StatelessWidget {
     final webUrl = _bookingUrl();
 
     if (Platform.isAndroid) {
-      // 기차(SRT/KTX) 일 때만 앱 열기 시도
+      // 기차(SRT/KTX)일 때 Intent URL로 앱 먼저 시도
+      // browser_fallback_url: 앱 미설치 시 Android OS가 자동으로 브라우저로 열어줌
+      // canLaunchUrl은 intent:// scheme에서 신뢰할 수 없으므로 바로 launchUrl 호출
       final package = result.type == TransitType.srt
           ? 'com.srail.www'
           : result.isRailway
@@ -1207,16 +1209,13 @@ class _TransitCard extends StatelessWidget {
           'S.browser_fallback_url=$fallback;end',
         );
         try {
-          if (await canLaunchUrl(intentUri)) {
-            await launchUrl(intentUri);
-            return;
-          }
+          final ok = await launchUrl(intentUri);
+          if (ok) return;
         } catch (_) {}
       }
     }
 
     // iOS 또는 Android fallback: 웹 URL로 브라우저 열기
-    // iOS Universal Links가 등록된 경우 앱이 자동으로 가로챔
     await _launchUrl(webUrl);
   }
 
@@ -1242,10 +1241,13 @@ class _TransitCard extends StatelessWidget {
 
 Future<void> _launchUrl(String url) async {
   final uri = Uri.parse(url);
+  // launchUrl은 실패 시 throw가 아닌 false 반환 → 반환값 체크 필수
   try {
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok) {
+      await launchUrl(uri, mode: LaunchMode.inAppWebView);
+    }
   } catch (_) {
-    // 외부 브라우저 실패 시 in-app 모드로 재시도
     await launchUrl(uri, mode: LaunchMode.inAppWebView);
   }
 }
