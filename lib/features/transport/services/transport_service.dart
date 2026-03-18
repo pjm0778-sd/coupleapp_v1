@@ -55,6 +55,7 @@ class TransportService {
     final isSrtOnly = srtOnlyStations.contains(fromStation) ||
         srtOnlyStations.contains(toStation);
 
+    // 양쪽 모두 버스 전용이 아니고, SRT 전용도 아닐 때 열차 검색
     if (!isBusOnlyDep && !isBusOnlyArr && !isSrtOnly) {
       if (!ApiKeys.isTagoConfigured) {
         trainError = 'TAGO API 키가 설정되지 않았습니다';
@@ -82,6 +83,7 @@ class TransportService {
     }
 
     // ── 고속버스 조회 ──
+    // 양쪽 모두 버스 전용일 때만 버스 검색 (열차역↔버스터미널 혼합은 불가)
     if (isBusOnlyDep && isBusOnlyArr) {
       if (!ApiKeys.isTagoConfigured) {
         busError = '버스 API 키가 설정되지 않았습니다';
@@ -105,6 +107,24 @@ class TransportService {
           busError = e.toString();
           debugPrint('Bus API error: $e');
         }
+      }
+    } else if (isBusOnlyDep != isBusOnlyArr && !isSrtOnly) {
+      // 한쪽만 버스 전용 → 둘 다 버스 터미널로 시도
+      if (!ApiKeys.isTagoConfigured) {
+        busError = '버스 API 키가 설정되지 않았습니다';
+      } else {
+        try {
+          final depTermId = await _getBusTerminalId(fromStation);
+          final arrTermId = await _getBusTerminalId(toStation);
+          if (depTermId != null && arrTermId != null) {
+            final buses = await _fetchBuses(
+              depTerminalId: depTermId,
+              arrTerminalId: arrTermId,
+              date: date,
+            );
+            results.addAll(buses);
+          }
+        } catch (_) {}
       }
     }
 
@@ -130,18 +150,27 @@ class TransportService {
 
     final apiName = stationApiNameExceptions[stationName] ??
         _deriveApiName(stationName);
-    final cityName = _extractCityName(apiName);
-    final cityCode = cityProvinceCodes[cityName];
+
+    // 1순위: stationNameToProvinceCode 직접 매핑
+    // 2순위: cityProvinceCodes prefix 매핑
+    final cityCode = stationNameToProvinceCode[apiName] ??
+        _inferProvinceCode(apiName);
 
     if (cityCode == null) {
-      debugPrint('cityCode not found for: $cityName (from $stationName)');
+      debugPrint('cityCode not found for apiName: $apiName (from $stationName)');
       _nodeIdCache[stationName] = null;
       return null;
     }
 
     final stations = await _getProvinceStations(cityCode);
-    final match = stations.where((s) => s.nodeName == apiName).firstOrNull;
+    // 정확히 일치하는 역 우선, 없으면 포함 매칭
+    final exact = stations.where((s) => s.nodeName == apiName).firstOrNull;
+    final match = exact ??
+        stations.where((s) => s.nodeName.contains(apiName) || apiName.contains(s.nodeName)).firstOrNull;
     _nodeIdCache[stationName] = match?.nodeId;
+    if (match == null) {
+      debugPrint('station not found: $apiName in cityCode=$cityCode (${stations.map((s) => s.nodeName).take(10).toList()})');
+    }
     return match?.nodeId;
   }
 
@@ -151,28 +180,16 @@ class TransportService {
     return name;
   }
 
-  String _extractCityName(String apiName) {
-    const directMatch = {
-      '서울': '서울', '수서': '서울',
-      '부산': '부산', '동부산': '부산',
-      '동대구': '대구', '대구': '대구', '서대구': '대구',
-      '인천': '인천',
-      '광주송정': '광주', '광주': '광주',
-      '대전': '대전', '서대전': '대전',
-      '울산': '울산',
-    };
-    if (directMatch.containsKey(apiName)) return directMatch[apiName]!;
-
+  /// apiName → 시도 코드 추론 (stationNameToProvinceCode에 없을 때)
+  String? _inferProvinceCode(String apiName) {
     for (final city in cityProvinceCodes.keys) {
-      if (apiName.startsWith(city)) return city;
+      if (apiName.startsWith(city)) return cityProvinceCodes[city];
     }
-
     if (apiName.length >= 2) {
       final prefix = apiName.substring(0, 2);
-      if (cityProvinceCodes.containsKey(prefix)) return prefix;
+      if (cityProvinceCodes.containsKey(prefix)) return cityProvinceCodes[prefix];
     }
-
-    return apiName;
+    return null;
   }
 
   Future<List<_StationNode>> _getProvinceStations(String cityCode) async {
