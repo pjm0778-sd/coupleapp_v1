@@ -28,17 +28,24 @@ jobs:
       # 3. API 키 파일 생성 (gitignore된 파일을 Secret에서 복원)
       - name: Create api_keys.dart
         env:
-          DATA_GO_KR_API_KEY: ${{ secrets.DATA_GO_KR_API_KEY }}
           TAGO_API_KEY: ${{ secrets.TAGO_API_KEY }}
+          ODSAY_API_KEY: ${{ secrets.ODSAY_API_KEY }}
         run: |
-          cat > lib/core/api_keys.dart << EOF
-          class ApiKeys {
-            static const String dataGoKr = '$DATA_GO_KR_API_KEY';
-            static const String tagoKey = '$TAGO_API_KEY';
-            static bool get isConfigured => dataGoKr != 'YOUR_DATA_GO_KR_API_KEY_HERE';
+          python3 -c "
+          import os
+          tago = os.environ.get('TAGO_API_KEY', '')
+          odsay = os.environ.get('ODSAY_API_KEY', '')
+          content = f\"\"\"class ApiKeys {{
+            static const String tagoKey = '{tago}';
+            static const String odsayKey = '{odsay}';
             static bool get isTagoConfigured => tagoKey != 'YOUR_TAGO_API_KEY_HERE';
-          }
-          EOF
+            static bool get isOdsayConfigured => odsayKey != 'YOUR_ODSAY_API_KEY_HERE';
+          }}
+          \"\"\"
+          with open('lib/core/api_keys.dart', 'w') as f:
+              f.write(content)
+          print('api_keys.dart created')
+          "
 
       # 4. 패키지 설치
       - name: Install dependencies
