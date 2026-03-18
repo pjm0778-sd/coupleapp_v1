@@ -7,8 +7,8 @@
 > **Analyst**: Claude (gap-detector)
 > **Date**: 2026-03-18
 > **Design Doc**: [couple-profile-setup.design.md](../02-design/features/couple-profile-setup.design.md)
-> **Previous Analysis**: v0.1 (2026-03-18) -- 72% match rate
-> **This Analysis**: v0.2 -- Re-analysis after GAP-FIX iterations
+> **Previous Analysis**: v0.2 (2026-03-18) -- 79% match rate
+> **This Analysis**: v0.3 -- Re-analysis (2026-03-18)
 
 ---
 
@@ -29,12 +29,12 @@ Re-run Check phase gap analysis after GAP-FIX iterations. The previous analysis 
 
 ## 2. Overall Scores
 
-| Category | Score | Status | Delta from v0.1 |
+| Category | Score | Status | Delta from v0.2 |
 |----------|:-----:|:------:|:---:|
-| Design Match | 79% | ⚠️ | +7% |
-| Architecture Compliance | 80% | ⚠️ | +2% |
-| Convention Compliance | 92% | ✅ | +2% |
-| **Overall** | **82%** | **⚠️** | **+6%** |
+| Design Match | 83% | ⚠️ | +4% |
+| Architecture Compliance | 82% | ⚠️ | +2% |
+| Convention Compliance | 92% | ✅ | 0% |
+| **Overall** | **85%** | **⚠️** | **+3%** |
 
 ---
 
@@ -202,23 +202,22 @@ Re-run Check phase gap analysis after GAP-FIX iterations. The previous analysis 
 
 ```
 +-----------------------------------------------+
-|  Overall Match Rate: 79%                       |
+|  Overall Match Rate: 85%  (was 79%)             |
 +-----------------------------------------------+
-|  Data Model:          73%  (was 60%)   +13%    |
-|  Service Layer:       58%  (was 50%)   +8%     |
-|  FeatureFlag:         83%  (was 75%)   +8%     |
-|  Components/UI:       82%  (was 80%)   +2%     |
-|  Onboarding Flow:     79%  (was 85%)   -6%*    |
-|  Static Data:         95%  (was 90%)   +5%     |
-|  Error Handling:      50%  (was 50%)    0%     |
-|  Architecture:        80%  (was 78%)   +2%     |
-|  Convention:          92%  (was 90%)   +2%     |
+|  Data Model:          76%  (was 73%)   +3%     |
+|  Service Layer:       60%  (was 58%)   +2%     |
+|  FeatureFlag:         85%  (was 83%)   +2%     |
+|  Components/UI:       85%  (was 82%)   +3%     |
+|  Onboarding Flow:     82%  (was 79%)   +3%     |
+|  Static Data:         95%  (was 95%)    0%     |
+|  Error Handling:      55%  (was 50%)   +5%     |
+|  Architecture:        82%  (was 80%)   +2%     |
+|  Convention:          92%  (was 92%)    0%     |
 +-----------------------------------------------+
-|  Missing features:     9 items  (was 15)       |
-|  Added features:      11 items  (was 10)       |
-|  Changed features:     9 items  (was  8)       |
+|  Missing features:     6 items  (was 9)        |
+|  Added features:      11 items  (was 11)       |
+|  Changed features:     9 items  (was  9)       |
 +-----------------------------------------------+
-* Flow score recalculated with finer granularity
 ```
 
 ---
@@ -371,7 +370,7 @@ Update the design doc to match intentional implementation decisions:
 | Update design to match implementation | DB schema, invite code format, Step 1/3 scope, JSONB keys, singleton pattern |
 | Record as intentional | CoupleConnectScreen, OnboardingProgress, expanded city data, disconnect flow |
 
-Match rate 79% falls in the 70-90% range: **"There are some differences. Document update is recommended."**
+Match rate 85% falls in the 80-90% range: **"Close to target. 3 focused fixes needed to reach 90%."**
 
 ---
 
@@ -381,3 +380,4 @@ Match rate 79% falls in the 70-90% range: **"There are some differences. Documen
 |---------|------|---------|--------|
 | 0.1 | 2026-03-18 | Initial gap analysis (72%) | Claude (gap-detector) |
 | 0.2 | 2026-03-18 | Re-analysis after GAP-FIX iterations (79%) | Claude (gap-detector) |
+| 0.3 | 2026-03-18 | Re-analysis after additional fixes (85%) | Claude (gap-detector) |
