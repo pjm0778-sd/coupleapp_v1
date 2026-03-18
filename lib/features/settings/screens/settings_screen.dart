@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/services/feature_flag_service.dart';
+import '../../../core/profile_change_notifier.dart';
 import '../../couple/services/couple_service.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
+import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity;
 import '../../profile/models/shift_time.dart';
-import '../../onboarding/widgets/city_selector_widget.dart';
 import '../../onboarding/widgets/shift_time_editor.dart';
+import '../../onboarding/widgets/region_selector_widget.dart';
 import '../../auth/services/auth_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -174,6 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
   }
 
   Future<void> _saveShiftTimes(List<ShiftTime> times) async {
@@ -182,6 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
   }
 
   Future<void> _saveDistanceType(String distanceType) async {
@@ -191,24 +195,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
   }
 
   Future<void> _saveCityStation({
     String? myCity,
-    String? myStation,
     String? partnerCity,
     String? partnerStation,
   }) async {
     if (_profile == null) return;
+    // 내 도시 → 최적 역 자동 선택
+    final autoMyStation =
+        myCity != null ? getBestStation(myCity) : _profile!.myStation;
+    // 파트너 도시 → 역 미지정 시 자동 선택
+    final autoPartnerStation = partnerStation ??
+        (partnerCity != null
+            ? getBestStation(partnerCity)
+            : _profile!.partnerStation);
     final updated = _profile!.copyWith(
-      myCity: myCity,
-      myStation: myStation,
-      partnerCity: partnerCity,
-      partnerStation: partnerStation,
+      myCity: myCity ?? _profile!.myCity,
+      myStation: autoMyStation,
+      partnerCity: partnerCity ?? _profile!.partnerCity,
+      partnerStation: autoPartnerStation,
     );
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
   }
 
   void _showWorkPatternPicker() {
@@ -291,11 +304,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ('long_distance', '🚆', '장거리 (다른 도시)'),
     ];
 
-    // 시트 내부 임시 상태
     String selectedType = _profile?.distanceType ?? 'same_city';
     String? tempMyCity = _profile?.myCity;
-    String? tempMyStation = _profile?.myStation;
+    String? tempMyProvince = tempMyCity != null
+        ? getProvinceOfCity(tempMyCity)
+        : null;
     String? tempPartnerCity = _profile?.partnerCity;
+    String? tempPartnerProvince = tempPartnerCity != null
+        ? getProvinceOfCity(tempPartnerCity)
+        : null;
     String? tempPartnerStation = _profile?.partnerStation;
 
     showModalBottomSheet(
@@ -363,31 +380,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   );
                 }),
-                // 장거리 선택 시 도시/역 편집
+                // 장거리: 내 지역(도/시·군), 파트너 지역(도/시·군)
                 if (selectedType == 'long_distance') ...[
-                  const SizedBox(height: 8),
-                  CitySelectorWidget(
-                    label: '내 도시 / 역',
+                  const SizedBox(height: 16),
+                  // 내 지역 — 역 선택 없음, 자동 선택
+                  RegionSelectorWidget(
+                    label: '내 지역',
+                    selectedProvince: tempMyProvince,
                     selectedCity: tempMyCity,
-                    selectedStation: tempMyStation,
-                    onCityChanged: (v) => setSheet(() {
-                      tempMyCity = v;
-                      tempMyStation = null;
-                    }),
-                    onStationChanged: (v) =>
-                        setSheet(() => tempMyStation = v),
+                    onProvinceChanged: (v) =>
+                        setSheet(() => tempMyProvince = v),
+                    onCityChanged: (v) => setSheet(() => tempMyCity = v),
                   ),
-                  const SizedBox(height: 12),
-                  CitySelectorWidget(
-                    label: '파트너 도시 / 역',
+                  const SizedBox(height: 16),
+                  // 파트너 지역 — 역 자동 선택 (미리보기 표시)
+                  RegionSelectorWidget(
+                    label: '파트너 지역',
+                    selectedProvince: tempPartnerProvince,
                     selectedCity: tempPartnerCity,
-                    selectedStation: tempPartnerStation,
-                    onCityChanged: (v) => setSheet(() {
-                      tempPartnerCity = v;
-                      tempPartnerStation = null;
-                    }),
-                    onStationChanged: (v) =>
-                        setSheet(() => tempPartnerStation = v),
+                    onProvinceChanged: (v) =>
+                        setSheet(() => tempPartnerProvince = v),
+                    onCityChanged: (v) {
+                      setSheet(() {
+                        tempPartnerCity = v;
+                        tempPartnerStation = null; // 도시 바뀌면 역 초기화
+                      });
+                    },
                   ),
                 ],
                 const SizedBox(height: 20),
@@ -404,13 +422,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     onPressed: () async {
                       Navigator.pop(ctx);
-                      // distanceType 저장
                       await _saveDistanceType(selectedType);
-                      // 장거리인 경우 도시/역도 저장
                       if (selectedType == 'long_distance') {
                         await _saveCityStation(
                           myCity: tempMyCity,
-                          myStation: tempMyStation,
                           partnerCity: tempPartnerCity,
                           partnerStation: tempPartnerStation,
                         );

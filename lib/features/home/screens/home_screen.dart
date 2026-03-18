@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../../../core/holiday_service.dart';
+import '../../../core/profile_change_notifier.dart';
 import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasLoadedOnce = false;
   RealtimeChannel? _schedulesChannel;
   RealtimeChannel? _couplesChannel;
+  StreamSubscription<void>? _profileChangeSub;
 
   String? _coupleId;
 
@@ -36,6 +39,10 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadData();
+    // 설정 변경 시 자동 새로고침
+    _profileChangeSub = ProfileChangeNotifier().onChange.listen((_) {
+      if (mounted) _loadData();
+    });
   }
 
   @override
@@ -96,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _schedulesChannel?.unsubscribe();
     _couplesChannel?.unsubscribe();
+    _profileChangeSub?.cancel();
     super.dispose();
   }
 
