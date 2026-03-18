@@ -6,15 +6,12 @@ class TransitResult {
   final String departureTime; // "08:00"
   final String arrivalTime; // "10:30"
   final int durationMinutes;
-  final int? price;
-
   const TransitResult({
     required this.type,
     required this.trainNo,
     required this.departureTime,
     required this.arrivalTime,
     required this.durationMinutes,
-    this.price,
   });
 
   String get typeLabel {
@@ -40,14 +37,6 @@ class TransitResult {
     if (h == 0) return '$m분';
     if (m == 0) return '$h시간';
     return '$h시간 $m분';
-  }
-
-  String get priceLabel {
-    if (price == null) return '-';
-    final formatted = price!
-        .toString()
-        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
-    return '$formatted원';
   }
 
   bool get isRailway =>

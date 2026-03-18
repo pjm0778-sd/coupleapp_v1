@@ -819,33 +819,22 @@ class _TransitCard extends StatelessWidget {
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(result.priceLabel,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimary)),
-              const SizedBox(height: 6),
-              GestureDetector(
-                onTap: () => _launchUrl(
-                    result.isRailway ? korailBookingUrl : busBookingUrl),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('예매',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white)),
-                ),
+          GestureDetector(
+            onTap: () => _launchUrl(
+                result.isRailway ? korailBookingUrl : busBookingUrl),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppTheme.primary,
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
+              child: const Text('예매',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white)),
+            ),
           ),
         ],
       ),

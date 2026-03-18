@@ -307,17 +307,12 @@ class TransportService {
       // 열차번호
       final trainNo = (map['trainno'] ?? '').toString();
 
-      // 요금 (adultcharge)
-      final priceRaw = map['adultcharge'];
-      final price = priceRaw != null ? int.tryParse(priceRaw.toString()) : null;
-
       return TransitResult(
         type: type,
         trainNo: trainNo,
         departureTime: depTime,
         arrivalTime: arrTime,
         durationMinutes: duration,
-        price: price,
       );
     } catch (e) {
       debugPrint('Train item parse error: $e / $raw');
@@ -334,8 +329,6 @@ class TransportService {
           : TransitType.bus;
       final depTime = _parseBusTime(map['depPlandTime']);
       final arrTime = _parseBusTime(map['arrPlandTime']);
-      final priceRaw = map['charge'];
-      final price = priceRaw != null ? int.tryParse(priceRaw.toString()) : null;
       final duration = _calcBusDuration(depTime, arrTime);
 
       return TransitResult(
@@ -344,7 +337,6 @@ class TransportService {
         departureTime: depTime,
         arrivalTime: arrTime,
         durationMinutes: duration,
-        price: price,
       );
     } catch (e) {
       debugPrint('Bus item parse error: $e / $raw');
