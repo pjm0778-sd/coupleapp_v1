@@ -161,7 +161,7 @@ class TransportService {
         return null;
       }
 
-      // Terminal endpoints return result as a direct List
+      // ① trainTerminals: result가 List로 반환
       // e.g., {"result": [{"stationID": 3300128, "stationName": "서울", ...}]}
       if (result is List) {
         if (result.isEmpty) {
@@ -173,23 +173,29 @@ class TransportService {
         return id;
       }
 
-      // Fallback: some endpoints may wrap in a map
-      final stations = result is Map ? result['station'] : null;
-      if (stations == null) {
-        debugPrint('[ODsay] $endpoint result type=${result.runtimeType}');
-        return null;
+      if (result is Map) {
+        // ② expressBusTerminals / intercityBusTerminals:
+        //    result 자체가 터미널 단일 객체 {"stationID": ..., "stationName": ..., ...}
+        final directId = (result['stationID'] as num?)?.toInt();
+        if (directId != null) {
+          debugPrint('[ODsay] $endpoint "$name" → stationID=$directId (direct)');
+          return directId;
+        }
+
+        // ③ 일부 구버전 응답: {"result": {"station": [...]}}
+        final stations = result['station'];
+        if (stations is List && stations.isNotEmpty) {
+          final id = (stations.first['stationID'] as num?)?.toInt();
+          debugPrint('[ODsay] $endpoint "$name" → stationID=$id (station[])');
+          return id;
+        } else if (stations is Map) {
+          final id = (stations['stationID'] as num?)?.toInt();
+          debugPrint('[ODsay] $endpoint "$name" → stationID=$id (station{})');
+          return id;
+        }
       }
 
-      if (stations is List && stations.isNotEmpty) {
-        final id = (stations.first['stationID'] as num?)?.toInt();
-        debugPrint('[ODsay] $endpoint "$name" → stationID=$id (${stations.length}건)');
-        return id;
-      } else if (stations is Map) {
-        final id = (stations['stationID'] as num?)?.toInt();
-        debugPrint('[ODsay] $endpoint "$name" → stationID=$id (single)');
-        return id;
-      }
-      debugPrint('[ODsay] $endpoint stations type=${stations.runtimeType}');
+      debugPrint('[ODsay] $endpoint "$name" → 파싱 실패 type=${result.runtimeType}');
       return null;
     } catch (e) {
       debugPrint('[ODsay] $endpoint EXCEPTION: $e');
