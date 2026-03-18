@@ -136,6 +136,42 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
             ]),
           ],
 
+          // 자차 여부
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: Row(
+              children: [
+                const Text('🚗', style: TextStyle(fontSize: 20)),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('자차 있음',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text('교통편 추천에 반영돼요',
+                          style: TextStyle(
+                              fontSize: 12, color: AppTheme.textSecondary)),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: draft.hasCar,
+                  onChanged: (v) =>
+                      widget.onChanged(draft.copyWith(hasCar: v)),
+                  activeColor: AppTheme.primary,
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 32),
           Row(children: [
             OutlinedButton(
