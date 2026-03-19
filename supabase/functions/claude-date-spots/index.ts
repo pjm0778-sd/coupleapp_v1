@@ -3,8 +3,70 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const CLAUDE_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? ''
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'
+const NAVER_CLIENT_ID     = Deno.env.get('NAVER_SEARCH_CLIENT_ID') ?? ''
+const NAVER_CLIENT_SECRET = Deno.env.get('NAVER_SEARCH_CLIENT_SECRET') ?? ''
+
+function stripHtml(s: string): string {
+  return s.replace(/<[^>]*>/g, '').trim()
+}
+
+function inferCategory(naverCategory: string): string {
+  if (naverCategory.includes('카페') || naverCategory.includes('커피')) return '카페'
+  if (naverCategory.includes('음식') || naverCategory.includes('식당') || naverCategory.includes('한식')
+    || naverCategory.includes('일식') || naverCategory.includes('중식') || naverCategory.includes('양식')) return '음식점'
+  if (naverCategory.includes('관광') || naverCategory.includes('명소') || naverCategory.includes('공원')
+    || naverCategory.includes('해수욕') || naverCategory.includes('문화')) return '명소'
+  if (naverCategory.includes('쇼핑') || naverCategory.includes('시장') || naverCategory.includes('백화점')) return '쇼핑'
+  if (naverCategory.includes('체험') || naverCategory.includes('레저') || naverCategory.includes('스포츠')) return '체험'
+  return '명소'
+}
+
+async function searchPlace(
+  query: string,
+  defaultCategory: string,
+): Promise<{ name: string; category: string; description: string; tip: string } | null> {
+  try {
+    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=3&sort=comment`
+    const res = await fetch(url, {
+      headers: {
+        'X-Naver-Client-Id': NAVER_CLIENT_ID,
+        'X-Naver-Client-Secret': NAVER_CLIENT_SECRET,
+      },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const item = data.items?.[0]
+    if (!item) return null
+
+    const name     = stripHtml(item.title)
+    const category = inferCategory(item.category ?? '') || defaultCategory
+    const address  = item.roadAddress || item.address || ''
+
+    return {
+      name,
+      category,
+      description: `${item.category ? item.category + ' · ' : ''}리뷰 많은 인기 장소`,
+      tip: address ? `📍 ${address}` : '네이버 지도에서 위치 확인',
+    }
+  } catch (e) {
+    console.error('[claude-date-spots] naver search error:', e)
+    return null
+  }
+}
+
+const PREVIEW_QUERIES = (city: string) => [
+  { query: `${city} 카페`,     defaultCategory: '카페' },
+  { query: `${city} 관광명소`, defaultCategory: '명소' },
+  { query: `${city} 맛집`,     defaultCategory: '음식점' },
+]
+
+const MORE_QUERIES = (city: string) => [
+  { query: `${city} 브런치 카페`,  defaultCategory: '카페' },
+  { query: `${city} 야경 뷰포인트`, defaultCategory: '명소' },
+  { query: `${city} 전통시장`,     defaultCategory: '쇼핑' },
+  { query: `${city} 체험 액티비티`, defaultCategory: '체험' },
+  { query: `${city} 이자카야 술집`, defaultCategory: '음식점' },
+]
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,11 +74,9 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const url     = new URL(req.url)
-    const city    = url.searchParams.get('city')
-    const theme   = url.searchParams.get('theme') ?? 'date'
-    const mode    = url.searchParams.get('mode') ?? 'preview'   // 'preview' | 'more'
-    const exclude = url.searchParams.get('exclude') ?? ''        // comma-separated names
+    const url  = new URL(req.url)
+    const city = url.searchParams.get('city')
+    const mode = url.searchParams.get('mode') ?? 'preview'
 
     if (!city) {
       return new Response(
@@ -25,69 +85,12 @@ Deno.serve(async (req) => {
       )
     }
 
-    let prompt: string
-    let maxTokens: number
+    const queries = mode === 'preview' ? PREVIEW_QUERIES(city) : MORE_QUERIES(city)
+    const results = await Promise.all(queries.map(q => searchPlace(q.query, q.defaultCategory)))
+    const spots   = results.filter(Boolean)
 
-    if (mode === 'preview') {
-      prompt = `${city}의 대표 데이트 장소 3곳을 추천해주세요.
-반드시 아래 3가지 카테고리에서 각 1곳씩 선택하세요:
-1. 카페 (감성 있는 유명 카페)
-2. 명소 (관광지, 공원, 문화공간 등)
-3. 음식점 (유명 맛집)
-
-실제로 유명하고 SNS·블로그에서 커플 데이트 코스로 자주 소개되는 곳만 추천하세요.
-
-JSON만 응답 (다른 텍스트 없음):
-{"spots":[{"name":"실제 장소명","category":"카페|명소|음식점","description":"유명한 이유 1문장","tip":"방문 팁 1문장"}]}`
-      maxTokens = 512
-    } else {
-      const excludeList = exclude ? `이미 추천된 곳은 제외하세요: ${exclude}\n` : ''
-      prompt = `${city}의 데이트 장소 5곳을 추가 추천해주세요.
-${excludeList}
-카페, 명소, 음식점, 체험, 쇼핑 등 다양한 카테고리로 추천하세요.
-실제로 유명하고 SNS·블로그에서 자주 소개되는 곳만 추천하세요.
-
-JSON만 응답 (다른 텍스트 없음):
-{"spots":[{"name":"실제 장소명","category":"카페|음식점|명소|체험|쇼핑","description":"유명한 이유 1문장","tip":"방문 팁 1문장"}]}`
-      maxTokens = 1024
-    }
-
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: maxTokens,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-
-    if (!claudeRes.ok) {
-      console.error('[claude-date-spots] Claude API error:', await claudeRes.text())
-      return new Response(
-        JSON.stringify({ spots: [] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
-    const claudeData = await claudeRes.json()
-    const content = claudeData.content?.[0]?.text ?? ''
-
-    const jsonMatch = content.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) {
-      return new Response(
-        JSON.stringify({ spots: [] }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-      )
-    }
-
-    const result = JSON.parse(jsonMatch[0])
     return new Response(
-      JSON.stringify(result),
+      JSON.stringify({ spots }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (e) {
