@@ -3,10 +3,11 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme.dart';
 import '../models/midpoint_input.dart';
 import '../models/midpoint_result.dart';
+import '../widgets/date_spots_widget.dart';
 import '../widgets/midpoint_city_card.dart';
 import '../widgets/midpoint_map_widget.dart';
-import '../widgets/nearby_places_list.dart';
 import '../widgets/route_comparison_table.dart';
+import '../widgets/route_steps_widget.dart';
 
 class MidpointResultScreen extends StatefulWidget {
   final List<MidpointResult> results;
@@ -112,6 +113,23 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
               myRoute: _selected.myRoute,
               partnerRoute: _selected.partnerRoute,
             ),
+
+            // ── 내 경로 세부 단계 ──
+            if (_selected.myRoute.steps.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _SectionLabel(label: '${_selected.myRoute.originName} 경로'),
+              const SizedBox(height: 6),
+              RouteStepsWidget(steps: _selected.myRoute.steps),
+            ],
+
+            // ── 상대방 경로 세부 단계 ──
+            if (_selected.partnerRoute.steps.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _SectionLabel(label: '${_selected.partnerRoute.originName} 경로'),
+              const SizedBox(height: 6),
+              RouteStepsWidget(steps: _selected.partnerRoute.steps),
+            ],
+
             const SizedBox(height: 20),
 
             // ── 지도 ──
@@ -121,30 +139,28 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary)),
             const SizedBox(height: 10),
-            // 지도는 출발지 좌표가 필요하므로 서비스에서 받아야 하나
-            // MVP에서는 중간지점 + 장소 핀만 표시
             _MapPlaceholder(city: _selected.city, places: _selected.nearbyPlaces),
             const SizedBox(height: 20),
 
-            // ── 주변 장소 ──
+            // ── 데이트 명소 (Claude 추천) ──
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('주변 장소',
-                    style: TextStyle(
+                Text('${_selected.city.name} 데이트 추천',
+                    style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary)),
-                Text('${_selected.nearbyPlaces.length}곳',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppTheme.textSecondary)),
+                if (_selected.dateSpots.isNotEmpty)
+                  Text('${_selected.dateSpots.length}곳',
+                      style: const TextStyle(
+                          fontSize: 13, color: AppTheme.textSecondary)),
               ],
             ),
             const SizedBox(height: 10),
-            NearbyPlacesList(
-              places: _selected.nearbyPlaces,
-              midpointCityName: _selected.city.name,
-              onAddSchedule: () => _showAddScheduleSnackbar(context),
+            DateSpotsWidget(
+              spots: _selected.dateSpots,
+              cityName: _selected.city.name,
             ),
           ],
         ),
@@ -160,6 +176,20 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String label;
+  const _SectionLabel({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(label,
+        style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary));
   }
 }
 

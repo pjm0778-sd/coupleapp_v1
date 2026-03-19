@@ -1,5 +1,76 @@
 import 'midpoint_input.dart';
 
+// ── 경로 세부 단계 ──────────────────────────────
+enum RouteStepType { walk, subway, bus, train }
+
+class RouteStep {
+  final RouteStepType type;
+  final String? lineName;      // "1호선", "SRT", "경기고속"
+  final String? startStation;  // 출발역/정류장
+  final String? endStation;    // 도착역/정류장
+  final int durationMinutes;
+
+  const RouteStep({
+    required this.type,
+    this.lineName,
+    this.startStation,
+    this.endStation,
+    required this.durationMinutes,
+  });
+
+  String get icon {
+    switch (type) {
+      case RouteStepType.walk:   return '🚶';
+      case RouteStepType.subway: return '🚇';
+      case RouteStepType.bus:    return '🚌';
+      case RouteStepType.train:  return '🚄';
+    }
+  }
+
+  String get label {
+    switch (type) {
+      case RouteStepType.walk:   return '도보';
+      case RouteStepType.subway: return lineName ?? '지하철';
+      case RouteStepType.bus:    return lineName ?? '버스';
+      case RouteStepType.train:  return lineName ?? '열차';
+    }
+  }
+
+  String get durationLabel {
+    if (durationMinutes < 1) return '';
+    final h = durationMinutes ~/ 60;
+    final m = durationMinutes % 60;
+    if (h == 0) return '$m분';
+    if (m == 0) return '$h시간';
+    return '$h시간 $m분';
+  }
+}
+
+// ── 데이트 명소 ──────────────────────────────────
+class DateSpot {
+  final String name;
+  final String category;
+  final String description;
+  final String tip;
+
+  const DateSpot({
+    required this.name,
+    required this.category,
+    required this.description,
+    required this.tip,
+  });
+
+  String get categoryIcon {
+    if (category.contains('카페'))   return '☕';
+    if (category.contains('음식점')) return '🍽';
+    if (category.contains('명소'))   return '🏛';
+    if (category.contains('체험'))   return '🎯';
+    if (category.contains('쇼핑'))   return '🛍';
+    return '📍';
+  }
+}
+
+// ── 도시 ─────────────────────────────────────────
 class MidpointCity {
   final String name;
   final String reason;
@@ -18,15 +89,17 @@ class MidpointCity {
   });
 }
 
+// ── 경로 정보 ─────────────────────────────────────
 class RouteInfo {
   final String originName;
   final TransportMode mode;
-  final String transitLabel;     // "지하철", "KTX", "고속버스", "일반차", "전기차"
+  final String transitLabel;
   final double distanceKm;
   final int durationMinutes;
-  final int estimatedCost;       // 원
-  final bool isEstimated;        // true = Claude 추정값 폴백
+  final int estimatedCost;
+  final bool isEstimated;
   final String? estimatedNote;
+  final List<RouteStep> steps;
 
   const RouteInfo({
     required this.originName,
@@ -37,6 +110,7 @@ class RouteInfo {
     required this.estimatedCost,
     this.isEstimated = false,
     this.estimatedNote,
+    this.steps = const [],
   });
 
   String get durationLabel {
@@ -57,6 +131,7 @@ class RouteInfo {
   }
 }
 
+// ── 주변 장소 (Kakao) ─────────────────────────────
 class NearbyPlace {
   final String name;
   final String category;
@@ -74,23 +149,25 @@ class NearbyPlace {
     this.kakaoUrl,
   });
 
-  /// 카테고리 전체명에서 마지막 분류만 추출 (예: "음식점 > 한식" → "한식")
   String get shortCategory {
     final parts = category.split('>');
     return parts.last.trim();
   }
 }
 
+// ── 최종 결과 ─────────────────────────────────────
 class MidpointResult {
   final MidpointCity city;
   final RouteInfo myRoute;
   final RouteInfo partnerRoute;
   final List<NearbyPlace> nearbyPlaces;
+  final List<DateSpot> dateSpots;
 
   const MidpointResult({
     required this.city,
     required this.myRoute,
     required this.partnerRoute,
     required this.nearbyPlaces,
+    this.dateSpots = const [],
   });
 }

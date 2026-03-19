@@ -7,7 +7,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase_client.dart' show supabaseUrl, supabaseAnonKey;
 import '../../transport/services/transport_service.dart';
 import '../models/midpoint_input.dart';
-import '../models/midpoint_result.dart';
+import '../models/midpoint_result.dart'
+    show
+        DateSpot,
+        MidpointCity,
+        MidpointResult,
+        NearbyPlace,
+        RouteInfo,
+        RouteStep,
+        RouteStepType;
 import 'naver_directions_service.dart';
 
 class MidpointService {
@@ -131,8 +139,8 @@ class MidpointService {
   }) async {
     final midLatLng = LatLng(city.lat, city.lng);
 
-    // 경로 + 장소 병렬 조회
-    final (myRoute, partnerRoute, places) = await (
+    // 경로 + 장소 + 데이트 명소 병렬 조회
+    final (myRoute, partnerRoute, places, spots) = await (
       _fetchRoute(
         origin: myLatLng,
         originName: input.myOrigin,
@@ -152,6 +160,7 @@ class MidpointService {
         claudeEstimateMinutes: city.estimatedMinutesB,
       ),
       _fetchNearbyPlaces(midLatLng, input.theme),
+      _fetchDateSpots(city.name, input.theme),
     ).wait;
 
     return MidpointResult(
@@ -159,6 +168,7 @@ class MidpointService {
       myRoute: myRoute,
       partnerRoute: partnerRoute,
       nearbyPlaces: places,
+      dateSpots: spots,
     );
   }
 
@@ -243,6 +253,8 @@ class MidpointService {
   }) async {
     final distKm = _haversineKm(origin, destination);
 
+    final originCity = _extractCityName(originName);
+
     // ── 1차: 지하철 (searchPubTransPathT) — 60분 이내만 수용 ──
     final subwayResult = await _trySubway(origin, destination);
     if (subwayResult != null && subwayResult.durationMinutes <= 60) {
@@ -253,11 +265,11 @@ class MidpointService {
         distanceKm: distKm,
         durationMinutes: subwayResult.durationMinutes,
         estimatedCost: subwayResult.fare,
+        steps: subwayResult.steps,
       );
     }
 
-    // ── 2차: 열차/KTX + 3차: 고속버스 (TransportService 기존 로직 재사용) ──
-    final originCity = _extractCityName(originName);
+    // ── 2차: 열차/KTX + 3차: 고속버스 ──
     try {
       final trainResults = await _transport.search(
         fromStation: originCity,
@@ -273,10 +285,19 @@ class MidpointService {
           distanceKm: distKm,
           durationMinutes: best.durationMinutes,
           estimatedCost: best.fare ?? 0,
+          steps: [
+            RouteStep(
+              type: RouteStepType.train,
+              lineName: best.typeLabel,
+              startStation: originCity,
+              endStation: destinationCityName,
+              durationMinutes: best.durationMinutes,
+            ),
+          ],
         );
       }
 
-      // ── 3차: 고속버스 (searchInterBusSchedule) ──
+      // ── 3차: 고속버스 ──
       if (trainResults.busResults.isNotEmpty) {
         final best = trainResults.busResults.first;
         return RouteInfo(
@@ -286,6 +307,15 @@ class MidpointService {
           distanceKm: distKm,
           durationMinutes: best.durationMinutes,
           estimatedCost: best.fare ?? 0,
+          steps: [
+            RouteStep(
+              type: RouteStepType.bus,
+              lineName: best.typeLabel,
+              startStation: originCity,
+              endStation: destinationCityName,
+              durationMinutes: best.durationMinutes,
+            ),
+          ],
         );
       }
     } catch (e) {
@@ -305,8 +335,8 @@ class MidpointService {
     );
   }
 
-  // ODsay 지하철 통합경로 조회
-  Future<({int durationMinutes, int fare})?> _trySubway(
+  // ODsay 지하철 통합경로 조회 (subPath 세부 경로 파싱)
+  Future<({int durationMinutes, int fare, List<RouteStep> steps})?> _trySubway(
     LatLng origin,
     LatLng destination,
   ) async {
@@ -327,13 +357,64 @@ class MidpointService {
       final info = paths.first['info'] as Map<String, dynamic>?;
       if (info == null) return null;
 
+      // subPath 세부 경로 파싱
+      final subPaths = paths.first['subPath'] as List? ?? [];
+      final steps = <RouteStep>[];
+      for (final sp in subPaths) {
+        final trafficType = (sp['trafficType'] as num).toInt();
+        final sectionTime = (sp['sectionTime'] as num?)?.toInt() ?? 0;
+        if (sectionTime == 0) continue;
+
+        final RouteStepType type;
+        switch (trafficType) {
+          case 1:  type = RouteStepType.subway; break;
+          case 2:  type = RouteStepType.bus;    break;
+          default: type = RouteStepType.walk;   break;
+        }
+
+        steps.add(RouteStep(
+          type: type,
+          lineName: sp['way'] as String?,
+          startStation: sp['startName'] as String?,
+          endStation: sp['endName'] as String?,
+          durationMinutes: sectionTime,
+        ));
+      }
+
       return (
         durationMinutes: (info['totalTime'] as num).toInt(),
         fare: (info['payment'] as num?)?.toInt() ?? 0,
+        steps: steps,
       );
     } catch (e) {
       debugPrint('[MidpointService] subway error: $e');
       return null;
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // Claude 데이트 명소 추천
+  // ────────────────────────────────────────────────
+  Future<List<DateSpot>> _fetchDateSpots(String cityName, DateTheme theme) async {
+    try {
+      final uri = Uri.parse(
+        '$supabaseUrl/functions/v1/claude-date-spots'
+        '?city=${Uri.encodeComponent(cityName)}&theme=${theme.apiValue}',
+      );
+      final res = await http.get(uri, headers: _authHeaders());
+      if (res.statusCode != 200) return [];
+
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final spots = data['spots'] as List? ?? [];
+      return spots.map((s) => DateSpot(
+        name: s['name'] as String,
+        category: s['category'] as String? ?? '',
+        description: s['description'] as String? ?? '',
+        tip: s['tip'] as String? ?? '',
+      )).toList();
+    } catch (e) {
+      debugPrint('[MidpointService] date spots error: $e');
+      return [];
     }
   }
 
