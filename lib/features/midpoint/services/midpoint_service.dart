@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase_client.dart' show supabaseUrl, supabaseAnonKey;
 import '../../transport/services/transport_service.dart';
+import '../data/korean_cities.dart';
 import '../models/midpoint_input.dart';
 import '../models/midpoint_result.dart'
     show
@@ -33,33 +34,135 @@ class MidpointService {
     LatLng? myLatLng,
     LatLng? partnerLatLng,
   }) async {
-    // 1. 좌표가 없을 때만 geocoding (Kakao fallback)
-    final resolvedMyLatLng = myLatLng ?? await _geocode(input.myOrigin);
-    final resolvedPartnerLatLng = partnerLatLng ?? await _geocode(input.partnerOrigin);
+    // 1. 좌표 확인
+    final myLL      = myLatLng      ?? await _geocode(input.myOrigin);
+    final partnerLL = partnerLatLng ?? await _geocode(input.partnerOrigin);
 
-    if (resolvedMyLatLng == null || resolvedPartnerLatLng == null) {
+    if (myLL == null || partnerLL == null) {
       throw Exception('출발지 좌표를 찾을 수 없습니다. 주소를 다시 확인해주세요.');
     }
 
-    // 변수 재할당 (이후 코드 호환)
-    final myLatLngResolved = resolvedMyLatLng;
-    final partnerLatLngResolved = resolvedPartnerLatLng;
+    // 2. 수학 필터: 이동시간 균형이 좋은 후보 도시 8개 선별
+    final candidates = _filterCandidateCities(myLL, partnerLL);
 
-    // 2. Claude로 중간지점 도시 추론
-    final cities = await _inferMidpoints(input);
-    if (cities.isEmpty) throw Exception('중간지점을 찾을 수 없습니다.');
-
-    // 3. 각 도시별 상세 정보 병렬 조회
-    final results = await Future.wait(
-      cities.map((city) => _buildResult(
-            city: city,
-            input: input,
-            myLatLng: myLatLngResolved,
-            partnerLatLng: partnerLatLngResolved,
-          )),
+    // 3. 후보 도시별 실제 경로 시간 병렬 조회
+    final routePairs = await Future.wait(
+      candidates.map((city) async {
+        final cityLL = LatLng(city.lat, city.lng);
+        final results = await Future.wait([
+          _fetchRoute(
+            origin: myLL,
+            originName: input.myOrigin,
+            destination: cityLL,
+            destinationCityName: city.name,
+            mode: input.myMode,
+            carType: input.myCarType,
+          ),
+          _fetchRoute(
+            origin: partnerLL,
+            originName: input.partnerOrigin,
+            destination: cityLL,
+            destinationCityName: city.name,
+            mode: input.partnerMode,
+            carType: input.partnerCarType,
+          ),
+        ]);
+        return (city: city, myRoute: results[0], partnerRoute: results[1]);
+      }),
     );
 
-    return results.whereType<MidpointResult>().toList();
+    // 4. 시간 균형 기준 정렬: |내 시간 - 상대 시간| 작을수록, 합계 작을수록
+    final sorted = routePairs.toList()
+      ..sort((a, b) {
+        final diffA = (a.myRoute.durationMinutes - a.partnerRoute.durationMinutes).abs();
+        final diffB = (b.myRoute.durationMinutes - b.partnerRoute.durationMinutes).abs();
+        if (diffA != diffB) return diffA.compareTo(diffB);
+        return (a.myRoute.durationMinutes + a.partnerRoute.durationMinutes)
+            .compareTo(b.myRoute.durationMinutes + b.partnerRoute.durationMinutes);
+      });
+
+    // 5. 상위 3개 선택
+    final top3 = sorted.take(3).toList();
+    if (top3.isEmpty) throw Exception('중간지점을 찾을 수 없습니다.');
+
+    // 6. Claude로 도시 설명 생성 (시간 추정 없음, Haiku 사용)
+    final descriptions = await _fetchDescriptions(
+      top3.map((r) => r.city.name).toList(),
+      input.theme,
+    );
+
+    // 7. 주변 장소 + 최종 결과 조립
+    final results = await Future.wait(
+      top3.map((r) async {
+        final cityLL = LatLng(r.city.lat, r.city.lng);
+        final places = await _fetchNearbyPlaces(cityLL, input.theme);
+
+        return MidpointResult(
+          city: MidpointCity(
+            name: r.city.name,
+            reason: descriptions[r.city.name] ?? '${input.theme.label}에 어울리는 도시입니다.',
+            lat: r.city.lat,
+            lng: r.city.lng,
+            estimatedMinutesA: r.myRoute.durationMinutes,
+            estimatedMinutesB: r.partnerRoute.durationMinutes,
+          ),
+          myRoute: r.myRoute,
+          partnerRoute: r.partnerRoute,
+          nearbyPlaces: places,
+          dateSpots: [],
+        );
+      }),
+    );
+
+    return results.toList();
+  }
+
+  // ────────────────────────────────────────────────
+  // 수학 필터: 이동시간 균형 기준 후보 도시 선별
+  // ────────────────────────────────────────────────
+  List<KoreanCity> _filterCandidateCities(LatLng myLL, LatLng partnerLL) {
+    final scored = kKoreanCities.map((city) {
+      final cityLL = LatLng(city.lat, city.lng);
+      final distA  = _haversineKm(myLL, cityLL);
+      final distB  = _haversineKm(partnerLL, cityLL);
+      final total  = distA + distB;
+      if (total == 0) return null;
+      // 균형 점수: 0에 가까울수록 두 사람 거리가 같음
+      final balance = (distA - distB).abs() / total;
+      return (city: city, balance: balance, total: total);
+    }).whereType<({KoreanCity city, double balance, double total})>().toList();
+
+    scored.sort((a, b) => a.balance.compareTo(b.balance));
+    return scored.take(8).map((r) => r.city).toList();
+  }
+
+  // ────────────────────────────────────────────────
+  // Claude: 도시 설명 생성 (설명만, 시간 추정 없음)
+  // ────────────────────────────────────────────────
+  Future<Map<String, String>> _fetchDescriptions(
+    List<String> cityNames,
+    DateTheme theme,
+  ) async {
+    try {
+      final uri = Uri.parse(_claudeBase);
+      final res = await http.post(
+        uri,
+        headers: {
+          ..._authHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'cities': cityNames, 'theme': theme.apiValue}),
+      );
+
+      if (res.statusCode != 200) return {};
+
+      final data = jsonDecode(res.body) as Map<String, dynamic>;
+      final raw  = data['descriptions'] as Map<String, dynamic>? ?? {};
+      return raw.map((k, v) => MapEntry(k, v.toString()));
+    } catch (e) {
+      debugPrint('[MidpointService] descriptions error: $e');
+      return {};
+    }
   }
 
   // ────────────────────────────────────────────────
@@ -83,93 +186,6 @@ class MidpointService {
     }
   }
 
-  // ────────────────────────────────────────────────
-  // Claude API로 중간지점 도시 추론
-  // ────────────────────────────────────────────────
-  Future<List<MidpointCity>> _inferMidpoints(MidpointSearchInput input) async {
-    try {
-      final uri = Uri.parse(_claudeBase);
-      final res = await http.post(
-        uri,
-        headers: {
-          ..._authHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode(input.toJson()),
-      );
-
-      if (res.statusCode != 200) {
-        debugPrint('[MidpointService] Claude error ${res.statusCode}: ${res.body}');
-        return [];
-      }
-
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final citiesJson = data['cities'] as List? ?? [];
-
-      // 도시 좌표는 이름으로 별도 geocode
-      final cities = await Future.wait(citiesJson.map((c) async {
-        final name = c['name'] as String;
-        final latLng = await _geocode(name);
-        if (latLng == null) return null;
-        return MidpointCity(
-          name: name,
-          reason: c['reason'] as String,
-          lat: latLng.latitude,
-          lng: latLng.longitude,
-          estimatedMinutesA: c['estimatedMinutesA'] as int,
-          estimatedMinutesB: c['estimatedMinutesB'] as int,
-        );
-      }));
-
-      return cities.whereType<MidpointCity>().toList();
-    } catch (e) {
-      debugPrint('[MidpointService] Claude error: $e');
-      return [];
-    }
-  }
-
-  // ────────────────────────────────────────────────
-  // 도시 1곳에 대한 전체 결과 구성
-  // ────────────────────────────────────────────────
-  Future<MidpointResult?> _buildResult({
-    required MidpointCity city,
-    required MidpointSearchInput input,
-    required LatLng myLatLng,
-    required LatLng partnerLatLng,
-  }) async {
-    final midLatLng = LatLng(city.lat, city.lng);
-
-    // 경로 + 주변 장소 병렬 조회 (데이트 명소는 도시 선택 시 lazy 로딩)
-    final (myRoute, partnerRoute, places) = await (
-      _fetchRoute(
-        origin: myLatLng,
-        originName: input.myOrigin,
-        destination: midLatLng,
-        destinationCityName: city.name,
-        mode: input.myMode,
-        carType: input.myCarType,
-        claudeEstimateMinutes: city.estimatedMinutesA,
-      ),
-      _fetchRoute(
-        origin: partnerLatLng,
-        originName: input.partnerOrigin,
-        destination: midLatLng,
-        destinationCityName: city.name,
-        mode: input.partnerMode,
-        carType: input.partnerCarType,
-        claudeEstimateMinutes: city.estimatedMinutesB,
-      ),
-      _fetchNearbyPlaces(midLatLng, input.theme),
-    ).wait;
-
-    return MidpointResult(
-      city: city,
-      myRoute: myRoute,
-      partnerRoute: partnerRoute,
-      nearbyPlaces: places,
-      dateSpots: [],
-    );
-  }
 
   // ────────────────────────────────────────────────
   // 경로 조회: 자차 or 대중교통 폴백 체인
@@ -181,7 +197,7 @@ class MidpointService {
     required String destinationCityName,
     required TransportMode mode,
     CarType? carType,
-    required int claudeEstimateMinutes,
+    int claudeEstimateMinutes = 0,
   }) async {
     if (mode == TransportMode.car) {
       return _fetchCarRoute(
