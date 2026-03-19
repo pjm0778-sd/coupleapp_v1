@@ -49,7 +49,7 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
   Future<void> _search(String query) async {
     try {
       final uri = Uri.parse(
-        '$supabaseUrl/functions/v1/kakao-place-search?query=${Uri.encodeComponent(query)}',
+        '$supabaseUrl/functions/v1/naver-place-search?query=${Uri.encodeComponent(query)}',
       );
       final res = await http.get(uri, headers: {
         'Authorization':
@@ -71,10 +71,16 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
 
   void _select(Map<String, dynamic> place) {
     final name = place['name'] as String;
+    // 도로명 주소 우선, 없으면 지번 주소, 없으면 이름만
+    final address = (place['roadAddress'] as String?)?.isNotEmpty == true
+        ? place['roadAddress'] as String
+        : (place['address'] as String?)?.isNotEmpty == true
+            ? place['address'] as String
+            : name;
     _controller.text = name;
     setState(() => _showSuggestions = false);
     _focus.unfocus();
-    widget.onSelected(name);
+    widget.onSelected(address);
   }
 
   @override
@@ -144,7 +150,10 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
                       size: 18, color: AppTheme.textSecondary),
                   title: Text(p['name'] as String,
                       style: const TextStyle(fontSize: 14)),
-                  subtitle: Text(p['address'] as String? ?? '',
+                  subtitle: Text(
+                      (p['roadAddress'] as String?)?.isNotEmpty == true
+                          ? p['roadAddress'] as String
+                          : p['address'] as String? ?? '',
                       style: const TextStyle(
                           fontSize: 12, color: AppTheme.textSecondary)),
                   onTap: () => _select(p),
