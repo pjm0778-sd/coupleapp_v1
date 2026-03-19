@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import '../../../core/theme.dart';
 import '../models/midpoint_input.dart';
 import '../services/midpoint_service.dart';
@@ -18,6 +19,8 @@ class _MidpointSearchScreenState extends State<MidpointSearchScreen> {
 
   String _myOrigin = '';
   String _partnerOrigin = '';
+  LatLng? _myLatLng;
+  LatLng? _partnerLatLng;
   TransportMode _myMode = TransportMode.publicTransit;
   CarType _myCarType = CarType.normal;
   TransportMode _partnerMode = TransportMode.publicTransit;
@@ -44,7 +47,11 @@ class _MidpointSearchScreenState extends State<MidpointSearchScreen> {
         theme: _theme,
       );
 
-      final results = await _service.search(input);
+      final results = await _service.search(
+        input,
+        myLatLng: _myLatLng,
+        partnerLatLng: _partnerLatLng,
+      );
 
       if (!mounted) return;
       Navigator.push(
@@ -94,13 +101,19 @@ class _MidpointSearchScreenState extends State<MidpointSearchScreen> {
                   OriginInputWidget(
                     label: '내 출발지',
                     hint: '예) 서울 강남구',
-                    onSelected: (v) => setState(() => _myOrigin = v),
+                    onSelected: (name, latLng) => setState(() {
+                      _myOrigin = name;
+                      _myLatLng = latLng;
+                    }),
                   ),
                   const SizedBox(height: 16),
                   OriginInputWidget(
                     label: '상대방 출발지',
                     hint: '예) 부산 해운대구',
-                    onSelected: (v) => setState(() => _partnerOrigin = v),
+                    onSelected: (name, latLng) => setState(() {
+                      _partnerOrigin = name;
+                      _partnerLatLng = latLng;
+                    }),
                   ),
                 ],
               ),

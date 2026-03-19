@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/supabase_client.dart' show supabaseUrl, supabaseAnonKey;
 import '../../../core/theme.dart';
@@ -9,7 +10,8 @@ import '../../../core/theme.dart';
 class OriginInputWidget extends StatefulWidget {
   final String label;
   final String hint;
-  final ValueChanged<String> onSelected;
+  // name: 표시용, latLng: 네이버에서 받은 좌표
+  final void Function(String name, LatLng latLng) onSelected;
 
   const OriginInputWidget({
     super.key,
@@ -56,7 +58,6 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
             'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
         'apikey': supabaseAnonKey,
       });
-      debugPrint('[OriginInput] status: ${res.statusCode}, body: ${res.body}');
       if (res.statusCode != 200) return;
 
       final data = jsonDecode(res.body);
@@ -74,16 +75,12 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
 
   void _select(Map<String, dynamic> place) {
     final name = place['name'] as String;
-    // 도로명 주소 우선, 없으면 지번 주소, 없으면 이름만
-    final address = (place['roadAddress'] as String?)?.isNotEmpty == true
-        ? place['roadAddress'] as String
-        : (place['address'] as String?)?.isNotEmpty == true
-            ? place['address'] as String
-            : name;
+    final lat = (place['lat'] as num).toDouble();
+    final lng = (place['lng'] as num).toDouble();
     _controller.text = name;
     setState(() => _showSuggestions = false);
     _focus.unfocus();
-    widget.onSelected(address);
+    widget.onSelected(name, LatLng(lat, lng));
   }
 
   @override

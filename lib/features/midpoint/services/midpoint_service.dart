@@ -20,16 +20,22 @@ class MidpointService {
   // ────────────────────────────────────────────────
   // 메인 진입점
   // ────────────────────────────────────────────────
-  Future<List<MidpointResult>> search(MidpointSearchInput input) async {
-    // 1. 두 출발지 좌표 변환 (병렬)
-    final (myLatLng, partnerLatLng) = await (
-      _geocode(input.myOrigin),
-      _geocode(input.partnerOrigin),
-    ).wait;
+  Future<List<MidpointResult>> search(
+    MidpointSearchInput input, {
+    LatLng? myLatLng,
+    LatLng? partnerLatLng,
+  }) async {
+    // 1. 좌표가 없을 때만 geocoding (Kakao fallback)
+    final resolvedMyLatLng = myLatLng ?? await _geocode(input.myOrigin);
+    final resolvedPartnerLatLng = partnerLatLng ?? await _geocode(input.partnerOrigin);
 
-    if (myLatLng == null || partnerLatLng == null) {
+    if (resolvedMyLatLng == null || resolvedPartnerLatLng == null) {
       throw Exception('출발지 좌표를 찾을 수 없습니다. 주소를 다시 확인해주세요.');
     }
+
+    // 변수 재할당 (이후 코드 호환)
+    final myLatLngResolved = resolvedMyLatLng;
+    final partnerLatLngResolved = resolvedPartnerLatLng;
 
     // 2. Claude로 중간지점 도시 추론
     final cities = await _inferMidpoints(input);
@@ -40,8 +46,8 @@ class MidpointService {
       cities.map((city) => _buildResult(
             city: city,
             input: input,
-            myLatLng: myLatLng,
-            partnerLatLng: partnerLatLng,
+            myLatLng: myLatLngResolved,
+            partnerLatLng: partnerLatLngResolved,
           )),
     );
 

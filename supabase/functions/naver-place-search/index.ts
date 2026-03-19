@@ -51,8 +51,10 @@ Deno.serve(async (req) => {
 
     const places = items.map((item) => ({
       name: stripHtml(item.title),
-      address: item.address,           // 지번 주소
-      roadAddress: item.roadAddress,   // 도로명 주소
+      address: item.address,
+      roadAddress: item.roadAddress,
+      lat: parseInt(item.mapy) / 1e7,   // Naver 좌표 → WGS84
+      lng: parseInt(item.mapx) / 1e7,
     }))
 
     return new Response(
