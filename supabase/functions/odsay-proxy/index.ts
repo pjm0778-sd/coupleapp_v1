@@ -29,6 +29,7 @@ Deno.serve(async (req) => {
       'intercityBusTerminals',
       'trainServiceTime',
       'searchInterBusSchedule',
+      'searchPubTransPathT',  // 지하철 통합경로 (midpoint-date)
     ]
     if (!allowed.includes(endpoint)) {
       return new Response(

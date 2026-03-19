@@ -13,6 +13,7 @@ import '../widgets/dday_widget.dart';
 import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
+import '../../midpoint/screens/midpoint_search_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -301,6 +302,15 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
           ],
+          // 중간지점 찾기 배너
+          _MidpointBanner(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const MidpointSearchScreen()),
+            ),
+          ),
+          const SizedBox(height: 16),
           // 오늘의 일정
           TodayScheduleWidget(
             todaySchedules: _todaySchedules ?? {},
@@ -317,6 +327,57 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _MidpointBanner extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MidpointBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppTheme.accent.withOpacity(0.15),
+              AppTheme.accent.withOpacity(0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            const Text('📍', style: TextStyle(fontSize: 24)),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('중간지점 찾기',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimary)),
+                  SizedBox(height: 2),
+                  Text('두 사람이 공평하게 만날 수 있는 곳 추천',
+                      style: TextStyle(
+                          fontSize: 12, color: AppTheme.textSecondary)),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios,
+                size: 14, color: AppTheme.textSecondary),
+          ],
+        ),
       ),
     );
   }
