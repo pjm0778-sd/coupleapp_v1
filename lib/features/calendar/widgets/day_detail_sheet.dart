@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
+import 'schedule_detail.dart';
 
-class DayDetailSheet extends StatelessWidget {
+class DayDetailSheet extends StatefulWidget {
   final DateTime date;
   final List<Schedule> schedules; // 이미 sortByOwner 적용된 리스트
   final List<Holiday> holidays;
@@ -65,16 +66,30 @@ class DayDetailSheet extends StatelessWidget {
   }
 
   @override
+  State<DayDetailSheet> createState() => _DayDetailSheetState();
+}
+
+class _DayDetailSheetState extends State<DayDetailSheet> {
+  late List<Schedule> _schedules;
+
+  @override
+  void initState() {
+    super.initState();
+    _schedules = List.from(widget.schedules);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final wd = weekdays[date.weekday - 1];
+    final wd = weekdays[widget.date.weekday - 1];
     final now = DateTime.now();
-    final isToday =
-        date.year == now.year && date.month == now.month && date.day == now.day;
+    final isToday = widget.date.year == now.year &&
+        widget.date.month == now.month &&
+        widget.date.day == now.day;
 
-    final nonAnniv = schedules.where((s) => !s.isAnniversary).toList();
-    final anniv = schedules.where((s) => s.isAnniversary).toList();
-    final publicHoliday = holidays.where(
+    final nonAnniv = _schedules.where((s) => !s.isAnniversary).toList();
+    final anniv = _schedules.where((s) => s.isAnniversary).toList();
+    final publicHoliday = widget.holidays.where(
       (h) => h.type == HolidayType.publicHoliday,
     );
 
@@ -118,7 +133,7 @@ class DayDetailSheet extends StatelessWidget {
                         ),
                       ),
                     Text(
-                      '${date.month}월 ${date.day}일 ($wd)',
+                      '${widget.date.month}월 ${widget.date.day}일 ($wd)',
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -139,7 +154,7 @@ class DayDetailSheet extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     Navigator.pop(context);
-                    onAddTap();
+                    widget.onAddTap();
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -203,16 +218,23 @@ class DayDetailSheet extends StatelessWidget {
                 ...nonAnniv.map(
                   (s) => _ScheduleRow(
                     schedule: s,
-                    myUserId: myUserId,
-                    partnerNickname: partnerNickname,
-                    color: getColor(s),
+                    myUserId: widget.myUserId,
+                    partnerNickname: widget.partnerNickname,
+                    color: widget.getColor(s),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ScheduleDetailScreen(schedule: s),
+                      ),
+                    ),
                     onEdit: () async {
                       Navigator.pop(context);
-                      await onEdit(s);
+                      await widget.onEdit(s);
                     },
                     onDelete: () async {
-                      Navigator.pop(context);
-                      await onDelete(s);
+                      // 시트 닫지 않고 목록에서만 제거
+                      setState(() => _schedules.remove(s));
+                      await widget.onDelete(s);
                     },
                   ),
                 ),
@@ -306,6 +328,7 @@ class _ScheduleRow extends StatelessWidget {
   final String myUserId;
   final String? partnerNickname;
   final Color color;
+  final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
@@ -314,6 +337,7 @@ class _ScheduleRow extends StatelessWidget {
     required this.myUserId,
     required this.partnerNickname,
     required this.color,
+    required this.onTap,
     required this.onEdit,
     required this.onDelete,
   });
@@ -375,6 +399,9 @@ class _ScheduleRow extends StatelessWidget {
           onDelete();
         }
       },
+      child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -458,6 +485,7 @@ class _ScheduleRow extends StatelessWidget {
         ),
       ),
     ),  // Container
+    ),  // InkWell
     ); // Dismissible
   }
 

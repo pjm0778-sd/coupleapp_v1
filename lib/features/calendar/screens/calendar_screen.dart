@@ -8,7 +8,6 @@ import '../../../shared/models/schedule.dart';
 import '../services/schedule_service.dart';
 import '../widgets/schedule_add_sheet.dart';
 import '../widgets/day_detail_sheet.dart';
-import '../widgets/schedule_detail.dart';
 import 'date_map_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
@@ -246,18 +245,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return _getCategoryColor(s.category);
   }
 
-  void _onScheduleTap(Schedule schedule) async {
-    if (schedule.isAnniversary) return;
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ScheduleDetailScreen(schedule: schedule),
-      ),
-    );
-    if (result == true && mounted) {
-      _loadSchedules(_focusedMonth);
-    }
-  }
+  // 이벤트 바 탭은 날짜 선택만 처리 (세부 이동 제거)
+  void _onScheduleTap(Schedule schedule) {}
 
   Future<void> _editScheduleItem(Schedule schedule) async {
     if (_coupleId == null || _myUserId == null) return;
@@ -672,24 +661,28 @@ class _CalendarScreenState extends State<CalendarScreen> {
       rowHeight: rowHeight,
       daysOfWeekHeight: 32,
       onDaySelected: (selectedDay, focusedDay) {
+        final alreadySelected = isSameDay(_selectedDay, selectedDay);
         setState(() {
           _selectedDay = selectedDay;
           _focusedMonth = focusedDay;
         });
-        final events = _getEventsForDay(selectedDay);
-        final holidays = _getHolidaysForDay(selectedDay);
-        DayDetailSheet.show(
-          context,
-          date: selectedDay,
-          schedules: _service.sortByOwner(events, _myUserId ?? ''),
-          holidays: holidays,
-          myUserId: _myUserId ?? '',
-          partnerNickname: _partnerNickname,
-          getColor: _getScheduleColor,
-          onEdit: _editScheduleItem,
-          onDelete: _deleteScheduleItem,
-          onAddTap: () => _showAddSheet(selectedDay),
-        );
+        // 두 번째 탭일 때만 세부 시트 표시
+        if (alreadySelected) {
+          final events = _getEventsForDay(selectedDay);
+          final holidays = _getHolidaysForDay(selectedDay);
+          DayDetailSheet.show(
+            context,
+            date: selectedDay,
+            schedules: _service.sortByOwner(events, _myUserId ?? ''),
+            holidays: holidays,
+            myUserId: _myUserId ?? '',
+            partnerNickname: _partnerNickname,
+            getColor: _getScheduleColor,
+            onEdit: _editScheduleItem,
+            onDelete: _deleteScheduleItem,
+            onAddTap: () => _showAddSheet(selectedDay),
+          );
+        }
       },
       onPageChanged: (focusedDay) {
         _focusedMonth = focusedDay;
