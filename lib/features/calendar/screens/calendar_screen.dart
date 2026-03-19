@@ -339,7 +339,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정이 삭제되었습니다.')),
+            const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')),
           );
         }
       }
@@ -437,7 +437,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('OCR 일정이 삭제되었습니다.')),
+            const SnackBar(content: Text('OCR 일정 삭제 중 오류가 발생했습니다.')),
           );
         }
       }
@@ -494,7 +494,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('구글 캘린더 일정이 삭제되었습니다.')),
+            const SnackBar(content: Text('구글 캘린더 일정 삭제 중 오류가 발생했습니다.')),
           );
         }
       }

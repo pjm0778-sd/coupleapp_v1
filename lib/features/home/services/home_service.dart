@@ -45,13 +45,13 @@ class HomeService {
     final todayStr = today.toIso8601String().split('T')[0];
     final currentUserId = supabase.auth.currentUser!.id;
 
-    // 내 오늘 일정
+    // 내 오늘 일정 (단일 일정 + 오늘을 포함하는 다중일 일정)
     final myData = await supabase
         .from('schedules')
         .select()
         .eq('user_id', currentUserId)
         .eq('couple_id', coupleId)
-        .eq('date', todayStr)
+        .or('date.eq.$todayStr,and(start_date.lte.$todayStr,end_date.gte.$todayStr)')
         .order('start_time', ascending: true);
 
     final mySchedules = (myData as List)
@@ -64,7 +64,7 @@ class HomeService {
         .select()
         .neq('user_id', currentUserId)
         .eq('couple_id', coupleId)
-        .eq('date', todayStr)
+        .or('date.eq.$todayStr,and(start_date.lte.$todayStr,end_date.gte.$todayStr)')
         .order('start_time', ascending: true);
 
     final partnerSchedules = (partnerData as List)
@@ -87,7 +87,7 @@ class HomeService {
         .select()
         .eq('user_id', currentUserId)
         .eq('couple_id', coupleId)
-        .eq('date', tomorrowStr)
+        .or('date.eq.$tomorrowStr,and(start_date.lte.$tomorrowStr,end_date.gte.$tomorrowStr)')
         .order('start_time', ascending: true);
 
     final partnerData = await supabase
@@ -95,7 +95,7 @@ class HomeService {
         .select()
         .neq('user_id', currentUserId)
         .eq('couple_id', coupleId)
-        .eq('date', tomorrowStr)
+        .or('date.eq.$tomorrowStr,and(start_date.lte.$tomorrowStr,end_date.gte.$tomorrowStr)')
         .order('start_time', ascending: true);
 
     return {

@@ -12,13 +12,16 @@ class ScheduleService {
   ) async {
     final start = DateTime(month.year, month.month, 1);
     final end = DateTime(month.year, month.month + 1, 0);
+    final startStr = start.toIso8601String().split('T')[0];
+    final endStr = end.toIso8601String().split('T')[0];
 
+    // date가 월 안에 있는 단일 일정 OR start_date~end_date가 월에 걸치는 다중일 일정
     final data = await supabase
         .from('schedules')
         .select()
         .eq('couple_id', coupleId)
-        .gte('date', start.toIso8601String().split('T')[0])
-        .lte('date', end.toIso8601String().split('T')[0])
+        .or('and(date.gte.$startStr,date.lte.$endStr),'
+            'and(start_date.lte.$endStr,end_date.gte.$startStr)')
         .order('date', ascending: true)
         .order('start_time', ascending: true);
 

@@ -229,7 +229,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
         _startDate = picked;
         if (_endDate.isBefore(picked)) _endDate = picked;
       } else {
-        _endDate = picked;
+        _endDate = picked.isBefore(_startDate) ? _startDate : picked;
       }
     });
   }

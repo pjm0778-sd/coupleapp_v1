@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
@@ -24,6 +25,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
   bool _isDeleting = false;
   late Schedule _currentSchedule;
   final _commentController = TextEditingController();
+  StreamSubscription<List<ScheduleComment>>? _commentSubscription;
 
   @override
   void initState() {
@@ -34,7 +36,9 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
 
   void _subscribeToComments() {
     // 실시간 댓글 구독
-    _commentService.subscribeToComments(_currentSchedule.id).listen((comments) {
+    _commentSubscription = _commentService
+        .subscribeToComments(_currentSchedule.id)
+        .listen((comments) {
       if (mounted) {
         setState(() {
           _comments = comments;
@@ -42,6 +46,13 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _commentSubscription?.cancel();
+    _commentController.dispose();
+    super.dispose();
   }
 
   Future<void> _addComment() async {
@@ -494,7 +505,9 @@ class _CommentItem extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                comment.content[0].toUpperCase(),
+                comment.content.isNotEmpty
+                    ? comment.content[0].toUpperCase()
+                    : '?',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
                   color: AppTheme.primary,
