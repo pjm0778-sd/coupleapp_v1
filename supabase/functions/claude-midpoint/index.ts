@@ -90,7 +90,7 @@ JSON만 응답하세요 (다른 텍스트 없음):
   "cities": [
     {
       "name": "도시명",
-      "reason": "A는 [교통수단]으로 약 N분, B는 [교통수단]으로 약 N분 소요. [테마 특성 1문장]",
+      "reason": "[테마에 맞는 이 도시의 특징과 매력 1~2문장. 소요시간은 절대 포함하지 마세요]",
       "estimatedMinutesA": 90,
       "estimatedMinutesB": 85
     }

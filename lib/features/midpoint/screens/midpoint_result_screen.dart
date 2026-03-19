@@ -146,7 +146,9 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      _selected.city.reason,
+                      '${_selected.myRoute.originName}에서 ${_selected.myRoute.transitLabel}으로 ${_selected.myRoute.durationLabel}, '
+                      '${_selected.partnerRoute.originName}에서 ${_selected.partnerRoute.transitLabel}으로 ${_selected.partnerRoute.durationLabel} 소요. '
+                      '${_selected.city.reason}',
                       style: const TextStyle(
                           fontSize: 13,
                           color: AppTheme.textPrimary,

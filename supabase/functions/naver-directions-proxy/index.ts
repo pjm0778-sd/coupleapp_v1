@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    const naverUrl = `${NAVER_DIRECTIONS_URL}?start=${start}&goal=${goal}&option=trafast`
+    const naverUrl = `${NAVER_DIRECTIONS_URL}?start=${start}&goal=${goal}&option=traoptimal`
     console.log(`[naver-directions] ${start} → ${goal}`)
 
     const res = await fetch(naverUrl, {
