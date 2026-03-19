@@ -5,7 +5,7 @@ const corsHeaders = {
 
 const NAVER_CLIENT_ID = Deno.env.get('NAVER_CLIENT_ID') ?? ''
 const NAVER_CLIENT_SECRET = Deno.env.get('NAVER_CLIENT_SECRET') ?? ''
-const NAVER_DIRECTIONS_URL = 'https://naveropenapi.apigw.ntruss.com/map-direction/v1/driving'
+const NAVER_DIRECTIONS_URL = 'https://naveropenapi.apigw.ntruss.com/map-direction-15/v1/driving'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
