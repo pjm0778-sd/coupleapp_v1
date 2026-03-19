@@ -1188,7 +1188,7 @@ class _TransitCard extends StatelessWidget {
 
     // 앱 custom scheme 시도 (설치돼 있으면 앱으로 열림)
     final appScheme = result.type == TransitType.srt
-        ? 'korail' // SRT 앱 scheme (패키지 com.srail.www)
+        ? 'srail' // SRT 앱 scheme (패키지 com.srail.www)
         : result.type == TransitType.ktx || result.isRailway
             ? 'korailapp'
             : null;

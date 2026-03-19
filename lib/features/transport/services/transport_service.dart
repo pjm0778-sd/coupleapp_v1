@@ -38,7 +38,6 @@ class TransportService {
       return cached.result;
     }
 
-    _currentSearchDate = date;
     final results = <TransitResult>[];
     String? trainError;
     String? busError;
@@ -50,7 +49,7 @@ class TransportService {
       final arrId = await _getTrainId(toStation);
       debugPrint('[ODsay] train IDs: dep=$depId arr=$arrId ($fromStation → $toStation)');
       if (depId != null && arrId != null) {
-        final trains = await _fetchTrains(depId, arrId);
+        final trains = await _fetchTrains(depId, arrId, filterDate: date);
         results.addAll(trains);
         if (trains.any((t) => t.type == TransitType.srt)) hasSrtStation = true;
       } else {
@@ -251,9 +250,7 @@ class TransportService {
   // ODsay 시간표 조회
   // ────────────────────────────────────────────────
 
-  DateTime? _currentSearchDate;
-
-  Future<List<TransitResult>> _fetchTrains(int depId, int arrId) async {
+  Future<List<TransitResult>> _fetchTrains(int depId, int arrId, {DateTime? filterDate}) async {
     final uri = Uri.parse(_proxyBase).replace(queryParameters: {
       'endpoint': 'trainServiceTime',
       'startStationID': depId.toString(),
@@ -285,7 +282,7 @@ class TransportService {
     final items = _extractList(result['station']);
     debugPrint('[ODsay] trainServiceTime ${items.length}건');
     return items
-        .map((e) => _parseTrainItem(e, filterDate: _currentSearchDate))
+        .map((e) => _parseTrainItem(e, filterDate: filterDate))
         .whereType<TransitResult>()
         .toList();
   }

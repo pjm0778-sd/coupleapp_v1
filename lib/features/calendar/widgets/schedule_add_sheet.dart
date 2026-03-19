@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
@@ -765,6 +766,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
   List<PlaceResult> _results = [];
   bool _loading = false;
   String? _error;
+  Timer? _debounce;
 
   Future<void> _search(String q) async {
     if (q.trim().isEmpty) {
@@ -782,6 +784,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _ctrl.dispose();
     super.dispose();
   }
@@ -839,7 +842,8 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
               ),
               onChanged: (v) {
                 setState(() {});
-                _search(v);
+                _debounce?.cancel();
+                _debounce = Timer(const Duration(milliseconds: 350), () => _search(v));
               },
               onSubmitted: _search,
             ),

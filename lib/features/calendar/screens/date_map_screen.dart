@@ -146,7 +146,7 @@ class _DateMapScreenState extends State<DateMapScreen> {
                                   userAgentPackageName: 'com.coupleduty.app',
                                 ),
                                 MarkerLayer(
-                                  markers: visible.map((s) {
+                                  markers: visible.where((s) => s.latitude != null && s.longitude != null).map((s) {
                                     final isSelected = _selected?.id == s.id;
                                     final visited = _isVisited(s);
                                     final color = _pinColor(s);

@@ -5,11 +5,13 @@ import '../../../shared/models/schedule_comment.dart';
 class ScheduleCommentsWidget extends StatelessWidget {
   final List<ScheduleComment> comments;
   final String? currentUserId;
+  final void Function(String commentId)? onDelete;
 
   const ScheduleCommentsWidget({
     super.key,
     required this.comments,
     this.currentUserId,
+    this.onDelete,
   });
 
   bool _isMine(ScheduleComment comment) {
@@ -46,7 +48,11 @@ class ScheduleCommentsWidget extends StatelessWidget {
             itemBuilder: (context, index) {
               final comment = comments[index];
               final isMine = _isMine(comment);
-              return _CommentItem(comment: comment, isMine: isMine);
+              return _CommentItem(
+                comment: comment,
+                isMine: isMine,
+                onDelete: isMine ? () => onDelete?.call(comment.id) : null,
+              );
             },
           ),
         ),
@@ -58,8 +64,13 @@ class ScheduleCommentsWidget extends StatelessWidget {
 class _CommentItem extends StatelessWidget {
   final ScheduleComment comment;
   final bool isMine;
+  final VoidCallback? onDelete;
 
-  const _CommentItem({required this.comment, required this.isMine});
+  const _CommentItem({
+    required this.comment,
+    required this.isMine,
+    this.onDelete,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -96,12 +107,10 @@ class _CommentItem extends StatelessWidget {
             ),
           ),
           // 삭제 버튼 (내 댓글만)
-          if (isMine)
+          if (isMine && onDelete != null)
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 16),
-              onPressed: () {
-                // 부모 위젯에서 처리
-              },
+              onPressed: onDelete,
               style: IconButton.styleFrom(
                 foregroundColor: AppTheme.textSecondary,
               ),

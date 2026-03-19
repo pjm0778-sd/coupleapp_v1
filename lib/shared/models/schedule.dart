@@ -128,8 +128,15 @@ class Schedule {
   };
 
   static TimeOfDay _parseTime(String time) {
-    final parts = time.split(':');
-    return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    try {
+      final parts = time.split(':');
+      if (parts.length < 2) return const TimeOfDay(hour: 0, minute: 0);
+      final hour = int.tryParse(parts[0]) ?? 0;
+      final minute = int.tryParse(parts[1]) ?? 0;
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (_) {
+      return const TimeOfDay(hour: 0, minute: 0);
+    }
   }
 
   static String? _formatTime(TimeOfDay? time) {
