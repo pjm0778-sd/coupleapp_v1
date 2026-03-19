@@ -49,6 +49,12 @@ class _DateMapScreenState extends State<DateMapScreen> {
     }
   }
 
+  bool _isVisited(Schedule s) {
+    final today = DateTime.now();
+    final date = s.endDate ?? s.startDate ?? s.date;
+    return date.isBefore(DateTime(today.year, today.month, today.day));
+  }
+
   LatLng get _initialCenter {
     if (_schedules.isEmpty) return const LatLng(37.5665, 126.9780); // 서울
     return LatLng(_schedules.first.latitude!, _schedules.first.longitude!);
@@ -101,10 +107,12 @@ class _DateMapScreenState extends State<DateMapScreen> {
                         MarkerLayer(
                           markers: _schedules.map((s) {
                             final isSelected = _selected?.id == s.id;
+                            final visited = _isVisited(s);
+                            final color = _pinColor(s);
                             return Marker(
                               point: LatLng(s.latitude!, s.longitude!),
                               width: isSelected ? 200 : 40,
-                              height: isSelected ? 64 : 40,
+                              height: isSelected ? 72 : 40,
                               alignment: Alignment.topCenter,
                               child: GestureDetector(
                                 onTap: () {
@@ -115,14 +123,70 @@ class _DateMapScreenState extends State<DateMapScreen> {
                                   );
                                 },
                                 child: isSelected
-                                    ? _SelectedMarker(schedule: s, color: _pinColor(s))
-                                    : Icon(Icons.location_on,
-                                        color: _pinColor(s), size: 40),
+                                    ? _SelectedMarker(
+                                        schedule: s,
+                                        color: color,
+                                        visited: visited,
+                                      )
+                                    : Icon(
+                                        visited
+                                            ? Icons.location_on
+                                            : Icons.flag_outlined,
+                                        color: color,
+                                        size: 40,
+                                      ),
                               ),
                             );
                           }).toList(),
                         ),
                       ],
+                    ),
+
+                    // 범례
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 6,
+                                offset: Offset(0, 2))
+                          ],
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.location_on,
+                                    size: 16, color: Colors.grey),
+                                SizedBox(width: 6),
+                                Text('다녀온 곳',
+                                    style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.flag_outlined,
+                                    size: 16, color: Colors.grey),
+                                SizedBox(width: 6),
+                                Text('계획 중',
+                                    style: TextStyle(fontSize: 12)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
 
                     // 선택된 일정 → 상세보기 버튼
@@ -177,8 +241,13 @@ class _DateMapScreenState extends State<DateMapScreen> {
 class _SelectedMarker extends StatelessWidget {
   final Schedule schedule;
   final Color color;
+  final bool visited;
 
-  const _SelectedMarker({required this.schedule, required this.color});
+  const _SelectedMarker({
+    required this.schedule,
+    required this.color,
+    required this.visited,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -211,7 +280,11 @@ class _SelectedMarker extends StatelessWidget {
             ],
           ),
         ),
-        Icon(Icons.location_on, color: color, size: 24),
+        Icon(
+          visited ? Icons.location_on : Icons.flag_outlined,
+          color: color,
+          size: 24,
+        ),
       ],
     );
   }
