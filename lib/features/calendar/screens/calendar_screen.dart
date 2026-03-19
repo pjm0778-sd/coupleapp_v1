@@ -855,7 +855,6 @@ class _CalendarCell extends StatelessWidget {
               onTap: s.isAnniversary ? null : () => onEventTap(s),
               isStart: isStart || isWeekStart,
               isEnd: isEnd || isWeekEnd,
-              showTitle: isStart || isWeekStart,
             );
           }),
 
@@ -884,7 +883,6 @@ class _EventBar extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isStart;
   final bool isEnd;
-  final bool showTitle;
 
   const _EventBar({
     required this.schedule,
@@ -892,7 +890,6 @@ class _EventBar extends StatelessWidget {
     this.onTap,
     this.isStart = true,
     this.isEnd = true,
-    this.showTitle = true,
   });
 
   @override
@@ -915,26 +912,24 @@ class _EventBar extends StatelessWidget {
       child: Container(
         height: 15,
         margin: margin,
-        padding: showTitle
-            ? const EdgeInsets.symmetric(horizontal: 3)
-            : EdgeInsets.zero,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           color: color,
           borderRadius: borderRadius,
         ),
-        child: showTitle
-            ? Text(
-                schedule.title ?? schedule.workType ?? '',
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  height: 1.5,
-                ),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              )
-            : null,
+        alignment: Alignment.center,
+        child: Text(
+          schedule.title ?? schedule.workType ?? '',
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+            height: 1.5,
+          ),
+          textAlign: TextAlign.center,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        ),
       ),
     );
   }
