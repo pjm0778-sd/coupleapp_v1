@@ -56,6 +56,7 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
             'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
         'apikey': supabaseAnonKey,
       });
+      debugPrint('[OriginInput] status: ${res.statusCode}, body: ${res.body}');
       if (res.statusCode != 200) return;
 
       final data = jsonDecode(res.body);
@@ -66,7 +67,9 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
           _showSuggestions = places.isNotEmpty;
         });
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[OriginInput] error: $e');
+    }
   }
 
   void _select(Map<String, dynamic> place) {
