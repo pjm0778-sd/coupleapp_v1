@@ -24,9 +24,10 @@ function inferCategory(naverCategory: string): string {
 async function searchPlace(
   query: string,
   defaultCategory: string,
+  exclude: Set<string> = new Set(),
 ): Promise<{ name: string; category: string; description: string; tip: string } | null> {
   try {
-    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=3&sort=comment`
+    const url = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=5&sort=comment`
     const res = await fetch(url, {
       headers: {
         'X-Naver-Client-Id': NAVER_CLIENT_ID,
@@ -35,19 +36,24 @@ async function searchPlace(
     })
     if (!res.ok) return null
     const data = await res.json()
-    const item = data.items?.[0]
-    if (!item) return null
+    const items: unknown[] = data.items ?? []
 
-    const name     = stripHtml(item.title)
-    const category = inferCategory(item.category ?? '') || defaultCategory
-    const address  = item.roadAddress || item.address || ''
+    // exclude에 없는 첫 번째 결과 선택
+    for (const item of items as Record<string, string>[]) {
+      const name = stripHtml(item.title)
+      if (exclude.has(name)) continue
 
-    return {
-      name,
-      category,
-      description: `${item.category ? item.category + ' · ' : ''}리뷰 많은 인기 장소`,
-      tip: address ? `📍 ${address}` : '네이버 지도에서 위치 확인',
+      const category = inferCategory(item.category ?? '') || defaultCategory
+      const address  = item.roadAddress || item.address || ''
+
+      return {
+        name,
+        category,
+        description: `${item.category ? item.category + ' · ' : ''}리뷰 많은 인기 장소`,
+        tip: address ? `📍 ${address}` : '네이버 지도에서 위치 확인',
+      }
     }
+    return null
   } catch (e) {
     console.error('[claude-date-spots] naver search error:', e)
     return null
@@ -85,8 +91,13 @@ Deno.serve(async (req) => {
       )
     }
 
+    const excludeParam = url.searchParams.get('exclude') ?? ''
+    const excludeSet = new Set(
+      excludeParam ? excludeParam.split(',').map(decodeURIComponent) : []
+    )
+
     const queries = mode === 'preview' ? PREVIEW_QUERIES(city) : MORE_QUERIES(city)
-    const results = await Promise.all(queries.map(q => searchPlace(q.query, q.defaultCategory)))
+    const results = await Promise.all(queries.map(q => searchPlace(q.query, q.defaultCategory, excludeSet)))
     const spots   = results.filter(Boolean)
 
     return new Response(
