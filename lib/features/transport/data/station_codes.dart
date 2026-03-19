@@ -25,7 +25,8 @@ const Map<String, String> odsayExpressBusSearchExceptions = {
 
 /// 예매 사이트 기본 URL (딥링크 실패 시 폴백)
 const String srtBookingUrl = 'https://etk.srail.kr';
-const String korailBookingUrl = 'https://www.letskorail.com';
+// letskorail.com 경로가 404 — 새 korail.com 메인 예매 페이지 사용
+const String korailBookingUrl = 'https://www.korail.com/ticket/main';
 const String busBookingUrl = 'https://www.kobus.co.kr';
 const String intercityBusBookingUrl = 'https://www.bustago.or.kr';
 
@@ -33,18 +34,30 @@ const String intercityBusBookingUrl = 'https://www.bustago.or.kr';
 // 예매 딥링크 URL 빌더
 // ────────────────────────────────────────────────
 
-/// SRT 사이트 역명 예외 (자동 변환 결과가 SRT 표기와 다를 때만)
-const Map<String, String> _srtStationNames = {
-  '수서역 (SRT)': '수서',
-  '동탄역 (SRT)': '동탄',
-  '평택지제역 (SRT)': '지제',
-  '천안아산역 (KTX/SRT)': '천안아산',
-  '여수엑스포역 (KTX)': '여수EXPO',
-  '광주송정역 (KTX)': '광주송정',
-  '김천구미역 (KTX)': '김천구미',
-  '서대구역 (KTX)': '서대구',
-  '동대구역 (KTX)': '동대구',
-  '신경주역 (KTX)': '경주',
+/// SRT 시스템 역코드 (github.com/ryanking13/SRT 기준)
+/// 앱 내 전체 역명 → etk.srail.kr dptRsStnCd / arvRsStnCd 값
+const Map<String, String> srtStationCodes = {
+  '수서역 (SRT)': '0551',
+  '동탄역 (SRT)': '0552',
+  '평택지제역 (SRT)': '0553',
+  '천안아산역 (KTX/SRT)': '0502',
+  '오송역 (KTX)': '0297',
+  '대전역 (KTX)': '0010',
+  '공주역 (KTX)': '0514',
+  '익산역 (KTX)': '0030',
+  '정읍역 (KTX)': '0033',
+  '광주송정역 (KTX)': '0036',
+  '나주역 (KTX)': '0037',
+  '목포역 (KTX)': '0041',
+  '여수엑스포역 (KTX)': '0053',
+  '순천역 (KTX)': '0051',
+  '김천구미역 (KTX)': '0507',
+  '서대구역 (KTX)': '0506',
+  '동대구역 (KTX)': '0015',
+  '신경주역 (KTX)': '0508',
+  '울산역 (KTX)': '0509',
+  '포항역 (KTX)': '0515',
+  '부산역 (KTX)': '0020',
 };
 
 /// Korail 역 코드 (앱 역명 → 4자리 코드)
@@ -94,33 +107,57 @@ const Map<String, String> korailStationCodes = {
 String _stationShortName(String station) =>
     station.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim().replaceFirst(RegExp(r'역$'), '');
 
-/// SRT 예매 URL (출발지·도착지·날짜·시간 포함)
-/// → https://etk.srail.kr 검색결과 직접 진입
+/// SRT 예매 URL — 역코드(dptRsStnCd) 기반으로 출발지·도착지 자동 입력
+/// pageId + 역코드 포함 → etk.srail.kr 검색결과 직접 진입
 String buildSrtBookingUrl({
   required String fromStation,
   required String toStation,
   required DateTime date,
   String? departureTime, // "09:30"
 }) {
-  String toSrtName(String s) => _srtStationNames[s] ?? _stationShortName(s);
-
   final dateStr =
       '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
-  // SRT는 HHMMSS (6자리) 형식 요구 — "09:30" → "093000"
+  // SRT는 HHMMSS (6자리) 형식 — "09:30" → "093000"
   final timeStr = '${(departureTime ?? '00:00').replaceAll(':', '')}00';
 
-  return Uri.https('etk.srail.kr', '/hpg/hra/01/selectScheduleList.do', {
-    'dptRsStnCdNm': toSrtName(fromStation),
-    'arvRsStnCdNm': toSrtName(toStation),
+  final fromCode = srtStationCodes[fromStation];
+  final toCode = srtStationCodes[toStation];
+
+  final params = <String, String>{
+    'pageId': 'TK0101010000',
+    'isRequest': 'Y',
     'dptDt': dateStr,
     'dptTm': timeStr,
-    'psgNum': '1',
-    'isRequest': 'Y',
-  }).toString();
+    'chtnDvCd': '1',
+    'psgInfoPerPrnb1': '1', // 어른 1명
+    'psgInfoPerPrnb2': '0',
+    'psgInfoPerPrnb3': '0',
+    'psgInfoPerPrnb4': '0',
+    'psgInfoPerPrnb5': '0',
+    'psgInfoPerPrnb6': '0',
+    'locSeatAttCd1': '000',
+    'rqSeatAttCd1': '015',
+    'trnGpCd': '109', // SRT 열차 그룹 코드
+  };
+
+  // 역코드가 있으면 코드 우선, 없으면 역명으로 폴백
+  if (fromCode != null) {
+    params['dptRsStnCd'] = fromCode;
+  } else {
+    params['dptRsStnCdNm'] = _stationShortName(fromStation);
+  }
+  if (toCode != null) {
+    params['arvRsStnCd'] = toCode;
+  } else {
+    params['arvRsStnCdNm'] = _stationShortName(toStation);
+  }
+
+  return Uri.https('etk.srail.kr', '/hpg/hra/01/selectScheduleList.do', params)
+      .toString();
 }
 
-/// KTX(Korail) 예매 URL (출발지·도착지·날짜·시간 포함)
-/// 역 코드가 없으면 null 반환 → 호출부에서 메인페이지 폴백
+/// KTX(Korail) 예매 URL
+/// korail.com 새 URL 구조를 사용 — 역코드 있으면 메인 페이지로, 없으면 null
 String? buildKorailBookingUrl({
   required String fromStation,
   required String toStation,
@@ -129,13 +166,16 @@ String? buildKorailBookingUrl({
 }) {
   final fromCode = korailStationCodes[fromStation];
   final toCode = korailStationCodes[toStation];
+  // 역코드 없으면 null → 호출부에서 korailBookingUrl(메인 페이지) 폴백
   if (fromCode == null || toCode == null) return null;
 
+  // korail.com 새 예매 페이지로 연결 (letskorail.com 경로는 404)
+  // 파라미터는 구버전 korail 앱 호환 형식 시도
   final dateStr =
       '${date.year}${date.month.toString().padLeft(2, '0')}${date.day.toString().padLeft(2, '0')}';
   final hour = (departureTime ?? '00:00').substring(0, 2);
 
-  return Uri.https('www.letskorail.com', '/ebizprd/EbizPrdTicketpr21100W.do', {
+  return Uri.https('www.korail.com', '/ticket/main', {
     'start_code': fromCode,
     'end_code': toCode,
     's_date': dateStr,
