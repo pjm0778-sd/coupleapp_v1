@@ -139,8 +139,8 @@ class MidpointService {
   }) async {
     final midLatLng = LatLng(city.lat, city.lng);
 
-    // 경로 + 장소 + 데이트 명소 병렬 조회
-    final (myRoute, partnerRoute, places, spots) = await (
+    // 경로 + 주변 장소 병렬 조회 (데이트 명소는 도시 선택 시 lazy 로딩)
+    final (myRoute, partnerRoute, places) = await (
       _fetchRoute(
         origin: myLatLng,
         originName: input.myOrigin,
@@ -160,7 +160,6 @@ class MidpointService {
         claudeEstimateMinutes: city.estimatedMinutesB,
       ),
       _fetchNearbyPlaces(midLatLng, input.theme),
-      _fetchDateSpots(city.name, input.theme),
     ).wait;
 
     return MidpointResult(
@@ -168,7 +167,7 @@ class MidpointService {
       myRoute: myRoute,
       partnerRoute: partnerRoute,
       nearbyPlaces: places,
-      dateSpots: spots,
+      dateSpots: [],
     );
   }
 
@@ -393,13 +392,25 @@ class MidpointService {
   }
 
   // ────────────────────────────────────────────────
-  // Claude 데이트 명소 추천
+  // Claude 데이트 명소 추천 (lazy 로딩용 public 메서드)
+  // preview=true: 카페·명소·음식점 각 1개 (3개)
+  // preview=false: 추가 5개 (exclude 목록 제외)
   // ────────────────────────────────────────────────
-  Future<List<DateSpot>> _fetchDateSpots(String cityName, DateTheme theme) async {
+  Future<List<DateSpot>> fetchDateSpots(
+    String cityName,
+    DateTheme theme, {
+    bool preview = true,
+    List<String> exclude = const [],
+  }) async {
     try {
+      final modeParam = preview ? 'preview' : 'more';
+      final excludeParam = exclude.isNotEmpty
+          ? '&exclude=${exclude.map(Uri.encodeComponent).join(',')}'
+          : '';
       final uri = Uri.parse(
         '$supabaseUrl/functions/v1/claude-date-spots'
-        '?city=${Uri.encodeComponent(cityName)}&theme=${theme.apiValue}',
+        '?city=${Uri.encodeComponent(cityName)}&theme=${theme.apiValue}'
+        '&mode=$modeParam$excludeParam',
       );
       final res = await http.get(uri, headers: _authHeaders());
       if (res.statusCode != 200) return [];

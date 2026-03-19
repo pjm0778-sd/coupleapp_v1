@@ -6,16 +6,29 @@ import '../models/midpoint_result.dart';
 class DateSpotsWidget extends StatelessWidget {
   final List<DateSpot> spots;
   final String cityName;
+  final bool isLoading;
+  final bool hasMore;
+  final VoidCallback? onLoadMore;
 
   const DateSpotsWidget({
     super.key,
     required this.spots,
     required this.cityName,
+    this.isLoading = false,
+    this.hasMore = false,
+    this.onLoadMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (spots.isEmpty) {
+    if (isLoading && spots.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!isLoading && spots.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 16),
@@ -28,7 +41,29 @@ class DateSpotsWidget extends StatelessWidget {
     }
 
     return Column(
-      children: spots.map((spot) => _SpotCard(spot: spot)).toList(),
+      children: [
+        ...spots.map((spot) => _SpotCard(spot: spot)),
+        if (isLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (hasMore)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: OutlinedButton.icon(
+              onPressed: onLoadMore,
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text('더 보기', style: TextStyle(fontSize: 13)),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppTheme.accent,
+                side: BorderSide(color: AppTheme.accent.withOpacity(0.5)),
+                minimumSize: const Size(double.infinity, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

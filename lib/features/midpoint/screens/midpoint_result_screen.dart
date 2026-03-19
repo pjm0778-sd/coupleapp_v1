@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/theme.dart';
 import '../models/midpoint_input.dart';
 import '../models/midpoint_result.dart';
+import '../services/midpoint_service.dart';
 import '../widgets/date_spots_widget.dart';
 import '../widgets/midpoint_city_card.dart';
 import '../widgets/midpoint_map_widget.dart';
@@ -26,7 +27,59 @@ class MidpointResultScreen extends StatefulWidget {
 class _MidpointResultScreenState extends State<MidpointResultScreen> {
   int _selectedIndex = 0;
 
+  final _service = MidpointService();
+
+  // 도시 인덱스별 데이트 명소 상태
+  final Map<int, List<DateSpot>> _dateSpots = {};
+  final Map<int, bool> _loading = {};
+  final Map<int, bool> _hasMore = {}; // true = "더 보기" 버튼 표시
+
   MidpointResult get _selected => widget.results[_selectedIndex];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreview(0);
+  }
+
+  Future<void> _loadPreview(int index) async {
+    if (_dateSpots.containsKey(index)) return; // 이미 로딩됨
+    setState(() => _loading[index] = true);
+
+    final cityName = widget.results[index].city.name;
+    final spots = await _service.fetchDateSpots(
+      cityName,
+      widget.input.theme,
+      preview: true,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _dateSpots[index] = spots;
+      _loading[index] = false;
+      _hasMore[index] = spots.isNotEmpty;
+    });
+  }
+
+  Future<void> _loadMore(int index) async {
+    setState(() => _loading[index] = true);
+
+    final cityName = widget.results[index].city.name;
+    final existing = _dateSpots[index] ?? [];
+    final more = await _service.fetchDateSpots(
+      cityName,
+      widget.input.theme,
+      preview: false,
+      exclude: existing.map((s) => s.name).toList(),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _dateSpots[index] = [...existing, ...more];
+      _loading[index] = false;
+      _hasMore[index] = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +121,10 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
                 itemBuilder: (_, i) => MidpointCityCard(
                   result: widget.results[i],
                   selected: _selectedIndex == i,
-                  onTap: () => setState(() => _selectedIndex = i),
+                  onTap: () {
+                    setState(() => _selectedIndex = i);
+                    _loadPreview(i);
+                  },
                 ),
               ),
             ),
@@ -151,16 +207,19 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary)),
-                if (_selected.dateSpots.isNotEmpty)
-                  Text('${_selected.dateSpots.length}곳',
+                if ((_dateSpots[_selectedIndex]?.length ?? 0) > 0)
+                  Text('${_dateSpots[_selectedIndex]!.length}곳',
                       style: const TextStyle(
                           fontSize: 13, color: AppTheme.textSecondary)),
               ],
             ),
             const SizedBox(height: 10),
             DateSpotsWidget(
-              spots: _selected.dateSpots,
+              spots: _dateSpots[_selectedIndex] ?? [],
               cityName: _selected.city.name,
+              isLoading: _loading[_selectedIndex] == true,
+              hasMore: _hasMore[_selectedIndex] == true,
+              onLoadMore: () => _loadMore(_selectedIndex),
             ),
           ],
         ),
