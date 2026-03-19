@@ -65,7 +65,7 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.results.length,
                 itemBuilder: (_, i) => MidpointCityCard(
-                  city: widget.results[i].city,
+                  result: widget.results[i],
                   selected: _selectedIndex == i,
                   onTap: () => setState(() => _selectedIndex = i),
                 ),

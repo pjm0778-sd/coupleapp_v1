@@ -3,19 +3,22 @@ import '../../../core/theme.dart';
 import '../models/midpoint_result.dart';
 
 class MidpointCityCard extends StatelessWidget {
-  final MidpointCity city;
+  final MidpointResult result;
   final bool selected;
   final VoidCallback onTap;
 
   const MidpointCityCard({
     super.key,
-    required this.city,
+    required this.result,
     required this.selected,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final myMin = result.myRoute.durationMinutes;
+    final partnerMin = result.partnerRoute.durationMinutes;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -35,7 +38,7 @@ class MidpointCityCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              city.name,
+              result.city.name,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
@@ -43,15 +46,11 @@ class MidpointCityCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            _TimeRow(label: '나', minutes: city.estimatedMinutesA),
+            _TimeRow(label: '나', minutes: myMin),
             const SizedBox(height: 4),
-            _TimeRow(label: '상대', minutes: city.estimatedMinutesB),
+            _TimeRow(label: '상대', minutes: partnerMin),
             const SizedBox(height: 8),
-            // 이동시간 균형 표시
-            _BalanceIndicator(
-              a: city.estimatedMinutesA,
-              b: city.estimatedMinutesB,
-            ),
+            _BalanceIndicator(a: myMin, b: partnerMin),
           ],
         ),
       ),
