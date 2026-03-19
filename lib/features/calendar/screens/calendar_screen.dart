@@ -772,13 +772,21 @@ class _CalendarCell extends StatelessWidget {
       numDecoration = const BoxDecoration();
     }
 
-    // 공휴일명 (공휴일 타입만, 첫 번째)
-    final publicHoliday =
-        holidays.where((h) => h.type == HolidayType.publicHoliday).firstOrNull;
-
     // 비기념일 일정만 바로 표시 (기념일은 별도 핑크 바)
     final nonAnniv = events.where((s) => !s.isAnniversary).toList();
     final anniv = events.where((s) => s.isAnniversary).toList();
+    // 연속 일정(다중일)을 맨 앞으로 정렬 → 단일 이벤트에 의해 바가 끊기지 않도록
+    nonAnniv.sort((a, b) {
+      final aStart = a.startDate ?? a.date;
+      final aEnd = a.endDate ?? aStart;
+      final bStart = b.startDate ?? b.date;
+      final bEnd = b.endDate ?? bStart;
+      final aMulti = !isSameDay(aStart, aEnd);
+      final bMulti = !isSameDay(bStart, bEnd);
+      if (aMulti && !bMulti) return -1;
+      if (!aMulti && bMulti) return 1;
+      return 0;
+    });
     final displayEvents = [...anniv, ...nonAnniv]; // 기념일을 맨 위에
     final visibleEvents = displayEvents.take(3).toList();
     final overflowCount = displayEvents.length - 3;
@@ -812,23 +820,6 @@ class _CalendarCell extends StatelessWidget {
             ),
           ),
 
-          // 공휴일명
-          if (publicHoliday != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              child: Text(
-                publicHoliday.name.length > 4
-                    ? publicHoliday.name.substring(0, 4)
-                    : publicHoliday.name,
-                style: TextStyle(
-                  fontSize: 7,
-                  color: isSelected ? Colors.white70 : publicHoliday.color,
-                ),
-                overflow: TextOverflow.clip,
-                textAlign: TextAlign.center,
-              ),
-            ),
-
           // 일정 바들
           ...visibleEvents.map((s) {
             final normDay = DateTime(day.year, day.month, day.day);
@@ -838,16 +829,30 @@ class _CalendarCell extends StatelessWidget {
             final normEnd = DateTime(end.year, end.month, end.day);
             final isStart = normDay == normStart;
             final isEnd = normDay == normEnd;
-            // 주 경계: 이 셀이 주의 첫째 날(월요일)이면 시각적 시작으로 처리
+            // 주 경계: 월요일=행 시작, 일요일=행 끝
             final isWeekStart = day.weekday == DateTime.monday;
-            // 주 경계: 이 셀이 주의 마지막 날(일요일)이면 시각적 끝으로 처리
             final isWeekEnd = day.weekday == DateTime.sunday;
+
+            // 이 주 행에서 보이는 구간의 중앙 셀만 제목 표시
+            final weekRowStart = normDay.subtract(
+              Duration(days: normDay.weekday - 1), // 이번 주 월요일
+            );
+            final weekRowEnd = weekRowStart.add(const Duration(days: 6));
+            final visStart =
+                normStart.isAfter(weekRowStart) ? normStart : weekRowStart;
+            final visEnd =
+                normEnd.isBefore(weekRowEnd) ? normEnd : weekRowEnd;
+            final spanDays = visEnd.difference(visStart).inDays + 1;
+            final titleDay = visStart.add(Duration(days: spanDays ~/ 2));
+            final showTitle = normDay == titleDay;
+
             return _EventBar(
               schedule: s,
               color: s.isAnniversary ? const Color(0xFFFF4081) : getColor(s),
               onTap: s.isAnniversary ? null : () => onEventTap(s),
               isStart: isStart || isWeekStart,
               isEnd: isEnd || isWeekEnd,
+              showTitle: showTitle,
             );
           }),
 
@@ -876,6 +881,7 @@ class _EventBar extends StatelessWidget {
   final VoidCallback? onTap;
   final bool isStart;
   final bool isEnd;
+  final bool showTitle;
 
   const _EventBar({
     required this.schedule,
@@ -883,6 +889,7 @@ class _EventBar extends StatelessWidget {
     this.onTap,
     this.isStart = true,
     this.isEnd = true,
+    this.showTitle = true,
   });
 
   @override
@@ -911,18 +918,20 @@ class _EventBar extends StatelessWidget {
           borderRadius: borderRadius,
         ),
         alignment: Alignment.center,
-        child: Text(
-          schedule.title ?? schedule.workType ?? '',
-          style: const TextStyle(
-            fontSize: 10,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
-          ),
-          textAlign: TextAlign.center,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
+        child: showTitle
+            ? Text(
+                schedule.title ?? schedule.workType ?? '',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              )
+            : const SizedBox.shrink(),
       ),
     );
   }
