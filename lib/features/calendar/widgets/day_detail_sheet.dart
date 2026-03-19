@@ -322,7 +322,60 @@ class _ScheduleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final timeStr = _buildTimeStr();
 
-    return Container(
+    return Dismissible(
+      key: ValueKey(schedule.id),
+      direction: DismissDirection.horizontal,
+      // 오른쪽 스와이프 → 수정
+      background: _swipeBg(
+        alignment: Alignment.centerLeft,
+        color: const Color(0xFF2196F3),
+        icon: Icons.edit_outlined,
+        label: '수정',
+      ),
+      // 왼쪽 스와이프 → 삭제
+      secondaryBackground: _swipeBg(
+        alignment: Alignment.centerRight,
+        color: Colors.red,
+        icon: Icons.delete_outline,
+        label: '삭제',
+      ),
+      confirmDismiss: (direction) async {
+        if (direction == DismissDirection.startToEnd) {
+          onEdit();
+          return false; // 아이템 유지
+        } else {
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('일정 삭제'),
+              content: const Text('이 일정을 삭제할까요?'),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('취소'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('삭제'),
+                ),
+              ],
+            ),
+          );
+          return confirmed ?? false;
+        }
+      },
+      onDismissed: (direction) {
+        if (direction == DismissDirection.endToStart) {
+          onDelete();
+        }
+      },
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.surface,
@@ -404,13 +457,43 @@ class _ScheduleRow extends StatelessWidget {
           ],
         ),
       ),
+    ),  // Container
+    ); // Dismissible
+  }
+
+  Widget _swipeBg({
+    required Alignment alignment,
+    required Color color,
+    required IconData icon,
+    required String label,
+  }) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 2),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 
   String _buildTimeStr() {
     if (schedule.startTime == null && schedule.endTime == null) return '종일';
     if (schedule.startTime == null) return '';
-    final fmt = (TimeOfDay t) =>
+    String fmt(TimeOfDay t) =>
         '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
     if (schedule.endTime == null) return fmt(schedule.startTime!);
     return '${fmt(schedule.startTime!)} ~ ${fmt(schedule.endTime!)}';

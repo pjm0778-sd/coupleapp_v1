@@ -588,18 +588,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '${_focusedMonth.year}년 ${_focusedMonth.month}월',
+                '${_focusedMonth.year}년',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 2),
               const Icon(Icons.arrow_drop_down),
             ],
           ),
         ),
-        centerTitle: true,
+        centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.map_outlined, color: AppTheme.primary),
@@ -639,9 +639,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
       body: Column(
         children: [
-          _buildTableCalendar(),
-          const Divider(height: 1),
           if (_isLoading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // TableCalendar 내부: 헤더 ~52px + 요일행 32px = 84px
+                const innerFixed = 52.0 + 32.0;
+                final rowH = ((constraints.maxHeight - innerFixed) / 6)
+                    .clamp(60.0, 110.0);
+                return _buildTableCalendar(rowHeight: rowH);
+              },
+            ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -652,7 +661,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildTableCalendar() {
+  Widget _buildTableCalendar({double rowHeight = 86}) {
     return TableCalendar<Schedule>(
       locale: 'ko_KR',
       firstDay: DateTime(2020, 1, 1),
@@ -660,7 +669,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       focusedDay: _focusedMonth,
       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
       eventLoader: _getEventsForDay,
-      rowHeight: 86,
+      rowHeight: rowHeight,
       daysOfWeekHeight: 32,
       onDaySelected: (selectedDay, focusedDay) {
         setState(() {
@@ -828,13 +837,27 @@ class _CalendarCell extends StatelessWidget {
             ),
 
           // 일정 바들
-          ...visibleEvents.map(
-            (s) => _EventBar(
+          ...visibleEvents.map((s) {
+            final normDay = DateTime(day.year, day.month, day.day);
+            final start = s.startDate ?? s.date;
+            final end = s.endDate ?? start;
+            final normStart = DateTime(start.year, start.month, start.day);
+            final normEnd = DateTime(end.year, end.month, end.day);
+            final isStart = normDay == normStart;
+            final isEnd = normDay == normEnd;
+            // 주 경계: 이 셀이 주의 첫째 날(월요일)이면 시각적 시작으로 처리
+            final isWeekStart = day.weekday == DateTime.monday;
+            // 주 경계: 이 셀이 주의 마지막 날(일요일)이면 시각적 끝으로 처리
+            final isWeekEnd = day.weekday == DateTime.sunday;
+            return _EventBar(
               schedule: s,
               color: s.isAnniversary ? const Color(0xFFFF4081) : getColor(s),
               onTap: s.isAnniversary ? null : () => onEventTap(s),
-            ),
-          ),
+              isStart: isStart || isWeekStart,
+              isEnd: isEnd || isWeekEnd,
+              showTitle: isStart || isWeekStart,
+            );
+          }),
 
           // +N 더보기
           if (overflowCount > 0)
@@ -859,36 +882,59 @@ class _EventBar extends StatelessWidget {
   final Schedule schedule;
   final Color color;
   final VoidCallback? onTap;
+  final bool isStart;
+  final bool isEnd;
+  final bool showTitle;
 
   const _EventBar({
     required this.schedule,
     required this.color,
     this.onTap,
+    this.isStart = true,
+    this.isEnd = true,
+    this.showTitle = true,
   });
 
   @override
   Widget build(BuildContext context) {
+    final margin = EdgeInsets.fromLTRB(
+      isStart ? 2 : 0,
+      1,
+      isEnd ? 2 : 0,
+      0,
+    );
+    final borderRadius = BorderRadius.only(
+      topLeft: isStart ? const Radius.circular(3) : Radius.zero,
+      bottomLeft: isStart ? const Radius.circular(3) : Radius.zero,
+      topRight: isEnd ? const Radius.circular(3) : Radius.zero,
+      bottomRight: isEnd ? const Radius.circular(3) : Radius.zero,
+    );
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         height: 15,
-        margin: const EdgeInsets.fromLTRB(2, 1, 2, 0),
-        padding: const EdgeInsets.symmetric(horizontal: 3),
+        margin: margin,
+        padding: showTitle
+            ? const EdgeInsets.symmetric(horizontal: 3)
+            : EdgeInsets.zero,
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: borderRadius,
         ),
-        child: Text(
-          schedule.title ?? schedule.workType ?? '',
-          style: const TextStyle(
-            fontSize: 10,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-            height: 1.5,
-          ),
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
+        child: showTitle
+            ? Text(
+                schedule.title ?? schedule.workType ?? '',
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w500,
+                  height: 1.5,
+                ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              )
+            : null,
       ),
     );
   }

@@ -172,7 +172,7 @@ class _DateMapScreenState extends State<DateMapScreen> {
                                             : Icon(
                                                 visited
                                                     ? Icons.location_on
-                                                    : Icons.flag_outlined,
+                                                    : Icons.flag,
                                                 color: color,
                                                 size: 40,
                                               ),
@@ -218,7 +218,7 @@ class _DateMapScreenState extends State<DateMapScreen> {
                                     Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Icon(Icons.flag_outlined,
+                                        Icon(Icons.flag,
                                             size: 16, color: Colors.grey),
                                         SizedBox(width: 6),
                                         Text('계획 중',
@@ -426,7 +426,7 @@ class _SelectedMarker extends StatelessWidget {
           ),
         ),
         Icon(
-          visited ? Icons.location_on : Icons.flag_outlined,
+          visited ? Icons.location_on : Icons.flag,
           color: color,
           size: 24,
         ),
