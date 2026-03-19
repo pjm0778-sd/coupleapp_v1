@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
+import '../services/place_search_service.dart';
 
 class ScheduleAddSheet extends StatefulWidget {
   final DateTime initialDate;
@@ -68,6 +69,8 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
   late String? _category;
   late String _location;
   late String _note;
+  late double? _latitude;
+  late double? _longitude;
 
   static const _colorPalette = <String, Color>{
     '#E53935': Color(0xFFE53935),
@@ -109,6 +112,8 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
       _category = s.category;
       _location = s.location ?? '';
       _note = s.note ?? '';
+      _latitude = s.latitude;
+      _longitude = s.longitude;
     } else {
       _ownerType = 'me';
       _isAllDay = true;
@@ -120,9 +125,28 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
       _category = null;
       _location = '';
       _note = '';
+      _latitude = null;
+      _longitude = null;
     }
     _locationController.text = _location;
     _noteController.text = _note;
+  }
+
+  Future<void> _openPlaceSearch() async {
+    final result = await showModalBottomSheet<PlaceResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _PlaceSearchSheet(),
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _location = result.name;
+        _latitude = result.lat;
+        _longitude = result.lng;
+        _locationController.text = result.name;
+      });
+    }
   }
 
   @override
@@ -164,6 +188,8 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
             note: _note.trim().isEmpty ? null : _note.trim(),
             ownerType: _ownerType,
             isDate: _ownerType == 'couple',
+            latitude: _latitude,
+            longitude: _longitude,
           )
         : Schedule(
             id: '',
@@ -182,6 +208,8 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
             ownerType: _ownerType,
             isDate: _ownerType == 'couple',
             isAnniversary: false,
+            latitude: _latitude,
+            longitude: _longitude,
           );
 
     Navigator.pop(context, schedule);
@@ -420,14 +448,50 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                   // 7. 장소
                   _sectionLabel('장소 (선택)'),
                   const SizedBox(height: 8),
-                  TextField(
-                    controller: _locationController,
-                    onChanged: (v) => _location = v,
-                    decoration: _inputDecoration(
-                      '장소를 입력하세요',
-                      prefixIcon: Icons.location_on_outlined,
+                  GestureDetector(
+                    onTap: _openPlaceSearch,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppTheme.border),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined,
+                              size: 18, color: AppTheme.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _location.isEmpty ? '장소 검색' : _location,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _location.isEmpty
+                                    ? AppTheme.textSecondary
+                                    : AppTheme.textPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_location.isNotEmpty)
+                            GestureDetector(
+                              onTap: () => setState(() {
+                                _location = '';
+                                _latitude = null;
+                                _longitude = null;
+                                _locationController.clear();
+                              }),
+                              child: const Icon(Icons.close,
+                                  size: 16, color: AppTheme.textSecondary),
+                            )
+                          else
+                            const Icon(Icons.search,
+                                size: 18, color: AppTheme.textSecondary),
+                        ],
+                      ),
                     ),
-                    style: const TextStyle(fontSize: 14),
                   ),
                   const SizedBox(height: 16),
 
@@ -681,6 +745,164 @@ class _DateTimeRow extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ────────────────────────────────────────────────────
+// 장소 검색 바텀시트
+// ────────────────────────────────────────────────────
+class _PlaceSearchSheet extends StatefulWidget {
+  const _PlaceSearchSheet();
+
+  @override
+  State<_PlaceSearchSheet> createState() => _PlaceSearchSheetState();
+}
+
+class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
+  final _service = PlaceSearchService();
+  final _ctrl = TextEditingController();
+  List<PlaceResult> _results = [];
+  bool _loading = false;
+  String? _error;
+
+  Future<void> _search(String q) async {
+    if (q.trim().isEmpty) {
+      setState(() => _results = []);
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      final r = await _service.search(q);
+      if (mounted) setState(() { _results = r; _loading = false; });
+    } catch (e) {
+      if (mounted) setState(() { _error = '검색 실패: $e'; _loading = false; });
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // 핸들
+          const SizedBox(height: 10),
+          Center(
+            child: Container(
+              width: 36, height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 검색창
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _ctrl,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: '장소명 또는 주소를 입력하세요',
+                hintStyle: const TextStyle(
+                    color: AppTheme.textSecondary, fontSize: 14),
+                prefixIcon: const Icon(Icons.search,
+                    size: 20, color: AppTheme.textSecondary),
+                suffixIcon: _ctrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          _ctrl.clear();
+                          setState(() => _results = []);
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppTheme.surface,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none),
+                contentPadding:
+                    const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onChanged: (v) {
+                setState(() {});
+                _search(v);
+              },
+              onSubmitted: _search,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Divider(height: 1),
+          // 결과
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? Center(
+                        child: Text(_error!,
+                            style: const TextStyle(
+                                color: AppTheme.textSecondary)))
+                    : _results.isEmpty
+                        ? Center(
+                            child: Text(
+                              _ctrl.text.isEmpty
+                                  ? '검색어를 입력하세요'
+                                  : '검색 결과가 없어요',
+                              style: const TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 14),
+                            ),
+                          )
+                        : ListView.separated(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            itemCount: _results.length,
+                            separatorBuilder: (_, __) =>
+                                const Divider(height: 1, indent: 56),
+                            itemBuilder: (ctx, i) {
+                              final p = _results[i];
+                              return ListTile(
+                                leading: Container(
+                                  width: 36,
+                                  height: 36,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius:
+                                        BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                      Icons.location_on_outlined,
+                                      size: 18,
+                                      color: AppTheme.primary),
+                                ),
+                                title: Text(p.name,
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600)),
+                                subtitle: Text(p.address,
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary)),
+                                onTap: () => Navigator.pop(ctx, p),
+                              );
+                            },
+                          ),
+          ),
+        ],
+      ),
     );
   }
 }

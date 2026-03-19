@@ -29,6 +29,8 @@ class Schedule {
   final bool isGoogleCalendar; // 구글 캘린더 연동 여부
   /// 일정 소유자: 'me' | 'partner' | 'couple'
   final String ownerType;
+  final double? latitude;
+  final double? longitude;
 
   const Schedule({
     required this.id,
@@ -54,6 +56,8 @@ class Schedule {
     this.isOcr = false,
     this.isGoogleCalendar = false,
     this.ownerType = 'me',
+    this.latitude,
+    this.longitude,
   });
 
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
@@ -92,6 +96,8 @@ class Schedule {
     // owner_type 없으면 is_date=true → couple, 나머지 → me (하위 호환)
     ownerType: map['owner_type'] as String?
         ?? ((map['is_date'] as bool? ?? false) ? 'couple' : 'me'),
+    latitude: (map['latitude'] as num?)?.toDouble(),
+    longitude: (map['longitude'] as num?)?.toDouble(),
   );
 
   Map<String, dynamic> toMap() => {
@@ -117,6 +123,8 @@ class Schedule {
     'is_ocr': isOcr,
     'is_google_calendar': isGoogleCalendar,
     'owner_type': ownerType,
+    'latitude': latitude,
+    'longitude': longitude,
   };
 
   static TimeOfDay _parseTime(String time) {
@@ -153,6 +161,8 @@ class Schedule {
     bool? isOcr,
     bool? isGoogleCalendar,
     String? ownerType,
+    double? latitude,
+    double? longitude,
   }) =>
       Schedule(
       id: id ?? this.id,
@@ -178,5 +188,7 @@ class Schedule {
       isOcr: isOcr ?? this.isOcr,
       isGoogleCalendar: isGoogleCalendar ?? this.isGoogleCalendar,
       ownerType: ownerType ?? this.ownerType,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
 }
