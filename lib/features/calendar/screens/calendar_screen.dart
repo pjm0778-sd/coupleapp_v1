@@ -827,11 +827,10 @@ class _CalendarCell extends StatelessWidget {
             final end = s.endDate ?? start;
             final normStart = DateTime(start.year, start.month, start.day);
             final normEnd = DateTime(end.year, end.month, end.day);
+
+            // 진짜 시작/끝일 때만 모서리 처리 → 주 경계에서 edge-to-edge로 연결됨
             final isStart = normDay == normStart;
             final isEnd = normDay == normEnd;
-            // 주 경계: 월요일=행 시작, 일요일=행 끝
-            final isWeekStart = day.weekday == DateTime.monday;
-            final isWeekEnd = day.weekday == DateTime.sunday;
 
             // 이 주 행에서 보이는 구간의 중앙 셀만 제목 표시
             final weekRowStart = normDay.subtract(
@@ -850,8 +849,8 @@ class _CalendarCell extends StatelessWidget {
               schedule: s,
               color: s.isAnniversary ? const Color(0xFFFF4081) : getColor(s),
               onTap: s.isAnniversary ? null : () => onEventTap(s),
-              isStart: isStart || isWeekStart,
-              isEnd: isEnd || isWeekEnd,
+              isStart: isStart,
+              isEnd: isEnd,
               showTitle: showTitle,
             );
           }),
@@ -869,6 +868,25 @@ class _CalendarCell extends StatelessWidget {
                 textAlign: TextAlign.right,
               ),
             ),
+
+          // 공휴일명 — 셀 하단에 표시 (바 연속성 유지)
+          if (holidays.any((h) => h.type == HolidayType.publicHoliday))
+            Builder(builder: (context) {
+              final h = holidays
+                  .firstWhere((h) => h.type == HolidayType.publicHoliday);
+              return Padding(
+                padding: const EdgeInsets.only(top: 1, left: 2, right: 2),
+                child: Text(
+                  h.name.length > 4 ? h.name.substring(0, 4) : h.name,
+                  style: TextStyle(
+                    fontSize: 7,
+                    color: isSelected ? Colors.white70 : h.color,
+                  ),
+                  overflow: TextOverflow.clip,
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }),
         ],
       ),
     );
