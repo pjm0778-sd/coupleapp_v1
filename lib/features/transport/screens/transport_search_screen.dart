@@ -1,4 +1,3 @@
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme.dart';
@@ -43,7 +42,7 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
     _to = widget.toStation;
     _date = widget.initialDate ?? DateTime.now();
     _tabController = TabController(length: 3, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _search());
+    // 자동 검색 제거 — 유저가 검색 버튼을 눌러야 조회됨
   }
 
   @override
@@ -1183,39 +1182,30 @@ class _TransitCard extends StatelessWidget {
     return result.isIntercityBus ? intercityBusBookingUrl : busBookingUrl;
   }
 
-  /// 앱이 설치돼 있으면 앱으로, 없으면 브라우저로 예매 페이지 열기.
-  ///
-  /// Android: Intent URL의 browser_fallback_url 메커니즘 활용
-  ///   → 앱 미설치 시 OS가 자동으로 browser_fallback_url을 브라우저로 엶
-  /// iOS: externalApplication 모드로 웹 URL 실행
-  ///   → SRT/Korail 앱이 Universal Links 등록 시 자동으로 앱이 열림
+  /// 예매 페이지 열기: 앱 설치 확인 후 앱으로, 미설치 시 브라우저로 이동
   Future<void> _openBooking() async {
     final webUrl = _bookingUrl();
 
-    if (Platform.isAndroid) {
-      // 기차(SRT/KTX)일 때 Intent URL로 앱 먼저 시도
-      // browser_fallback_url: 앱 미설치 시 Android OS가 자동으로 브라우저로 열어줌
-      // canLaunchUrl은 intent:// scheme에서 신뢰할 수 없으므로 바로 launchUrl 호출
-      final package = result.type == TransitType.srt
-          ? 'com.srail.www'
-          : result.isRailway
-              ? 'com.korail.talk'
-              : null;
+    // 앱 custom scheme 시도 (설치돼 있으면 앱으로 열림)
+    final appScheme = result.type == TransitType.srt
+        ? 'korail' // SRT 앱 scheme (패키지 com.srail.www)
+        : result.type == TransitType.ktx || result.isRailway
+            ? 'korailapp'
+            : null;
 
-      if (package != null) {
-        final fallback = Uri.encodeComponent(webUrl);
-        final intentUri = Uri.parse(
-          'intent://#Intent;package=$package;'
-          'S.browser_fallback_url=$fallback;end',
-        );
-        try {
-          final ok = await launchUrl(intentUri);
-          if (ok) return;
-        } catch (_) {}
-      }
+    if (appScheme != null) {
+      final appUri = Uri.parse('$appScheme://');
+      try {
+        if (await canLaunchUrl(appUri)) {
+          // 앱이 설치돼 있음 — 앱 실행 후 웹 URL도 함께 열기
+          await launchUrl(Uri.parse(webUrl),
+              mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (_) {}
     }
 
-    // iOS 또는 Android fallback: 웹 URL로 브라우저 열기
+    // 앱 미설치 or 버스 계열: 브라우저로 웹 예매 페이지 열기
     await _launchUrl(webUrl);
   }
 
@@ -1241,13 +1231,11 @@ class _TransitCard extends StatelessWidget {
 
 Future<void> _launchUrl(String url) async {
   final uri = Uri.parse(url);
-  // launchUrl은 실패 시 throw가 아닌 false 반환 → 반환값 체크 필수
-  try {
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok) {
-      await launchUrl(uri, mode: LaunchMode.inAppWebView);
-    }
-  } catch (_) {
+  // 외부 브라우저 우선, 실패 시 인앱 웹뷰로 폴백
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  } else {
+    // 최후 수단: 인앱 웹뷰
     await launchUrl(uri, mode: LaunchMode.inAppWebView);
   }
 }
