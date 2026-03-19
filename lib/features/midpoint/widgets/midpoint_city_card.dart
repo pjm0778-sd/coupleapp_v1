@@ -37,6 +37,23 @@ class MidpointCityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 추천 유형 라벨
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${result.type.icon} ${result.type.label}',
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.accent,
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
             Text(
               result.city.name,
               style: TextStyle(

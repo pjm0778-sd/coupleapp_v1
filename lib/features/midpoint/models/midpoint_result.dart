@@ -155,6 +155,31 @@ class NearbyPlace {
   }
 }
 
+// ── 중간지점 추천 유형 ────────────────────────────
+enum MidpointType {
+  geographic, // 지리적 중간
+  fastest,    // 최단 시간
+  dateSpot,   // 데이트 추천
+}
+
+extension MidpointTypeLabel on MidpointType {
+  String get label {
+    switch (this) {
+      case MidpointType.geographic: return '지리적 중간';
+      case MidpointType.fastest:    return '최단 시간';
+      case MidpointType.dateSpot:   return '데이트 추천';
+    }
+  }
+
+  String get icon {
+    switch (this) {
+      case MidpointType.geographic: return '📍';
+      case MidpointType.fastest:    return '⚡';
+      case MidpointType.dateSpot:   return '💑';
+    }
+  }
+}
+
 // ── 최종 결과 ─────────────────────────────────────
 class MidpointResult {
   final MidpointCity city;
@@ -162,6 +187,7 @@ class MidpointResult {
   final RouteInfo partnerRoute;
   final List<NearbyPlace> nearbyPlaces;
   final List<DateSpot> dateSpots;
+  final MidpointType type;
 
   const MidpointResult({
     required this.city,
@@ -169,5 +195,6 @@ class MidpointResult {
     required this.partnerRoute,
     required this.nearbyPlaces,
     this.dateSpots = const [],
+    this.type = MidpointType.geographic,
   });
 }

@@ -13,6 +13,7 @@ import '../models/midpoint_result.dart'
         DateSpot,
         MidpointCity,
         MidpointResult,
+        MidpointType,
         NearbyPlace,
         RouteInfo,
         RouteStep,
@@ -42,14 +43,14 @@ class MidpointService {
       throw Exception('출발지 좌표를 찾을 수 없습니다. 주소를 다시 확인해주세요.');
     }
 
-    // 2. 수학 필터: 이동시간 균형이 좋은 후보 도시 8개 선별
+    // 2. 후보 도시 선별 (균형 기준 상위 10개)
     final candidates = _filterCandidateCities(myLL, partnerLL);
 
     // 3. 후보 도시별 실제 경로 시간 병렬 조회
     final routePairs = await Future.wait(
       candidates.map((city) async {
         final cityLL = LatLng(city.lat, city.lng);
-        final results = await Future.wait([
+        final routes = await Future.wait([
           _fetchRoute(
             origin: myLL,
             originName: input.myOrigin,
@@ -67,49 +68,46 @@ class MidpointService {
             carType: input.partnerCarType,
           ),
         ]);
-        return (city: city, myRoute: results[0], partnerRoute: results[1]);
+        return (city: city, myRoute: routes[0], partnerRoute: routes[1]);
       }),
     );
 
-    // 4. 시간 균형 기준 정렬: |내 시간 - 상대 시간| 작을수록, 합계 작을수록
-    final sorted = routePairs.toList()
-      ..sort((a, b) {
-        final diffA = (a.myRoute.durationMinutes - a.partnerRoute.durationMinutes).abs();
-        final diffB = (b.myRoute.durationMinutes - b.partnerRoute.durationMinutes).abs();
-        if (diffA != diffB) return diffA.compareTo(diffB);
-        return (a.myRoute.durationMinutes + a.partnerRoute.durationMinutes)
-            .compareTo(b.myRoute.durationMinutes + b.partnerRoute.durationMinutes);
-      });
-
-    // 5. 상위 3개 선택
-    final top3 = sorted.take(3).toList();
+    // 4. 3가지 기준으로 각각 최적 도시 선택 (중복 제거)
+    final midLL = LatLng(
+      (myLL.latitude + partnerLL.latitude) / 2,
+      (myLL.longitude + partnerLL.longitude) / 2,
+    );
+    final top3 = _pickTop3(routePairs, midLL);
     if (top3.isEmpty) throw Exception('중간지점을 찾을 수 없습니다.');
 
-    // 6. Claude로 도시 설명 생성 (시간 추정 없음, Haiku 사용)
+    // 5. Claude로 도시 설명 생성
     final descriptions = await _fetchDescriptions(
-      top3.map((r) => r.city.name).toList(),
+      top3.map((r) => r.$1.city.name).toList(),
       input.theme,
     );
 
-    // 7. 주변 장소 + 최종 결과 조립
+    // 6. 주변 장소 + 최종 결과 조립
     final results = await Future.wait(
       top3.map((r) async {
-        final cityLL = LatLng(r.city.lat, r.city.lng);
+        final pair = r.$1;
+        final type = r.$2;
+        final cityLL = LatLng(pair.city.lat, pair.city.lng);
         final places = await _fetchNearbyPlaces(cityLL, input.theme);
 
         return MidpointResult(
           city: MidpointCity(
-            name: r.city.name,
-            reason: descriptions[r.city.name] ?? '${input.theme.label}에 어울리는 도시입니다.',
-            lat: r.city.lat,
-            lng: r.city.lng,
-            estimatedMinutesA: r.myRoute.durationMinutes,
-            estimatedMinutesB: r.partnerRoute.durationMinutes,
+            name: pair.city.name,
+            reason: descriptions[pair.city.name] ?? '${input.theme.label}에 어울리는 도시입니다.',
+            lat: pair.city.lat,
+            lng: pair.city.lng,
+            estimatedMinutesA: pair.myRoute.durationMinutes,
+            estimatedMinutesB: pair.partnerRoute.durationMinutes,
           ),
-          myRoute: r.myRoute,
-          partnerRoute: r.partnerRoute,
+          myRoute: pair.myRoute,
+          partnerRoute: pair.partnerRoute,
           nearbyPlaces: places,
           dateSpots: [],
+          type: type,
         );
       }),
     );
@@ -118,7 +116,7 @@ class MidpointService {
   }
 
   // ────────────────────────────────────────────────
-  // 수학 필터: 이동시간 균형 기준 후보 도시 선별
+  // 수학 필터: 균형 기준 상위 10개 후보 선별
   // ────────────────────────────────────────────────
   List<KoreanCity> _filterCandidateCities(LatLng myLL, LatLng partnerLL) {
     final scored = kKoreanCities.map((city) {
@@ -127,13 +125,77 @@ class MidpointService {
       final distB  = _haversineKm(partnerLL, cityLL);
       final total  = distA + distB;
       if (total == 0) return null;
-      // 균형 점수: 0에 가까울수록 두 사람 거리가 같음
       final balance = (distA - distB).abs() / total;
       return (city: city, balance: balance, total: total);
     }).whereType<({KoreanCity city, double balance, double total})>().toList();
 
     scored.sort((a, b) => a.balance.compareTo(b.balance));
-    return scored.take(8).map((r) => r.city).toList();
+    return scored.take(10).map((r) => r.city).toList();
+  }
+
+  // ────────────────────────────────────────────────
+  // 3가지 기준으로 최적 도시 선택 (중복 제거)
+  // ────────────────────────────────────────────────
+  // 반환: [(routePair, MidpointType), ...]
+  List<(({KoreanCity city, RouteInfo myRoute, RouteInfo partnerRoute}), MidpointType)>
+      _pickTop3(
+    List<({KoreanCity city, RouteInfo myRoute, RouteInfo partnerRoute})> pairs,
+    LatLng geoMid,
+  ) {
+    final used = <String>{};
+    final result = <(({KoreanCity city, RouteInfo myRoute, RouteInfo partnerRoute}), MidpointType)>[];
+
+    // ① 지리적 중간: 지리적 중간점과 가장 가까운 도시
+    final byGeo = [...pairs]..sort((a, b) {
+        final dA = _haversineKm(geoMid, LatLng(a.city.lat, a.city.lng));
+        final dB = _haversineKm(geoMid, LatLng(b.city.lat, b.city.lng));
+        return dA.compareTo(dB);
+      });
+    final geo = byGeo.firstOrNull;
+    if (geo != null) {
+      used.add(geo.city.name);
+      result.add((geo, MidpointType.geographic));
+    }
+
+    // ② 최단 시간: 합산 최소 + 경미한 불균형 패널티 (합산*0.7 + 차이*0.3)
+    final byFast = [...pairs]..sort((a, b) {
+        final tA = a.myRoute.durationMinutes + a.partnerRoute.durationMinutes;
+        final tB = b.myRoute.durationMinutes + b.partnerRoute.durationMinutes;
+        final dA = (a.myRoute.durationMinutes - a.partnerRoute.durationMinutes).abs();
+        final dB = (b.myRoute.durationMinutes - b.partnerRoute.durationMinutes).abs();
+        final scoreA = tA * 0.7 + dA * 0.3;
+        final scoreB = tB * 0.7 + dB * 0.3;
+        return scoreA.compareTo(scoreB);
+      });
+    final fast = byFast.firstWhere((r) => !used.contains(r.city.name),
+        orElse: () => byFast.first);
+    if (!used.contains(fast.city.name)) {
+      used.add(fast.city.name);
+      result.add((fast, MidpointType.fastest));
+    }
+
+    // ③ 데이트 추천: dateScore 높을수록 + 합산 시간 적당한 도시
+    // 평균 합산 시간 대비 과도하게 멀지 않으면서 dateScore 최대
+    final avgTotal = pairs.isEmpty ? 300.0
+        : pairs.map((r) => r.myRoute.durationMinutes + r.partnerRoute.durationMinutes)
+              .reduce((a, b) => a + b) / pairs.length;
+    final byDate = [...pairs]..sort((a, b) {
+        final tA = a.myRoute.durationMinutes + a.partnerRoute.durationMinutes;
+        final tB = b.myRoute.durationMinutes + b.partnerRoute.durationMinutes;
+        // dateScore 높을수록, 합산 시간이 평균의 1.4배 이내면 우선
+        final penaltyA = tA > avgTotal * 1.4 ? (tA - avgTotal * 1.4) * 2 : 0;
+        final penaltyB = tB > avgTotal * 1.4 ? (tB - avgTotal * 1.4) * 2 : 0;
+        final scoreA = (5 - a.city.dateScore) * 60.0 + penaltyA;
+        final scoreB = (5 - b.city.dateScore) * 60.0 + penaltyB;
+        return scoreA.compareTo(scoreB);
+      });
+    final date = byDate.firstWhere((r) => !used.contains(r.city.name),
+        orElse: () => byDate.first);
+    if (!used.contains(date.city.name)) {
+      result.add((date, MidpointType.dateSpot));
+    }
+
+    return result;
   }
 
   // ────────────────────────────────────────────────
