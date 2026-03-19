@@ -772,6 +772,9 @@ class _CalendarCell extends StatelessWidget {
       numDecoration = const BoxDecoration();
     }
 
+    // 우리(couple) 일정 여부 — 하트 뱃지 표시용
+    final hasCoupleEvent = events.any((s) => s.ownerType == 'couple');
+
     // 비기념일 일정만 바로 표시 (기념일은 별도 핑크 바)
     final nonAnniv = events.where((s) => !s.isAnniversary).toList();
     final anniv = events.where((s) => s.isAnniversary).toList();
@@ -796,25 +799,43 @@ class _CalendarCell extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // 날짜 숫자
+          // 날짜 숫자 (우리 일정 있으면 하트 뱃지 오버레이)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 24,
-                  height: 24,
-                  decoration: numDecoration,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${day.day}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: numColor,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 24,
+                      decoration: numDecoration,
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: numColor,
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.normal,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (hasCoupleEvent)
+                      Positioned(
+                        right: -3,
+                        bottom: -2,
+                        child: Icon(
+                          Icons.favorite,
+                          size: 8,
+                          color: isSelected
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : const Color(0xFFFF4081),
+                        ),
+                      ),
+                  ],
                 ),
               ],
             ),
