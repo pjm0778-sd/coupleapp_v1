@@ -53,9 +53,10 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
       final uri = Uri.parse(
         '$supabaseUrl/functions/v1/naver-place-search?query=${Uri.encodeComponent(query)}',
       );
+      final token = Supabase.instance.client.auth.currentSession?.accessToken
+          ?? supabaseAnonKey;
       final res = await http.get(uri, headers: {
-        'Authorization':
-            'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
+        'Authorization': 'Bearer $token',
         'apikey': supabaseAnonKey,
       });
       if (res.statusCode != 200) return;

@@ -400,9 +400,12 @@ class MidpointService {
     return address.split(' ').first;
   }
 
-  Map<String, String> _authHeaders() => {
-        'Authorization':
-            'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken ?? ''}',
-        'apikey': supabaseAnonKey,
-      };
+  Map<String, String> _authHeaders() {
+    final token = Supabase.instance.client.auth.currentSession?.accessToken
+        ?? supabaseAnonKey;
+    return {
+      'Authorization': 'Bearer $token',
+      'apikey': supabaseAnonKey,
+    };
+  }
 }
