@@ -321,13 +321,18 @@ class MidpointService {
       debugPrint('[MidpointService] transit search error: $e');
     }
 
-    // ── 최종 폴백: Claude 추정값 ──
+    // ── 최종 폴백: Claude 추정값 (거리 기반 최소 시간 보정) ──
+    // 대중교통 평균 속도 55km/h 기준 최소 시간, 환승 여유 30분 추가
+    final minByDistance = (distKm / 55 * 60 + 30).round();
+    final safeDuration = claudeEstimateMinutes < minByDistance
+        ? minByDistance
+        : claudeEstimateMinutes;
     return RouteInfo(
       originName: originName,
       mode: TransportMode.publicTransit,
       transitLabel: '대중교통 (추정)',
       distanceKm: distKm,
-      durationMinutes: claudeEstimateMinutes,
+      durationMinutes: safeDuration,
       estimatedCost: 0,
       isEstimated: true,
       estimatedNote: '이 지역은 정확한 대중교통 정보를 제공하기 어렵습니다. 직접 확인을 권장합니다.',
