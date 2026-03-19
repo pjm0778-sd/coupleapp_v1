@@ -374,6 +374,18 @@ class ScheduleService {
     }
   }
 
+  /// 위치 정보가 있는 커플 일정 전체 조회 (지도용)
+  Future<List<Schedule>> getSchedulesWithLocation(String coupleId) async {
+    final data = await supabase
+        .from('schedules')
+        .select()
+        .eq('couple_id', coupleId)
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .order('date', ascending: false);
+    return (data as List).map((e) => Schedule.fromMap(e)).toList();
+  }
+
   /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
     final userId = supabase.auth.currentUser!.id;

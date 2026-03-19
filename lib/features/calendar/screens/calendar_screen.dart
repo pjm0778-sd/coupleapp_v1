@@ -9,6 +9,7 @@ import '../services/schedule_service.dart';
 import '../widgets/schedule_add_sheet.dart';
 import '../widgets/day_detail_sheet.dart';
 import '../widgets/schedule_detail.dart';
+import 'date_map_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -600,6 +601,22 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
         centerTitle: true,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.map_outlined, color: AppTheme.primary),
+            tooltip: '장소 지도',
+            onPressed: () {
+              if (_coupleId == null || _myUserId == null) return;
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DateMapScreen(
+                    coupleId: _coupleId!,
+                    myUserId: _myUserId!,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.calendar_month_outlined,
                 color: Color(0xFF4285F4)),
