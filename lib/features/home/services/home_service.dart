@@ -198,18 +198,37 @@ class HomeService {
     return {'schedule': next, 'days_until': diff};
   }
 
+  /// 마지막 만남 날짜 조회 (category: 데이트 또는 여행, date < today)
+  Future<DateTime?> getLastMeeting(String coupleId) async {
+    final todayStr = DateTime.now().toIso8601String().split('T')[0];
+    final result = await supabase
+        .from('schedules')
+        .select('date')
+        .eq('couple_id', coupleId)
+        .inFilter('category', ['데이트', '여행'])
+        .lt('date', todayStr)
+        .order('date', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (result == null) return null;
+    return DateTime.parse(result['date'] as String);
+  }
+
   /// 홈 화면 요약 데이터
   Future<Map<String, dynamic>> getHomeSummary(String coupleId) async {
     final dDays = await getDDays(coupleId);
     final todaySchedules = await getTodaySchedules(coupleId);
     final tomorrowSchedules = await getTomorrowSchedules(coupleId);
     final nextDate = await getNextDateSchedule(coupleId);
+    final lastMeeting = await getLastMeeting(coupleId);
 
     return {
       'd_days': dDays,
       'today_schedules': todaySchedules,
       'tomorrow_schedules': tomorrowSchedules,
       'next_date': nextDate,
+      'last_meeting': lastMeeting,
     };
   }
 

@@ -24,6 +24,11 @@ class AppTheme {
   static const Color error           = Color(0xFFE05C5C);
   static const Color warning         = Color(0xFFE8935A);
 
+  // ── Home Card Pastels ─────────────────────────────────────
+  static const Color cardPastelPeach    = Color(0xFFFFF0E8); // Card 2: 다음 만남
+  static const Color cardPastelMint     = Color(0xFFE8F5F2); // Card 3: 교통편
+  static const Color cardPastelLavender = Color(0xFFF0ECFF); // Card 4: 중간지점
+
   // ── Calendar ─────────────────────────────────────────────
   static const Color dateBorderColor = Color(0xFF3D7068); // = primary
 

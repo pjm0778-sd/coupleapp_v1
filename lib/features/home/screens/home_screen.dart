@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
@@ -9,49 +11,873 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/transport_preview_card.dart';
+import '../../transport/screens/transport_search_screen.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
 import 'relationship_timeline_screen.dart';
 
-// ─── Animated D-day Counter ──────────────────────────────────────────────────
+// ─── Ordinal suffix helper ────────────────────────────────────────────────────
 
-class _AnimatedDayCounter extends StatefulWidget {
-  final int days;
-
-  const _AnimatedDayCounter({required this.days});
-
-  @override
-  State<_AnimatedDayCounter> createState() => _AnimatedDayCounterState();
+String _ordinal(int n) {
+  if (n >= 11 && n <= 13) return '${n}th';
+  switch (n % 10) {
+    case 1:
+      return '${n}st';
+    case 2:
+      return '${n}nd';
+    case 3:
+      return '${n}rd';
+    default:
+      return '${n}th';
+  }
 }
 
-class _AnimatedDayCounterState extends State<_AnimatedDayCounter>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<int> _animation;
+// ─── Rotating Header ─────────────────────────────────────────────────────────
+
+class _RotatingHeader extends StatefulWidget {
+  final int dDays;
+  final String? nickname;
+  final String? relationshipStartDate;
+
+  const _RotatingHeader({
+    required this.dDays,
+    this.nickname,
+    this.relationshipStartDate,
+  });
+
+  @override
+  State<_RotatingHeader> createState() => _RotatingHeaderState();
+}
+
+class _RotatingHeaderState extends State<_RotatingHeader> {
+  static const _prefKey = 'home_phrase_index';
+
+  // (prefix, useOrdinal, suffix)
+  // useOrdinal=true → 숫자를 서수로 표현 (100th), false → 그냥 숫자
+  static const _phrases = [
+    ('', false, ' Days of Love'),
+    ('Day ', false, ' with You'),
+    ('Together for ', false, ' Days'),
+    ('Our ', true, ' Page'),
+    ('', false, ' Days of Us'),
+    ('A Journey of ', false, ' Days'),
+    ('', false, ' & Still Counting'),
+  ];
+
+  int _index = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
-      vsync: this,
-    );
-    _animation = IntTween(begin: 0, end: widget.days).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
-    _controller.forward();
+    _loadAndAdvance();
+  }
+
+  Future<void> _loadAndAdvance() async {
+    final prefs = await SharedPreferences.getInstance();
+    final current = prefs.getInt(_prefKey) ?? 0;
+    final next = (current + 1) % _phrases.length;
+    await prefs.setInt(_prefKey, next);
+    if (mounted) setState(() => _index = current);
   }
 
   @override
-  void didUpdateWidget(_AnimatedDayCounter oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.days != widget.days) {
-      _animation = IntTween(begin: 0, end: widget.days).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-      );
-      _controller.forward(from: 0);
-    }
+  Widget build(BuildContext context) {
+    final (prefix, useOrdinal, suffix) = _phrases[_index];
+    final numStr = useOrdinal ? _ordinal(widget.dDays) : '${widget.dDays}';
+    final nickname = widget.nickname ?? '우리';
+
+    return GestureDetector(
+      onTap: () {
+        if (widget.relationshipStartDate == null) return;
+        try {
+          final startedAt = DateTime.parse(widget.relationshipStartDate!);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => RelationshipTimelineScreen(
+                startedAt: startedAt,
+                myNickname: null,
+                partnerNickname: widget.nickname,
+              ),
+            ),
+          );
+        } catch (_) {}
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '안녕, $nickname',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // 한 줄: prefix + 숫자(크게) + suffix
+          RichText(
+            text: TextSpan(
+              children: [
+                if (prefix.isNotEmpty)
+                  TextSpan(
+                    text: prefix,
+                    style: GoogleFonts.cormorantGaramond(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w300,
+                      color: AppTheme.textSecondary,
+                      height: 1.1,
+                    ),
+                  ),
+                TextSpan(
+                  text: numStr,
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: 64,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                    height: 1.0,
+                  ),
+                ),
+                TextSpan(
+                  text: suffix,
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w300,
+                    color: AppTheme.textSecondary,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+// ─── Dot Indicator ───────────────────────────────────────────────────────────
+
+class _DotIndicator extends StatelessWidget {
+  final int count;
+  final int current;
+
+  const _DotIndicator({required this.count, required this.current});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(count, (i) {
+        final active = i == current;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          width: active ? 16 : 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: active ? AppTheme.accent : AppTheme.border,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ─── Card 1: Schedule Card ───────────────────────────────────────────────────
+
+class _ScheduleCard extends StatefulWidget {
+  final Map<String, List<Schedule>>? todaySchedules;
+  final Map<String, List<Schedule>>? tomorrowSchedules;
+  final String partnerName;
+
+  const _ScheduleCard({
+    required this.todaySchedules,
+    required this.tomorrowSchedules,
+    required this.partnerName,
+  });
+
+  @override
+  State<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends State<_ScheduleCard> {
+  bool _isToday = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final schedules = _isToday ? widget.todaySchedules : widget.tomorrowSchedules;
+    final mySchedules = schedules?['mine'] ?? [];
+    final partnerSchedules = schedules?['partner'] ?? [];
+
+    final bothOff = mySchedules.any((s) => s.category == '휴무') &&
+        partnerSchedules.any((s) => s.category == '휴무');
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [AppTheme.cardShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 상단 토글
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            child: Row(
+              children: [
+                _ToggleTab(
+                  label: '오늘',
+                  active: _isToday,
+                  onTap: () => setState(() => _isToday = true),
+                ),
+                const SizedBox(width: 8),
+                _ToggleTab(
+                  label: '내일',
+                  active: !_isToday,
+                  onTap: () => setState(() => _isToday = false),
+                ),
+              ],
+            ),
+          ),
+          Divider(
+            height: 14,
+            thickness: 1,
+            color: AppTheme.border,
+            indent: 16,
+            endIndent: 16,
+          ),
+          // 2컬럼 일정
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _ScheduleColumn(
+                      label: '나',
+                      schedules: mySchedules,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _ScheduleColumn(
+                      label: widget.partnerName,
+                      schedules: partnerSchedules,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // 둘 다 휴무 배너
+          if (bothOff)
+            Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: AppTheme.accentLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '💕 같이 쉬는 날이에요!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  color: AppTheme.accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ToggleTab extends StatelessWidget {
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _ToggleTab({
+    required this.label,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.notoSansKr(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: active ? Colors.white : AppTheme.textTertiary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScheduleColumn extends StatelessWidget {
+  final String label;
+  final List<Schedule> schedules;
+
+  const _ScheduleColumn({required this.label, required this.schedules});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: GoogleFonts.notoSansKr(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 6),
+        if (schedules.isEmpty)
+          Text(
+            '일정 없음',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 11,
+              color: AppTheme.textTertiary,
+            ),
+          )
+        else
+          ...schedules.take(3).map((s) => _ScheduleItem(schedule: s)),
+        if (schedules.length > 3)
+          Text(
+            '+${schedules.length - 3}개',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 10,
+              color: AppTheme.textTertiary,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ScheduleItem extends StatelessWidget {
+  final Schedule schedule;
+
+  const _ScheduleItem({required this.schedule});
+
+  @override
+  Widget build(BuildContext context) {
+    final timeStr = schedule.startTime != null
+        ? '${schedule.startTime!.hour.toString().padLeft(2, '0')}:${schedule.startTime!.minute.toString().padLeft(2, '0')} '
+        : '';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4, right: 5),
+            child: Container(
+              width: 4,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.accent.withValues(alpha: 0.8),
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              '$timeStr${schedule.title ?? schedule.category ?? '일정'}',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 11,
+                color: AppTheme.textPrimary,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Card 2: Next Meeting Card ────────────────────────────────────────────────
+
+class _NextMeetingCard extends StatelessWidget {
+  final Map<String, dynamic>? nextDate;
+  final DateTime? lastMeeting;
+
+  const _NextMeetingCard({this.nextDate, this.lastMeeting});
+
+  double _calcProgress(int daysUntil) {
+    if (lastMeeting != null) {
+      final today = DateTime.now();
+      final elapsed = today.difference(lastMeeting!).inDays;
+      final total = elapsed + daysUntil;
+      if (total <= 0) return 1.0;
+      return (elapsed / total).clamp(0.0, 1.0);
+    }
+    // fallback: D-14 기준
+    return ((14 - daysUntil) / 14).clamp(0.0, 1.0);
+  }
+
+  String _buildMessage(int daysUntil) {
+    if (daysUntil == 0) return '오늘 드디어 만나는 날이에요 💕';
+    if (lastMeeting == null) return '곧 만나요, 설레는 중이에요';
+    final daysSince = DateTime.now().difference(lastMeeting!).inDays;
+    if (daysSince == 0) return '오늘 막 헤어졌어요';
+    if (daysSince == 1) return '벌써 하루가 지났어요';
+    return '보고 싶은 지 ${daysSince}일째예요';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final daysUntil = nextDate?['days_until'] as int?;
+    final schedule = nextDate?['schedule'] as Schedule?;
+
+    if (daysUntil == null || schedule == null) {
+      return _buildEmpty();
+    }
+
+    final isToday = daysUntil == 0;
+    final progress = _calcProgress(daysUntil);
+    final bgColor = isToday ? AppTheme.accentLight : AppTheme.cardPastelPeach;
+
+    String dateLabel = '';
+    try {
+      final dt = schedule.date;
+      const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+      final wd = weekdays[dt.weekday - 1];
+      dateLabel = '${dt.month}월 ${dt.day}일 $wd요일';
+    } catch (_) {}
+
+    final dDayText = daysUntil == 0
+        ? '오늘!'
+        : daysUntil == 1
+        ? 'D-1'
+        : 'D-$daysUntil';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [AppTheme.subtleShadow],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '다음 만남',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Text(
+                  dateLabel,
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ),
+              Text(
+                dDayText,
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w700,
+                  color: isToday ? AppTheme.accent : AppTheme.primary,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // 게이지
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withValues(alpha: 0.5),
+              valueColor: AlwaysStoppedAnimation(
+                isToday ? AppTheme.accent : AppTheme.primary,
+              ),
+              minHeight: 8,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            _buildMessage(daysUntil),
+            style: GoogleFonts.notoSansKr(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.cardPastelPeach,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [AppTheme.subtleShadow],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '다음 만남',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 12,
+              color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            '다음 데이트를\n캘린더에 등록해봐요 💌',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 14,
+              color: AppTheme.textSecondary,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Card 3: Transport Card ───────────────────────────────────────────────────
+
+class _TransportCard extends StatelessWidget {
+  final CoupleProfile? profile;
+  final VoidCallback onTap;
+
+  const _TransportCard({this.profile, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasInfo = profile?.hasTransportInfo == true;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.cardPastelMint,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [AppTheme.subtleShadow],
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('🚇', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Text(
+                  '가는 길도 설레어',
+                  style: GoogleFonts.cormorantGaramond(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '지금 출발하면 언제 도착할까요',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            if (hasInfo) ...[
+              Row(
+                children: [
+                  _StationChip(label: profile!.myStation!),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Divider(
+                            color: AppTheme.primary.withValues(alpha: 0.3),
+                            thickness: 1,
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Icon(
+                              Icons.arrow_forward,
+                              size: 14,
+                              color: AppTheme.primary.withValues(alpha: 0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  _StationChip(label: profile!.partnerStation!),
+                ],
+              ),
+            ] else ...[
+              Text(
+                '역 정보를 설정하면\n교통편을 바로 확인해요',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  color: AppTheme.textTertiary,
+                  height: 1.5,
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '교통편 확인하기 →',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StationChip extends StatelessWidget {
+  final String label;
+
+  const _StationChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: AppTheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.notoSansKr(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textPrimary,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Card 4: Midpoint Card ────────────────────────────────────────────────────
+
+class _MidpointCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MidpointCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.cardPastelLavender,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [AppTheme.subtleShadow],
+        ),
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('📍', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '반반 거리, 완벽한 약속장소',
+                    style: GoogleFonts.cormorantGaramond(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '서로의 중간, 딱 공평한 만남의 중심점',
+              style: GoogleFonts.notoSansKr(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const Spacer(),
+            // 두 점 사이 라인 시각화
+            Row(
+              children: [
+                _LocationDot(color: AppTheme.primary),
+                Expanded(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Divider(
+                        color: AppTheme.textTertiary.withValues(alpha: 0.4),
+                        thickness: 1,
+                      ),
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: AppTheme.accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _LocationDot(color: AppTheme.accent),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '나',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 10,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+                Text(
+                  '파트너',
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 10,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '중간지점 찾아보기 →',
+                style: GoogleFonts.notoSansKr(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.accent.withValues(alpha: 0.8),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LocationDot extends StatelessWidget {
+  final Color color;
+
+  const _LocationDot({required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.3),
+            blurRadius: 4,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Home Card Pager ─────────────────────────────────────────────────────────
+
+class _HomeCardPager extends StatefulWidget {
+  final Map<String, List<Schedule>>? todaySchedules;
+  final Map<String, List<Schedule>>? tomorrowSchedules;
+  final Map<String, dynamic>? nextDate;
+  final DateTime? lastMeeting;
+  final String partnerName;
+  final CoupleProfile? profile;
+
+  const _HomeCardPager({
+    required this.todaySchedules,
+    required this.tomorrowSchedules,
+    required this.nextDate,
+    required this.lastMeeting,
+    required this.partnerName,
+    required this.profile,
+  });
+
+  @override
+  State<_HomeCardPager> createState() => _HomeCardPagerState();
+}
+
+class _HomeCardPagerState extends State<_HomeCardPager> {
+  final _controller = PageController(viewportFraction: 0.92);
+  int _currentPage = 0;
 
   @override
   void dispose() {
@@ -61,20 +887,60 @@ class _AnimatedDayCounterState extends State<_AnimatedDayCounter>
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, _) {
-        return Text(
-          '${_animation.value}',
-          style: const TextStyle(
-            fontSize: 40,
-            color: Colors.white,
-            fontWeight: FontWeight.w800,
-            fontFamily: 'PlayfairDisplay',
-            height: 1.0,
+    final cardHeight = MediaQuery.of(context).size.height * 0.40;
+
+    return Column(
+      children: [
+        SizedBox(
+          height: cardHeight,
+          child: PageView(
+            controller: _controller,
+            onPageChanged: (i) => setState(() => _currentPage = i),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _ScheduleCard(
+                  todaySchedules: widget.todaySchedules,
+                  tomorrowSchedules: widget.tomorrowSchedules,
+                  partnerName: widget.partnerName,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _NextMeetingCard(
+                  nextDate: widget.nextDate,
+                  lastMeeting: widget.lastMeeting,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _TransportCard(
+                  profile: widget.profile,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TransportSearchScreen(),
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: _MidpointCard(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MidpointSearchScreen(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 14),
+        _DotIndicator(count: 4, current: _currentPage),
+      ],
     );
   }
 }
@@ -106,7 +972,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadData();
-    // 설정 변경 시 자동 새로고침
     _profileChangeSub = ProfileChangeNotifier().onChange.listen((_) {
       if (mounted) _loadData();
     });
@@ -115,55 +980,46 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // 다른 탭(설정 등)에서 돌아올 때 데이터 갱신
-    if (_hasLoadedOnce) {
-      _loadData();
-    }
+    if (_hasLoadedOnce) _loadData();
     _hasLoadedOnce = true;
   }
 
   void _setupRealtime() {
-    if (_coupleId == null) return;
+    if (_coupleId == null || _schedulesChannel != null) return;
 
-    // 이미 채널이 있으면 리스너만 재확인하거나 무시 (중복 방지)
-    if (_schedulesChannel != null) return;
+    _schedulesChannel = Supabase.instance.client
+        .channel('public:schedules_home')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'schedules',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'couple_id',
+            value: _coupleId!,
+          ),
+          callback: (payload) {
+            if (mounted) _loadData();
+          },
+        )
+      ..subscribe();
 
-    _schedulesChannel =
-        Supabase.instance.client
-            .channel('public:schedules_home')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.all,
-              schema: 'public',
-              table: 'schedules',
-              filter: PostgresChangeFilter(
-                type: PostgresChangeFilterType.eq,
-                column: 'couple_id',
-                value: _coupleId!,
-              ),
-              callback: (payload) {
-                debugPrint('Realtime change detected: ${payload.eventType}');
-                if (mounted) _loadData();
-              },
-            )
-          ..subscribe();
-
-    _couplesChannel ??=
-        Supabase.instance.client
-            .channel('public:couples_home')
-            .onPostgresChanges(
-              event: PostgresChangeEvent.update,
-              schema: 'public',
-              table: 'couples',
-              filter: PostgresChangeFilter(
-                type: PostgresChangeFilterType.eq,
-                column: 'id',
-                value: _coupleId!,
-              ),
-              callback: (payload) {
-                if (mounted) _loadData();
-              },
-            )
-          ..subscribe();
+    _couplesChannel ??= Supabase.instance.client
+        .channel('public:couples_home')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'couples',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: _coupleId!,
+          ),
+          callback: (payload) {
+            if (mounted) _loadData();
+          },
+        )
+      ..subscribe();
   }
 
   @override
@@ -195,13 +1051,10 @@ class _HomeScreenState extends State<HomeScreen> {
           _isLoading = false;
         });
         _setupRealtime();
-        // 데이트 알림 자동 체크
         _checkNotifications(_data);
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -210,20 +1063,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final tomorrow = today.add(const Duration(days: 1));
     final nm = NotificationManager();
 
-    // 오늘 데이트 체크
     final todaySchedules =
         data['today_schedules'] as Map<String, List<Schedule>>?;
     if (todaySchedules != null) {
-      final allToday = <Schedule>[
+      final allToday = [
         ...(todaySchedules['mine'] ?? []),
         ...(todaySchedules['partner'] ?? []),
       ];
       await nm.checkDateToday(schedules: allToday, today: today);
 
-      // 둘 다 휴무 체크
-      final myOff = (todaySchedules['mine'] ?? [])
-          .where((s) => s.category == '휴무')
-          .toList();
+      final myOff =
+          (todaySchedules['mine'] ?? []).where((s) => s.category == '휴무').toList();
       final partnerOff = (todaySchedules['partner'] ?? [])
           .where((s) => s.category == '휴무')
           .toList();
@@ -236,11 +1086,10 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // 내일 데이트 체크
     final tomorrowSchedules =
         data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
     if (tomorrowSchedules != null) {
-      final allTomorrow = <Schedule>[
+      final allTomorrow = [
         ...(tomorrowSchedules['mine'] ?? []),
         ...(tomorrowSchedules['partner'] ?? []),
       ];
@@ -248,6 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // ── Data getters ────────────────────────────────────────────────────────
   int? get _dDays => _data['d_days']?['days'] as int?;
   String? get _partnerNickname =>
       _data['d_days']?['partner_nickname'] as String?;
@@ -257,27 +1107,12 @@ class _HomeScreenState extends State<HomeScreen> {
       _data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
   Map<String, dynamic>? get _nextDate =>
       _data['next_date'] as Map<String, dynamic>?;
-  int? get _nextDateDaysUntil => _data['next_date']?['days_until'] as int?;
-
-  bool _hasSchedules(Map<String, List<Schedule>>? schedules) {
-    if (schedules == null) return false;
-    return (schedules['mine']?.isNotEmpty ?? false) ||
-        (schedules['partner']?.isNotEmpty ?? false);
-  }
-
-  // ─── Relationship start date from data ───────────────────────────────────
+  DateTime? get _lastMeeting => _data['last_meeting'] as DateTime?;
   String? get _relationshipStartDate =>
       _data['d_days']?['started_at'] as String?;
 
   @override
   Widget build(BuildContext context) {
-    final today = DateTime.now();
-    final tomorrow = today.add(const Duration(days: 1));
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final todayWeekday = weekdays[today.weekday - 1];
-    final tomorrowWeekday = weekdays[tomorrow.weekday - 1];
-    final todayHolidays = HolidayService().getHolidays(today);
-
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: _isLoading
@@ -287,9 +1122,7 @@ class _HomeScreenState extends State<HomeScreen> {
           : SafeArea(
               child: RefreshIndicator(
                 onRefresh: _loadData,
-                child: _buildHomeContent(
-                  today, todayWeekday, tomorrowWeekday, todayHolidays,
-                ),
+                child: _buildHomeContent(),
               ),
             ),
     );
@@ -306,668 +1139,96 @@ class _HomeScreenState extends State<HomeScreen> {
             color: AppTheme.textSecondary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             '커플 연결이 필요합니다',
-            style: TextStyle(fontSize: 18, color: AppTheme.textSecondary),
+            style: GoogleFonts.notoSansKr(
+              fontSize: 18,
+              color: AppTheme.textSecondary,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildHomeContent(
-    DateTime today,
-    String todayWeekday,
-    String tomorrowWeekday,
-    List<dynamic> todayHolidays,
-  ) {
-    final hour = today.hour;
-    final greeting = hour < 6
-        ? '밤 늦게까지 함께해요 🌙'
-        : hour < 12
-        ? '좋은 아침이에요 ☀️'
-        : hour < 17
-        ? '좋은 오후예요 🌤️'
-        : '좋은 저녁이에요 🌆';
+  Widget _buildHomeContent() {
+    final dDays = _dDays ?? 0;
     final partnerName = _partnerNickname ?? '애인';
+    final today = DateTime.now();
+    final todayHolidays = HolidayService().getHolidays(today);
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── 헤더 ──────────────────────────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      greeting,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          '${today.month}월 ${today.day}일 ($todayWeekday)',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
-                        ),
-                        if (todayHolidays.isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: AppTheme.accentLight,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              todayHolidays.first.name,
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.accent,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  size: 20,
-                  color: AppTheme.textTertiary,
-                ),
-                onPressed: () {
-                  setState(() => _isLoading = true);
-                  _loadData();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-
-          // ── Bento Box Grid (오늘 + 내일 + 다음 데이트 포함) ──
-          _buildBentoGrid(partnerName, todayWeekday, tomorrowWeekday),
-          const SizedBox(height: 20),
-
-          // ── 교통편 카드 ─────────────────────────────
-          if (_profile?.hasTransportInfo == true) ...[
-            TransportPreviewCard(
-              fromStation: _profile!.myStation!,
-              toStation: _profile!.partnerStation!,
-              nextDate: _nextDate != null
-                  ? (_nextDate!['schedule'] as Schedule).date
-                  : null,
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // ── 중간지점 찾기 배너 ──────────────────────
-          _MidpointBanner(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const MidpointSearchScreen()),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Bento Grid ────────────────────────────────────────────────────────────
-
-  Widget _buildBentoGrid(
-    String partnerName,
-    String todayWeekday,
-    String tomorrowWeekday,
-  ) {
-    // 오늘+내일 일정을 오른쪽 컬럼에, D+day 카드를 왼쪽에 배치
-    return SizedBox(
-      height: 310,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Left: D-day card (flex 4)
-          Expanded(
-            flex: 4,
-            child: _buildDDayCard(partnerName),
-          ),
-          const SizedBox(width: 12),
-          // Right column (flex 5): 오늘 + 내일 + 다음 데이트
-          Expanded(
-            flex: 5,
-            child: Column(
-              children: [
-                Expanded(
-                  child: _buildTodayScheduleMini(todayWeekday),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: _buildTomorrowScheduleMini(tomorrowWeekday),
-                ),
-                const SizedBox(height: 8),
-                _buildNextDateMini(),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDDayCard(String partnerName) {
-    // Format relationship start date
-    DateTime? startedAt;
-    String startDateLabel = '';
-    if (_relationshipStartDate != null) {
-      try {
-        startedAt = DateTime.parse(_relationshipStartDate!);
-        startDateLabel =
-            '${startedAt.year}.${startedAt.month.toString().padLeft(2, '0')}.${startedAt.day.toString().padLeft(2, '0')}';
-      } catch (_) {
-        startDateLabel = _relationshipStartDate!;
-      }
-    }
-
-    // 다음 기념일 계산
-    String nextMilestoneLabel = '';
-    int nextMilestoneDays = 0;
-    if (_dDays != null && startedAt != null) {
-      final now = DateTime.now();
-      final nowDate = DateTime(now.year, now.month, now.day);
-
-      // 다음 100일 단위
-      final next100 = ((_dDays! ~/ 100) + 1) * 100;
-      final daysToNext100 = next100 - _dDays!;
-
-      // 다음 주년
-      int daysToAnniv = 999999;
-      String annivLabel = '';
-      for (int y = 1; y <= 20; y++) {
-        final anniv = DateTime(
-            startedAt.year + y, startedAt.month, startedAt.day);
-        if (!anniv.isBefore(nowDate)) {
-          daysToAnniv = anniv.difference(nowDate).inDays;
-          annivLabel = '$y주년';
-          break;
-        }
-      }
-
-      if (daysToAnniv < daysToNext100) {
-        nextMilestoneLabel = annivLabel;
-        nextMilestoneDays = daysToAnniv;
-      } else {
-        nextMilestoneLabel = 'D+$next100';
-        nextMilestoneDays = daysToNext100;
-      }
-    }
-
-    return GestureDetector(
-      onTap: () {
-        if (startedAt == null) return;
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => RelationshipTimelineScreen(
-              startedAt: startedAt!,
-              myNickname: null,
-              partnerNickname: _partnerNickname,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF2D5E58), Color(0xFF3D7068)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [AppTheme.cardShadow],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Partner name label
-            Text(
-              '$partnerName 과 함께',
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.white60,
-              ),
-            ),
-            // D+ label + counter
-            Column(
+          // ── 헤더 ────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'D+',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.accent,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (_dDays != null)
-                  _AnimatedDayCounter(days: _dDays!)
-                else
-                  const Text(
-                    '---',
-                    style: TextStyle(
-                      fontSize: 40,
-                      color: Colors.white38,
-                      fontWeight: FontWeight.w800,
-                      height: 1.0,
-                    ),
-                  ),
-              ],
-            ),
-            // 다음 기념일 섹션
-            if (nextMilestoneLabel.isNotEmpty) ...[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '다음 기념일',
-                      style: TextStyle(
-                        fontSize: 9,
-                        color: Colors.white38,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      nextMilestoneLabel,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      nextMilestoneDays == 0
-                          ? '오늘!'
-                          : 'D-$nextMilestoneDays',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppTheme.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            // Relationship start date
-            if (startDateLabel.isNotEmpty)
-              Text(
-                startDateLabel,
-                style: const TextStyle(
-                  fontSize: 10,
-                  color: Colors.white38,
-                ),
-              )
-            else
-              const Text(
-                '시작일을 설정해보세요',
-                style: TextStyle(fontSize: 10, color: Colors.white30),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTodayScheduleMini(String todayWeekday) {
-    final schedules = _todaySchedules;
-    final mySchedules = schedules?['mine'] ?? [];
-    final partnerSchedules = schedules?['partner'] ?? [];
-    final partnerName = _partnerNickname ?? '애인';
-    final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [AppTheme.cardShadow],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                '오늘의 일정',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                todayWeekday,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textTertiary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (!hasAny)
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '일정 없음',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (mySchedules.isNotEmpty) ...[
-                      _buildMiniScheduleRow('나', mySchedules),
-                    ],
-                    if (partnerSchedules.isNotEmpty) ...[
-                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
-                      _buildMiniScheduleRow(partnerName, partnerSchedules),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTomorrowScheduleMini(String tomorrowWeekday) {
-    final schedules = _tomorrowSchedules;
-    final mySchedules = schedules?['mine'] ?? [];
-    final partnerSchedules = schedules?['partner'] ?? [];
-    final partnerName = _partnerNickname ?? '애인';
-    final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1),
-        boxShadow: const [AppTheme.subtleShadow],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                '내일의 일정',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                tomorrowWeekday,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textTertiary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (!hasAny)
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '일정 없음',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (mySchedules.isNotEmpty)
-                      _buildMiniScheduleRow('나', mySchedules),
-                    if (partnerSchedules.isNotEmpty) ...[
-                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
-                      _buildMiniScheduleRow(partnerName, partnerSchedules),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniScheduleRow(String label, List<Schedule> schedules) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textSecondary,
-          ),
-        ),
-        const SizedBox(height: 2),
-        ...schedules.take(2).map((s) {
-          final timeStr = s.startTime != null
-              ? '${s.startTime!.hour.toString().padLeft(2, '0')}:${s.startTime!.minute.toString().padLeft(2, '0')} '
-              : '';
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 2),
-            child: Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 4,
-                  margin: const EdgeInsets.only(right: 5, top: 1),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accent.withValues(alpha: 0.7),
-                    shape: BoxShape.circle,
-                  ),
-                ),
                 Expanded(
-                  child: Text(
-                    '$timeStr${s.title ?? s.category ?? '일정'}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textPrimary,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: _RotatingHeader(
+                    dDays: dDays,
+                    nickname: partnerName,
+                    relationshipStartDate: _relationshipStartDate,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    size: 20,
+                    color: AppTheme.textTertiary,
+                  ),
+                  onPressed: () {
+                    setState(() => _isLoading = true);
+                    _loadData();
+                  },
                 ),
               ],
             ),
-          );
-        }),
-        if (schedules.length > 2)
-          Text(
-            '+${schedules.length - 2}개 더',
-            style: const TextStyle(
-              fontSize: 10,
-              color: AppTheme.textTertiary,
-            ),
           ),
-      ],
-    );
-  }
 
-  Widget _buildNextDateMini() {
-    final daysUntil = _nextDateDaysUntil;
-    final nextDate = _nextDate;
-
-    String dateLabel = '';
-    if (nextDate != null) {
-      try {
-        final schedule = nextDate['schedule'] as Schedule;
-        final dt = schedule.date;
-        dateLabel = '${dt.month}월 ${dt.day}일';
-      } catch (_) {}
-    }
-
-    final daysText = daysUntil == null
-        ? '일정 없음'
-        : daysUntil == 0
-        ? '오늘!'
-        : daysUntil == 1
-        ? '내일!'
-        : 'D-$daysUntil';
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.accentLight,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppTheme.accent.withValues(alpha: 0.25),
-        ),
-      ),
-      child: Row(
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '다음 데이트',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppTheme.accent,
-                  fontWeight: FontWeight.w600,
+          // 공휴일 배너
+          if (todayHolidays.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: AppTheme.accentLight,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  todayHolidays.map((h) => '${h.emoji} ${h.name}').join('  ·  '),
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 12,
+                    color: AppTheme.accent,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                daysText,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                  height: 1.0,
-                ),
-              ),
-            ],
-          ),
-          if (dateLabel.isNotEmpty) ...[
-            const Spacer(),
-            Text(
-              dateLabel,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.textSecondary,
-              ),
             ),
-          ],
+
+          const SizedBox(height: 20),
+
+          // ── 스와이프 카드 ─────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            child: _HomeCardPager(
+              todaySchedules: _todaySchedules,
+              tomorrowSchedules: _tomorrowSchedules,
+              nextDate: _nextDate,
+              lastMeeting: _lastMeeting,
+              partnerName: partnerName,
+              profile: _profile,
+            ),
+          ),
+
+          const SizedBox(height: 32),
         ],
-      ),
-    );
-  }
-}
-
-// ─── _MidpointBanner ─────────────────────────────────────────────────────────
-
-class _MidpointBanner extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _MidpointBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppTheme.accentLight,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppTheme.accent.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            const Text('📍', style: TextStyle(fontSize: 24)),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('중간지점 찾기',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary)),
-                  SizedBox(height: 2),
-                  Text('두 사람이 공평하게 만날 수 있는 곳 추천',
-                      style: TextStyle(
-                          fontSize: 12, color: AppTheme.textSecondary)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios,
-                size: 14, color: AppTheme.textSecondary),
-          ],
-        ),
       ),
     );
   }
