@@ -665,7 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 2),
         ...schedules.take(2).map((s) {
           final timeStr = s.startTime != null
-              ? '${s.startTime!.substring(0, 5)} '
+              ? '${s.startTime!.hour.toString().padLeft(2, '0')}:${s.startTime!.minute.toString().padLeft(2, '0')} '
               : '';
           return Padding(
             padding: const EdgeInsets.only(bottom: 2),
