@@ -9,10 +9,11 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/travel_together_card.dart';
 import '../widgets/weather_card.dart';
 import '../../calendar/screens/calendar_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../transport/screens/transport_search_screen.dart';
+import '../../midpoint/screens/midpoint_search_screen.dart';
 import 'relationship_timeline_screen.dart';
 
 // ─── Animated D-day Counter ──────────────────────────────────────────────────
@@ -409,14 +410,8 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildBentoGrid(partnerName, today, tomorrow),
           const SizedBox(height: 20),
 
-          // ── 이동 통합 카드 (교통편 + 중간지점) ─────────
-          TravelTogetherCard(
-            fromStation: _profile?.myStation,
-            toStation: _profile?.partnerStation,
-            nextDate: _nextDate != null
-                ? (_nextDate!['schedule'] as Schedule).date
-                : null,
-          ),
+          // ── 오늘 + 내일 일정 통합 카드 ──────────────────
+          _buildScheduleCombinedCard(today, tomorrow, todayWeekday, tomorrowWeekday),
           const SizedBox(height: 16),
 
           // ── 날씨 카드 ────────────────────────────────
@@ -462,11 +457,11 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 Expanded(
-                  child: _buildTodayScheduleMini(today, todayWeekday),
+                  child: _buildTransportMini(),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: _buildTomorrowScheduleMini(tomorrow, tomorrowWeekday),
+                  child: _buildMidpointMini(),
                 ),
                 const SizedBox(height: 8),
                 _buildNextDateMini(),
@@ -672,89 +667,268 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTodayScheduleMini(DateTime date, String todayWeekday) {
-    final schedules = _todaySchedules;
-    final mySchedules = schedules?['mine'] ?? [];
-    final partnerSchedules = schedules?['partner'] ?? [];
-    final partnerName = _partnerNickname ?? '애인';
-    final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
+  // ── 서로에게 가는 길 미니 카드 ──────────────────────────────────────────────
 
+  Widget _buildTransportMini() {
+    final fromStation = _profile?.myStation;
+    final toStation = _profile?.partnerStation;
+    final hasInfo = fromStation != null && toStation != null;
+    final nextDate = _nextDate != null
+        ? (_nextDate!['schedule'] as Schedule).date
+        : null;
+
+    return GestureDetector(
+      onTap: hasInfo
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TransportSearchScreen(
+                    fromStation: fromStation,
+                    toStation: toStation,
+                    initialDate: nextDate,
+                  ),
+                ),
+              )
+          : null,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [AppTheme.cardShadow],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  '서로에게 가는 길',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.train_outlined,
+                  size: 13,
+                  color: AppTheme.textTertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (hasInfo)
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          _shortStationName(fromStation),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          Icons.arrow_forward,
+                          size: 10,
+                          color: AppTheme.accent,
+                        ),
+                      ),
+                      Flexible(
+                        child: Text(
+                          _shortStationName(toStation),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              const Expanded(
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '설정에서 출발역을\n등록해 보세요',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textTertiary,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 중간지점 찾기 미니 카드 ────────────────────────────────────────────────
+
+  Widget _buildMidpointMini() {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CalendarScreen(initialDate: date),
-        ),
+        MaterialPageRoute(builder: (_) => const MidpointSearchScreen()),
       ),
       child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border, width: 1),
+          boxShadow: const [AppTheme.subtleShadow],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text(
+                  '중간지점 찾기',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.location_on_outlined,
+                  size: 13,
+                  color: AppTheme.textTertiary,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            const Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '우리 사이 딱\n중간 어딘가에서',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── 오늘 + 내일 일정 통합 카드 ───────────────────────────────────────────
+
+  Widget _buildScheduleCombinedCard(
+    DateTime today,
+    DateTime tomorrow,
+    String todayWeekday,
+    String tomorrowWeekday,
+  ) {
+    return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: const [AppTheme.cardShadow],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            children: [
-              const Text(
-                '오늘 우리 일정',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                todayWeekday,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppTheme.textTertiary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (!hasAny)
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '여유로운 하루예요',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
+          // 헤더
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.event_note_outlined,
+                    color: AppTheme.primary,
+                    size: 15,
                   ),
                 ),
-              ),
-            )
-          else
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (mySchedules.isNotEmpty) ...[
-                      _buildMiniScheduleRow('나', mySchedules),
-                    ],
-                    if (partnerSchedules.isNotEmpty) ...[
-                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
-                      _buildMiniScheduleRow(partnerName, partnerSchedules),
-                    ],
-                  ],
+                const SizedBox(width: 8),
+                const Text(
+                  '우리 일정',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.textPrimary,
+                  ),
                 ),
+              ],
+            ),
+          ),
+          // 오늘 / 내일 패널
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _buildSchedulePanel(
+                      date: today,
+                      label: '오늘',
+                      weekday: todayWeekday,
+                      schedules: _todaySchedules,
+                      emptyText: '여유로운 하루예요',
+                    ),
+                  ),
+                  Container(
+                    width: 1,
+                    color: AppTheme.border,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                  ),
+                  Expanded(
+                    child: _buildSchedulePanel(
+                      date: tomorrow,
+                      label: '내일',
+                      weekday: tomorrowWeekday,
+                      schedules: _tomorrowSchedules,
+                      emptyText: '여유로운 내일이에요',
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
         ],
       ),
-    ));
+    );
   }
 
-  Widget _buildTomorrowScheduleMini(DateTime date, String tomorrowWeekday) {
-    final schedules = _tomorrowSchedules;
+  Widget _buildSchedulePanel({
+    required DateTime date,
+    required String label,
+    required String weekday,
+    required Map<String, List<Schedule>>? schedules,
+    required String emptyText,
+  }) {
     final mySchedules = schedules?['mine'] ?? [];
     final partnerSchedules = schedules?['partner'] ?? [];
     final partnerName = _partnerNickname ?? '애인';
@@ -763,75 +937,67 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CalendarScreen(initialDate: date),
-        ),
+        MaterialPageRoute(builder: (_) => CalendarScreen(initialDate: date)),
       ),
-      child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1),
-        boxShadow: const [AppTheme.subtleShadow],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text(
-                '내일 우리 일정',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppTheme.textPrimary,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.primary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-              ),
-              const Spacer(),
+                const Spacer(),
+                Text(
+                  weekday,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (!hasAny)
               Text(
-                tomorrowWeekday,
+                emptyText,
                 style: const TextStyle(
                   fontSize: 11,
                   color: AppTheme.textTertiary,
                 ),
-              ),
+              )
+            else ...[
+              if (mySchedules.isNotEmpty)
+                _buildMiniScheduleRow('나', mySchedules),
+              if (partnerSchedules.isNotEmpty) ...[
+                if (mySchedules.isNotEmpty) const SizedBox(height: 4),
+                _buildMiniScheduleRow(partnerName, partnerSchedules),
+              ],
             ],
-          ),
-          const SizedBox(height: 8),
-          if (!hasAny)
-            const Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '여유로운 내일이에요',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (mySchedules.isNotEmpty)
-                      _buildMiniScheduleRow('나', mySchedules),
-                    if (partnerSchedules.isNotEmpty) ...[
-                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
-                      _buildMiniScheduleRow(partnerName, partnerSchedules),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
-    ));
+    );
+  }
+
+  String _shortStationName(String station) {
+    return station.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim();
   }
 
   Widget _buildMiniScheduleRow(String label, List<Schedule> schedules) {
