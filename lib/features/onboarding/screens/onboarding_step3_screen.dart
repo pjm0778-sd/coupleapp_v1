@@ -50,12 +50,10 @@ class OnboardingStep3Screen extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 decoration: BoxDecoration(
-                  color: selected
-                      ? AppTheme.primary.withValues(alpha: 0.08)
-                      : AppTheme.surface,
+                  color: selected ? AppTheme.accentLight : AppTheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? AppTheme.primary : AppTheme.border,
+                    color: selected ? AppTheme.accent : AppTheme.border,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -69,7 +67,7 @@ class OnboardingStep3Screen extends StatelessWidget {
                         Text(opt.$3,
                             style: TextStyle(
                               fontSize: 15, fontWeight: FontWeight.w600,
-                              color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                              color: selected ? AppTheme.accent : AppTheme.textPrimary,
                             )),
                         Text(opt.$4,
                             style: const TextStyle(
@@ -79,7 +77,7 @@ class OnboardingStep3Screen extends StatelessWidget {
                     const Spacer(),
                     if (selected)
                       const Icon(Icons.check_circle_rounded,
-                          color: AppTheme.primary, size: 20),
+                          color: AppTheme.accent, size: 20),
                   ],
                 ),
               ),
@@ -94,7 +92,7 @@ class OnboardingStep3Screen extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border),
+                boxShadow: const [AppTheme.subtleShadow],
               ),
               child: Column(
                 children: [
@@ -134,7 +132,7 @@ class OnboardingStep3Screen extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: onNext,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.accent, foregroundColor: AppTheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

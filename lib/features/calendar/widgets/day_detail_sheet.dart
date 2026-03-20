@@ -96,7 +96,7 @@ class _DayDetailSheetState extends State<DayDetailSheet> {
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         children: [
@@ -162,19 +162,19 @@ class _DayDetailSheetState extends State<DayDetailSheet> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary,
+                      color: AppTheme.accent,
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add, size: 16, color: Colors.white),
+                        Icon(Icons.add, size: 16, color: AppTheme.primary),
                         SizedBox(width: 4),
                         Text(
                           '일정 추가',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.white,
+                            color: AppTheme.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -261,10 +261,10 @@ class _AnniversaryBanner extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF4081).withValues(alpha: 0.08),
+        color: AppTheme.accentLight,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFFF4081).withValues(alpha: 0.25),
+          color: AppTheme.accent.withValues(alpha: 0.4),
         ),
       ),
       child: Row(

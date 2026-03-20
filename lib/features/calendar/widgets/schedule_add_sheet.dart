@@ -343,7 +343,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                       const Spacer(),
                       Switch(
                         value: _isAllDay,
-                        activeThumbColor: AppTheme.primary,
+                        activeThumbColor: AppTheme.accent,
                         onChanged: (v) => setState(() => _isAllDay = v),
                       ),
                     ],
@@ -388,7 +388,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                             shape: BoxShape.circle,
                             border: selected
                                 ? Border.all(
-                                    color: AppTheme.textPrimary,
+                                    color: AppTheme.accent,
                                     width: 2.5,
                                   )
                                 : null,
@@ -419,13 +419,14 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                               horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
                             color: selected
-                                ? AppTheme.primary
+                                ? AppTheme.accentLight
                                 : AppTheme.surface,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
                               color: selected
-                                  ? AppTheme.primary
+                                  ? AppTheme.accent
                                   : AppTheme.border,
+                              width: selected ? 1.5 : 1,
                             ),
                           ),
                           child: Text(
@@ -433,7 +434,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                             style: TextStyle(
                               fontSize: 13,
                               color: selected
-                                  ? Colors.white
+                                  ? AppTheme.accent
                                   : AppTheme.textPrimary,
                               fontWeight: selected
                                   ? FontWeight.w600
@@ -515,8 +516,8 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                     child: ElevatedButton(
                       onPressed: _onSave,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme.dart';
 import '../services/auth_service.dart';
 import 'signup_screen.dart';
@@ -70,16 +71,16 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 const SizedBox(height: 72),
                 // 로고 / 타이틀
-                const Text(
-                  'We',
-                  style: TextStyle(
+                Text(
+                  'DEUX',
+                  style: GoogleFonts.playfairDisplay(
                     fontSize: 40,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.primary,
-                    letterSpacing: -1,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.accent,
+                    letterSpacing: 2.0,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 const Text(
                   '커플 스케줄을 함께 관리하세요',
                   style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),
@@ -180,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text(
                         '회원가입',
                         style: TextStyle(
-                          color: AppTheme.primary,
+                          color: AppTheme.accent,
                           fontWeight: FontWeight.w600,
                           fontSize: 14,
                         ),

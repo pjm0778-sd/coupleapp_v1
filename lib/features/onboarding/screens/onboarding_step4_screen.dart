@@ -78,12 +78,10 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
                 margin: const EdgeInsets.only(bottom: 10),
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
-                  color: selected
-                      ? AppTheme.primary.withValues(alpha: 0.08)
-                      : AppTheme.surface,
+                  color: selected ? AppTheme.accentLight : AppTheme.surface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: selected ? AppTheme.primary : AppTheme.border,
+                    color: selected ? AppTheme.accent : AppTheme.border,
                     width: selected ? 1.5 : 1,
                   ),
                 ),
@@ -94,12 +92,12 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
                     Text(opt.$3,
                         style: TextStyle(
                           fontSize: 14, fontWeight: FontWeight.w600,
-                          color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                          color: selected ? AppTheme.accent : AppTheme.textPrimary,
                         )),
                     const Spacer(),
                     if (selected)
                       const Icon(Icons.check_circle_rounded,
-                          color: AppTheme.primary, size: 20),
+                          color: AppTheme.accent, size: 20),
                   ],
                 ),
               ),
@@ -143,7 +141,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.border),
+              boxShadow: const [AppTheme.subtleShadow],
             ),
             child: Row(
               children: [
@@ -166,7 +164,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
                   value: draft.hasCar,
                   onChanged: (v) =>
                       widget.onChanged(draft.copyWith(hasCar: v)),
-                  activeColor: AppTheme.primary,
+                  activeThumbColor: AppTheme.accent,
                 ),
               ],
             ),
@@ -187,7 +185,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _finish,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primary, foregroundColor: Colors.white,
+                  backgroundColor: AppTheme.accent, foregroundColor: AppTheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),

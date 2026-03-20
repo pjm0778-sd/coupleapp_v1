@@ -79,17 +79,17 @@ class _OnboardingStep1ScreenState extends State<OnboardingStep1Screen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.06),
+              color: AppTheme.accentLight,
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Row(
               children: [
-                Icon(Icons.info_outline, size: 16, color: AppTheme.primary),
+                Icon(Icons.info_outline, size: 16, color: AppTheme.accent),
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     '만난 날짜는 파트너 연결 후 설정에서 입력할 수 있어요',
-                    style: TextStyle(fontSize: 13, color: AppTheme.primary),
+                    style: TextStyle(fontSize: 13, color: AppTheme.accent),
                   ),
                 ),
               ],
@@ -101,8 +101,8 @@ class _OnboardingStep1ScreenState extends State<OnboardingStep1Screen> {
             child: ElevatedButton(
               onPressed: _canProceed ? widget.onNext : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.accent,
+                foregroundColor: AppTheme.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),

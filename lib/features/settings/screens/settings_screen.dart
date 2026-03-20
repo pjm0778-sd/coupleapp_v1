@@ -260,12 +260,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: selected
-                          ? AppTheme.primary.withValues(alpha: 0.08)
-                          : AppTheme.surface,
+                      color: selected ? AppTheme.accentLight : AppTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? AppTheme.primary : AppTheme.border,
+                        color: selected ? AppTheme.accent : AppTheme.border,
                         width: selected ? 1.5 : 1,
                       ),
                     ),
@@ -284,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const Spacer(),
                         if (selected)
                           const Icon(Icons.check_circle_rounded,
-                              color: AppTheme.primary, size: 20),
+                              color: AppTheme.accent, size: 20),
                       ],
                     ),
                   ),
@@ -348,12 +346,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: isSelected
-                            ? AppTheme.primary.withValues(alpha: 0.08)
-                            : AppTheme.surface,
+                        color: isSelected ? AppTheme.accentLight : AppTheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? AppTheme.primary : AppTheme.border,
+                          color: isSelected ? AppTheme.accent : AppTheme.border,
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -374,7 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           const Spacer(),
                           if (isSelected)
                             const Icon(Icons.check_circle_rounded,
-                                color: AppTheme.primary, size: 20),
+                                color: AppTheme.accent, size: 20),
                         ],
                       ),
                     ),
@@ -852,7 +848,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
+                    boxShadow: const [AppTheme.subtleShadow],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -972,7 +968,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
+                    boxShadow: const [AppTheme.subtleShadow],
                   ),
                   child: Column(
                     children: [
@@ -1014,7 +1010,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
+                    boxShadow: const [AppTheme.subtleShadow],
                   ),
                   child: Column(children: [
                     ListTile(
@@ -1061,7 +1057,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
+                    boxShadow: const [AppTheme.subtleShadow],
                   ),
                   child: Column(
                     children: [
@@ -1139,7 +1135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
+                    boxShadow: const [AppTheme.subtleShadow],
                   ),
                   child: Column(
                     children: [
@@ -1240,7 +1236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Text(
                     '회원 탈퇴',
                     style: TextStyle(
-                      color: Colors.grey,
+                      color: AppTheme.textTertiary,
                       decoration: TextDecoration.underline,
                     ),
                   ),

@@ -27,12 +27,13 @@ class MidpointCityCard extends StatelessWidget {
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.accent.withOpacity(0.12) : AppTheme.surface,
+          color: selected ? AppTheme.accentLight : AppTheme.surface,
           border: Border.all(
             color: selected ? AppTheme.accent : AppTheme.border,
             width: selected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(14),
+          boxShadow: const [AppTheme.subtleShadow],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

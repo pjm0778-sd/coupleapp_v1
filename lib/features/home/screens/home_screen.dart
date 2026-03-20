@@ -345,14 +345,9 @@ class _MidpointBanner extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppTheme.accent.withOpacity(0.15),
-              AppTheme.accent.withOpacity(0.05),
-            ],
-          ),
+          color: AppTheme.accentLight,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+          border: Border.all(color: AppTheme.accent.withOpacity(0.4)),
         ),
         child: Row(
           children: [

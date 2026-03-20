@@ -22,7 +22,6 @@ class DDayWidget extends StatelessWidget {
         ? '$partnerNickname과 함께한 지'
         : '우리가 함께한 지';
 
-    // 오늘 공휴일/기념일 확인
     final today = DateTime.now();
     final todayHolidays = HolidayService().getHolidays(today);
 
@@ -31,22 +30,15 @@ class DDayWidget extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primary,
-            AppTheme.primary.withOpacity(0.75),
-            const Color(0xFFFF6B9D),
+            Color(0xFF1A2A4A), // Navy
+            Color(0xFF243656), // Navy 밝게
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        boxShadow: const [AppTheme.cardShadow],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,7 +48,7 @@ class DDayWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha:0.15),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -82,36 +74,36 @@ class DDayWidget extends StatelessWidget {
                     Text(
                       label,
                       style: GoogleFonts.notoSansKr(
-                        color: Colors.white70,
+                        color: Colors.white.withValues(alpha:0.7),
                         fontSize: 13,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     RichText(
                       text: TextSpan(
                         children: [
                           TextSpan(
                             text: 'D+',
                             style: GoogleFonts.notoSansKr(
-                              color: Colors.white70,
+                              color: AppTheme.accent,
                               fontSize: 20,
-                              fontWeight: FontWeight.w400,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                           TextSpan(
                             text: '$displayDays',
-                            style: GoogleFonts.notoSansKr(
+                            style: GoogleFonts.playfairDisplay(
                               color: Colors.white,
                               fontSize: 52,
-                              fontWeight: FontWeight.w800,
+                              fontWeight: FontWeight.bold,
                               height: 1.0,
                             ),
                           ),
                           TextSpan(
                             text: '일',
                             style: GoogleFonts.notoSansKr(
-                              color: Colors.white70,
+                              color: Colors.white.withValues(alpha:0.7),
                               fontSize: 18,
                               fontWeight: FontWeight.w400,
                             ),
@@ -119,22 +111,47 @@ class DDayWidget extends StatelessWidget {
                         ],
                       ),
                     ),
+                    if (partnerNickname != null) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.favorite,
+                            color: AppTheme.accent,
+                            size: 12,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            partnerNickname!,
+                            style: GoogleFonts.notoSansKr(
+                              color: AppTheme.accent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
 
-              // 하트 아이콘 (오른쪽)
+              // Gold 별 장식 (오른쪽)
               Container(
-                width: 60,
-                height: 60,
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.15),
+                  color: AppTheme.accent.withValues(alpha:0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.favorite,
-                  color: Colors.white,
-                  size: 30,
+                child: Center(
+                  child: Text(
+                    '✦',
+                    style: TextStyle(
+                      color: AppTheme.accent,
+                      fontSize: 26,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -146,15 +163,15 @@ class DDayWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: AppTheme.accent.withValues(alpha:0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calendar_month_outlined,
-                    color: Colors.white70,
+                    color: AppTheme.accent,
                     size: 14,
                   ),
                   const SizedBox(width: 6),

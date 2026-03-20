@@ -232,8 +232,8 @@ class _NotificationSettingsScreenState
                       : const Icon(Icons.notifications, size: 18),
                   label: Text(_checkingPermission ? '요청 중...' : '알림 권한 허용'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
+                    backgroundColor: AppTheme.accent,
+                    foregroundColor: AppTheme.primary,
                   ),
                 ),
               ),
@@ -254,7 +254,7 @@ class _NotificationSettingsScreenState
       title: Text(title),
       subtitle: subtitle != null ? Text(subtitle) : null,
       value: value,
-      activeTrackColor: AppTheme.primary,
+      activeTrackColor: AppTheme.accent,
       onChanged: onChanged,
     );
   }
@@ -282,8 +282,8 @@ class _NotificationSettingsScreenState
               icon: const Icon(Icons.notifications_active, size: 18),
               label: const Text('모두 켜기'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.accent,
+                foregroundColor: AppTheme.primary,
               ),
             ),
           ),

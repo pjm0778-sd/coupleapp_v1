@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme.dart';
 import '../services/auth_service.dart';
 
@@ -82,16 +83,16 @@ class _SignupScreenState extends State<SignupScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 12),
-            const Text(
-              '회원가입',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.primary,
-                letterSpacing: -0.5,
+            Text(
+              'DEUX',
+              style: GoogleFonts.playfairDisplay(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.accent,
+                letterSpacing: 2.0,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             const Text(
               '커플 앱을 시작해보세요',
               style: TextStyle(fontSize: 15, color: AppTheme.textSecondary),

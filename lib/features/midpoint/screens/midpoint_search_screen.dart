@@ -174,10 +174,10 @@ class _MidpointSearchScreenState extends State<MidpointSearchScreen> {
                 onPressed: _canSearch && !_loading ? _search : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppTheme.primary,
                   disabledBackgroundColor: AppTheme.border,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(14)),
                   elevation: 0,
                 ),
                 child: _loading
@@ -212,8 +212,8 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [AppTheme.cardShadow],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,7 +253,7 @@ class _ThemeButton extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: selected ? AppTheme.accent.withOpacity(0.12) : AppTheme.background,
+          color: selected ? AppTheme.accentLight : AppTheme.background,
           border: Border.all(
             color: selected ? AppTheme.accent : AppTheme.border,
             width: selected ? 1.5 : 1,
@@ -269,7 +269,7 @@ class _ThemeButton extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                color: selected ? AppTheme.accent : AppTheme.textSecondary,
+                color: selected ? AppTheme.accent : AppTheme.textTertiary,
               ),
             ),
           ],

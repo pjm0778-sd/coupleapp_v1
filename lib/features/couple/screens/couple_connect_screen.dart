@@ -139,7 +139,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border),
+                boxShadow: const [AppTheme.cardShadow],
               ),
               child: _isLoadingCode
                   ? const Center(
@@ -156,9 +156,9 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                               width: 40,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: AppTheme.background,
+                                color: AppTheme.accentLight,
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: AppTheme.border),
+                                border: Border.all(color: AppTheme.accent),
                               ),
                               alignment: Alignment.center,
                               child: Text(
@@ -166,7 +166,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
-                                  color: AppTheme.primary,
+                                  color: AppTheme.accent,
                                   letterSpacing: 0,
                                 ),
                               ),
@@ -210,7 +210,7 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.border),
+                boxShadow: const [AppTheme.cardShadow],
               ),
               child: Column(
                 children: [
@@ -259,8 +259,8 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
                     height: 48,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
+                        backgroundColor: AppTheme.accent,
+                        foregroundColor: AppTheme.primary,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

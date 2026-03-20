@@ -268,9 +268,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
             fontWeight: FontWeight.w600,
           ),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
-          labelColor: AppTheme.primary,
+          labelColor: AppTheme.accent,
           unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.primary,
+          indicatorColor: AppTheme.accent,
           tabs: const [
             Tab(text: '캘린더 앱 분석'),
             Tab(text: '구글 캘린더'),
@@ -477,14 +477,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.border),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: const [AppTheme.cardShadow],
         ),
         child: Row(
           children: [
@@ -567,23 +560,23 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.accentLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.lightbulb_outline, size: 14, color: AppTheme.textSecondary),
+              Icon(Icons.lightbulb_outline, size: 14, color: AppTheme.accent),
               SizedBox(width: 6),
               Text(
                 '사용 팁',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.accent,
                 ),
               ),
             ],

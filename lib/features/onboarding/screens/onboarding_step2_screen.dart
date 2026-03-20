@@ -115,7 +115,7 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
             decoration: BoxDecoration(
               color: AppTheme.surface,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.border),
+              boxShadow: const [AppTheme.cardShadow],
             ),
             child: _isLoadingCode
                 ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
@@ -127,7 +127,7 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 10,
-                          color: AppTheme.primary,
+                          color: AppTheme.accent,
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -184,8 +184,8 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
             child: ElevatedButton(
               onPressed: _isConnecting ? null : _connect,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.accent,
+                foregroundColor: AppTheme.primary,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

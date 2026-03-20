@@ -172,7 +172,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             date: targetDate,
             title: '${i * 100}일',
             category: '기념일',
-            colorHex: '#FF4081',
+            colorHex: '#C9A84C',
             isAnniversary: true,
           ),
         );
@@ -195,7 +195,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             date: targetDate,
             title: '$i주년',
             category: '기념일',
-            colorHex: '#FF4081',
+            colorHex: '#C9A84C',
             isAnniversary: true,
           ),
         );
@@ -228,7 +228,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       case '휴무':
         return const Color(0xFFBDBDBD);
       case '기념일':
-        return const Color(0xFFFF4081);
+        return AppTheme.accent;
       default:
         return AppTheme.primary;
     }
@@ -614,13 +614,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.document_scanner_outlined,
-                color: Colors.orangeAccent),
+                color: AppTheme.warning),
             tooltip: '이달의 OCR 자동등록 일정 삭제',
             onPressed: _deleteOcrMonthSchedules,
           ),
           IconButton(
             icon: const Icon(Icons.delete_sweep_outlined,
-                color: Colors.redAccent),
+                color: AppTheme.error),
             tooltip: '이달의 내 일정 전체 삭제',
             onPressed: _deleteMyMonthSchedules,
           ),
@@ -832,7 +832,7 @@ class _CalendarCell extends StatelessWidget {
                           size: 8,
                           color: isSelected
                               ? Colors.white.withValues(alpha: 0.9)
-                              : const Color(0xFFFF4081),
+                              : AppTheme.accent,
                         ),
                       ),
                   ],
@@ -868,7 +868,7 @@ class _CalendarCell extends StatelessWidget {
 
             return _EventBar(
               schedule: s,
-              color: s.isAnniversary ? const Color(0xFFFF4081) : getColor(s),
+              color: s.isAnniversary ? AppTheme.accent : getColor(s),
               onTap: s.isAnniversary ? null : () => onEventTap(s),
               isStart: isStart,
               isEnd: isEnd,

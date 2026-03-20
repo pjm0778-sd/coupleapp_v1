@@ -157,13 +157,13 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
                       onTap: _swapRoute,
                       child: Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primary.withValues(alpha: 0.1),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.accentLight,
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.swap_horiz_rounded,
-                          color: AppTheme.primary,
+                          color: AppTheme.accent,
                           size: 22,
                         ),
                       ),
@@ -191,7 +191,7 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
                           decoration: BoxDecoration(
                             color: AppTheme.surface,
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppTheme.border),
+                            boxShadow: const [AppTheme.subtleShadow],
                           ),
                           child: Row(
                             children: [
@@ -360,7 +360,7 @@ class _RouteBox extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.border),
+          boxShadow: const [AppTheme.subtleShadow],
         ),
         child: Row(
           children: [
@@ -658,8 +658,8 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
               children: [
                 Container(
                   width: 38, height: 38,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
+                  decoration: const BoxDecoration(
+                    color: AppTheme.accentLight,
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -667,7 +667,7 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
                       city.substring(0, 1),
                       style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w700,
-                        color: AppTheme.primary,
+                        color: AppTheme.accent,
                       ),
                     ),
                   ),
@@ -879,10 +879,10 @@ class _ProvinceChips extends StatelessWidget {
               duration: const Duration(milliseconds: 150),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: active ? AppTheme.primary : AppTheme.surface,
+                color: active ? AppTheme.accent : AppTheme.surface,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: active ? AppTheme.primary : AppTheme.border,
+                  color: active ? AppTheme.accent : AppTheme.border,
                 ),
               ),
               child: Text(
@@ -890,7 +890,7 @@ class _ProvinceChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: active ? Colors.white : AppTheme.textSecondary,
+                  color: active ? AppTheme.primary : AppTheme.textSecondary,
                 ),
               ),
             ),
@@ -1081,7 +1081,7 @@ class _TransitCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppTheme.border),
+        boxShadow: const [AppTheme.cardShadow],
       ),
       child: Row(
         children: [
@@ -1146,14 +1146,14 @@ class _TransitCard extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
-                color: AppTheme.primary,
+                color: AppTheme.accent,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text('예매',
                   style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white)),
+                      color: AppTheme.primary)),
             ),
           ),
         ],

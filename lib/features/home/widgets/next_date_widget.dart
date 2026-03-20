@@ -27,11 +27,11 @@ class NextDateWidget extends StatelessWidget {
     ][nextDateSchedule.date.weekday - 1];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
       decoration: BoxDecoration(
         color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.border, width: 1),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [AppTheme.cardShadow],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,18 +125,20 @@ class NextDateWidget extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Text(
-                          '$daysUntil일 남음',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentLight,
+                            borderRadius: BorderRadius.circular(20),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        const Icon(
-                          Icons.access_time,
-                          color: AppTheme.textSecondary,
-                          size: 16,
+                          child: Text(
+                            daysUntil == 0 ? '오늘!' : 'D-$daysUntil',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.accent,
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -152,7 +154,7 @@ class NextDateWidget extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withAlpha(15),
+                color: AppTheme.primary.withOpacity(0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(

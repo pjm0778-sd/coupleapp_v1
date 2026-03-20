@@ -98,9 +98,12 @@ class _NotificationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: notification.isRead ? AppTheme.background : AppTheme.surface,
+        color: notification.isRead ? AppTheme.surface : AppTheme.accentLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        boxShadow: const [AppTheme.subtleShadow],
+        border: notification.isRead
+            ? null
+            : Border(left: BorderSide(color: AppTheme.accent, width: 3)),
       ),
       child: Row(
         children: [

@@ -9,17 +9,18 @@ class OnboardingProgress extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(4, (i) {
         final active = i == currentStep;
         final done = i < currentStep;
-        return Expanded(
-          child: Container(
-            margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
-            height: 4,
-            decoration: BoxDecoration(
-              color: done || active ? AppTheme.primary : AppTheme.border,
-              borderRadius: BorderRadius.circular(2),
-            ),
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+          height: 8,
+          width: active ? 20 : 8,
+          decoration: BoxDecoration(
+            color: done || active ? AppTheme.accent : AppTheme.border,
+            borderRadius: BorderRadius.circular(4),
           ),
         );
       }),

@@ -57,7 +57,7 @@ class DateSpotsWidget extends StatelessWidget {
               label: const Text('더 보기', style: TextStyle(fontSize: 13)),
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppTheme.accent,
-                side: BorderSide(color: AppTheme.accent.withOpacity(0.5)),
+                side: BorderSide(color: AppTheme.accent.withValues(alpha: 0.5)),
                 minimumSize: const Size(double.infinity, 40),
                 padding: const EdgeInsets.symmetric(horizontal: 20),
               ),
@@ -81,7 +81,7 @@ class _SpotCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppTheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.border),
+        boxShadow: const [AppTheme.cardShadow],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -91,7 +91,7 @@ class _SpotCard extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: AppTheme.accent.withOpacity(0.1),
+              color: AppTheme.accentLight,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
@@ -121,7 +121,7 @@ class _SpotCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppTheme.accent.withOpacity(0.1),
+                        color: AppTheme.accentLight,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(

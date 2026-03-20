@@ -38,7 +38,7 @@ class TransportPreviewCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.surface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.border),
+          boxShadow: const [AppTheme.cardShadow],
         ),
         child: Row(
           children: [
@@ -46,7 +46,7 @@ class TransportPreviewCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppTheme.primary.withValues(alpha: 0.1),
+                color: AppTheme.accentLight,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -86,7 +86,7 @@ class TransportPreviewCard extends StatelessWidget {
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 6),
                         child: Icon(Icons.arrow_forward,
-                            size: 14, color: AppTheme.textSecondary),
+                            size: 14, color: AppTheme.accent),
                       ),
                       Flexible(
                         child: Text(
