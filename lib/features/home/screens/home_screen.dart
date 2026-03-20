@@ -405,10 +405,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 20),
 
           // ── Bento Box Grid ─────────────────────────
-          if (_dDays != null) ...[
-            _buildBentoGrid(partnerName, todayWeekday),
-            const SizedBox(height: 20),
-          ],
+          _buildBentoGrid(partnerName, todayWeekday),
+          const SizedBox(height: 20),
 
           // ── 내일의 일정 (full width) ────────────────
           if (_hasSchedules(_tomorrowSchedules)) ...[
@@ -540,7 +538,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white60,
               ),
             ),
-            const SizedBox(height: 4),
             // D+ label + counter
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,10 +550,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     fontWeight: FontWeight.w700,
                   ),
                 ),
-                if (_dDays != null) _AnimatedDayCounter(days: _dDays!),
+                if (_dDays != null)
+                  _AnimatedDayCounter(days: _dDays!)
+                else
+                  const Text(
+                    '---',
+                    style: TextStyle(
+                      fontSize: 40,
+                      color: Colors.white38,
+                      fontWeight: FontWeight.w800,
+                      height: 1.0,
+                    ),
+                  ),
               ],
             ),
-            // Relationship start date (spaceBetween이 자동으로 밀어줌)
+            // Relationship start date
             if (startDateLabel.isNotEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -572,6 +580,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.white70,
                   ),
                 ),
+              )
+            else
+              const Text(
+                '시작일을 설정해보세요',
+                style: TextStyle(fontSize: 10, color: Colors.white30),
               ),
           ],
         ),
