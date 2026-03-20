@@ -9,10 +9,8 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
-import '../../calendar/widgets/schedule_detail.dart';
 import 'relationship_timeline_screen.dart';
 
 // ─── Animated D-day Counter ──────────────────────────────────────────────────
@@ -404,26 +402,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ── Bento Box Grid ─────────────────────────
-          _buildBentoGrid(partnerName, todayWeekday),
+          // ── Bento Box Grid (오늘 + 내일 + 다음 데이트 포함) ──
+          _buildBentoGrid(partnerName, todayWeekday, tomorrowWeekday),
           const SizedBox(height: 20),
-
-          // ── 내일의 일정 (full width) ────────────────
-          if (_hasSchedules(_tomorrowSchedules)) ...[
-            TodayScheduleWidget(
-              todaySchedules: _tomorrowSchedules ?? {},
-              weekday: tomorrowWeekday,
-              title: '내일의 일정',
-              partnerNickname: _partnerNickname,
-              onScheduleTap: (s) => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ScheduleDetailScreen(schedule: s),
-                ),
-              ),
-            ),
-            const SizedBox(height: 20),
-          ],
 
           // ── 교통편 카드 ─────────────────────────────
           if (_profile?.hasTransportInfo == true) ...[
@@ -452,10 +433,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ── Bento Grid ────────────────────────────────────────────────────────────
 
-  Widget _buildBentoGrid(String partnerName, String todayWeekday) {
-    // IntrinsicHeight 대신 고정 높이 사용 — Expanded/Spacer와 호환
+  Widget _buildBentoGrid(
+    String partnerName,
+    String todayWeekday,
+    String tomorrowWeekday,
+  ) {
+    // 오늘+내일 일정을 오른쪽 컬럼에, D+day 카드를 왼쪽에 배치
     return SizedBox(
-      height: 200,
+      height: 310,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -465,7 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _buildDDayCard(partnerName),
           ),
           const SizedBox(width: 12),
-          // Right column (flex 5): today schedule + next date stacked
+          // Right column (flex 5): 오늘 + 내일 + 다음 데이트
           Expanded(
             flex: 5,
             child: Column(
@@ -473,7 +458,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: _buildTodayScheduleMini(todayWeekday),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: _buildTomorrowScheduleMini(tomorrowWeekday),
+                ),
+                const SizedBox(height: 8),
                 _buildNextDateMini(),
               ],
             ),
@@ -485,24 +474,53 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildDDayCard(String partnerName) {
     // Format relationship start date
+    DateTime? startedAt;
     String startDateLabel = '';
     if (_relationshipStartDate != null) {
       try {
-        final dt = DateTime.parse(_relationshipStartDate!);
-        startDateLabel = '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
+        startedAt = DateTime.parse(_relationshipStartDate!);
+        startDateLabel =
+            '${startedAt.year}.${startedAt.month.toString().padLeft(2, '0')}.${startedAt.day.toString().padLeft(2, '0')}';
       } catch (_) {
         startDateLabel = _relationshipStartDate!;
       }
     }
 
+    // 다음 기념일 계산
+    String nextMilestoneLabel = '';
+    int nextMilestoneDays = 0;
+    if (_dDays != null && startedAt != null) {
+      final now = DateTime.now();
+      final nowDate = DateTime(now.year, now.month, now.day);
+
+      // 다음 100일 단위
+      final next100 = ((_dDays! ~/ 100) + 1) * 100;
+      final daysToNext100 = next100 - _dDays!;
+
+      // 다음 주년
+      int daysToAnniv = 999999;
+      String annivLabel = '';
+      for (int y = 1; y <= 20; y++) {
+        final anniv = DateTime(
+            startedAt.year + y, startedAt.month, startedAt.day);
+        if (!anniv.isBefore(nowDate)) {
+          daysToAnniv = anniv.difference(nowDate).inDays;
+          annivLabel = '$y주년';
+          break;
+        }
+      }
+
+      if (daysToAnniv < daysToNext100) {
+        nextMilestoneLabel = annivLabel;
+        nextMilestoneDays = daysToAnniv;
+      } else {
+        nextMilestoneLabel = 'D+$next100';
+        nextMilestoneDays = daysToNext100;
+      }
+    }
+
     return GestureDetector(
       onTap: () {
-        DateTime? startedAt;
-        if (_relationshipStartDate != null) {
-          try {
-            startedAt = DateTime.parse(_relationshipStartDate!);
-          } catch (_) {}
-        }
         if (startedAt == null) return;
         Navigator.push(
           context,
@@ -564,21 +582,58 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
               ],
             ),
+            // 다음 기념일 섹션
+            if (nextMilestoneLabel.isNotEmpty) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '다음 기념일',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.white38,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      nextMilestoneLabel,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      nextMilestoneDays == 0
+                          ? '오늘!'
+                          : 'D-$nextMilestoneDays',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.accent,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             // Relationship start date
             if (startDateLabel.isNotEmpty)
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  startDateLabel,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white70,
-                  ),
+              Text(
+                startDateLabel,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: Colors.white38,
                 ),
               )
             else
@@ -653,6 +708,80 @@ class _HomeScreenState extends State<HomeScreen> {
                     if (mySchedules.isNotEmpty) ...[
                       _buildMiniScheduleRow('나', mySchedules),
                     ],
+                    if (partnerSchedules.isNotEmpty) ...[
+                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
+                      _buildMiniScheduleRow(partnerName, partnerSchedules),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTomorrowScheduleMini(String tomorrowWeekday) {
+    final schedules = _tomorrowSchedules;
+    final mySchedules = schedules?['mine'] ?? [];
+    final partnerSchedules = schedules?['partner'] ?? [];
+    final partnerName = _partnerNickname ?? '애인';
+    final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border, width: 1),
+        boxShadow: const [AppTheme.subtleShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '내일의 일정',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                tomorrowWeekday,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textTertiary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          if (!hasAny)
+            const Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '일정 없음',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (mySchedules.isNotEmpty)
+                      _buildMiniScheduleRow('나', mySchedules),
                     if (partnerSchedules.isNotEmpty) ...[
                       if (mySchedules.isNotEmpty) const SizedBox(height: 4),
                       _buildMiniScheduleRow(partnerName, partnerSchedules),
