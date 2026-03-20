@@ -33,7 +33,7 @@ class HomeService {
     }
 
     return {
-      'days': diff.inDays,
+      'days': diff.inDays + 1, // 만난 날 = D+1 기준
       'started_at': startedAt,
       'partner_nickname': partnerNickname,
     };

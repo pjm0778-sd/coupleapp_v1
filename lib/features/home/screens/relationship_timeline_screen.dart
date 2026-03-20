@@ -17,18 +17,18 @@ class RelationshipTimelineScreen extends StatelessWidget {
     final now = DateTime.now();
     final milestones = <_Milestone>[];
 
-    // 1. Start date
+    // 1. Start date (만난 날 = D+1)
     milestones.add(_Milestone(
       date: startedAt,
       label: '우리의 시작 ❤️',
-      daysCount: 0,
+      daysCount: 1,
       isPast: true,
       isSpecial: true,
     ));
 
-    // 2. 100-day milestones (up to 1 year ahead)
+    // 2. 100-day milestones: D+N = N번째 날 = startedAt + (N-1)일
     for (int i = 100; i <= 3650; i += 100) {
-      final date = startedAt.add(Duration(days: i));
+      final date = startedAt.add(Duration(days: i - 1));
       if (date.isAfter(now.add(const Duration(days: 365)))) break;
       milestones.add(_Milestone(
         date: date,
@@ -39,7 +39,7 @@ class RelationshipTimelineScreen extends StatelessWidget {
       ));
     }
 
-    // 3. Anniversaries (up to ~400 days ahead)
+    // 3. Anniversaries: daysCount도 D+1 기준으로 +1
     for (int year = 1; year <= 10; year++) {
       final date = DateTime(
         startedAt.year + year,
@@ -47,7 +47,7 @@ class RelationshipTimelineScreen extends StatelessWidget {
         startedAt.day,
       );
       if (date.isAfter(now.add(const Duration(days: 400)))) break;
-      final daysFromStart = date.difference(startedAt).inDays;
+      final daysFromStart = date.difference(startedAt).inDays + 1;
       milestones.add(_Milestone(
         date: date,
         label: '$year주년 기념일 🎉',
@@ -66,7 +66,7 @@ class RelationshipTimelineScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final milestones = _buildMilestones();
     final now = DateTime.now();
-    final daysTogether = now.difference(startedAt).inDays;
+    final daysTogether = now.difference(startedAt).inDays + 1; // 만난 날 = D+1
     final partnerName = partnerNickname ?? '파트너';
 
     return Scaffold(
