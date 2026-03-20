@@ -34,7 +34,7 @@ class HomeService {
 
     return {
       'days': diff.inDays,
-      'started_at': startedDate,
+      'started_at': startedAt,
       'partner_nickname': partnerNickname,
     };
   }
