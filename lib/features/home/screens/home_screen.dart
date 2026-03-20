@@ -209,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayHolidays = HolidayService().getHolidays(today);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
@@ -410,7 +410,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1A2A4A), Color(0xFF2C4070)],
+          colors: [Color(0xFFB5547C), Color(0xFFCC7090)],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),

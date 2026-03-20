@@ -5,18 +5,18 @@ class AppTheme {
   AppTheme._();
 
   // ── Core Colors ──────────────────────────────────────────
-  static const Color primary         = Color(0xFF1A2A4A); // 딥 네이비
-  static const Color accent          = Color(0xFFC9A84C); // 소프트 골드
-  static const Color accentLight     = Color(0xFFF5EDD6); // 골드 연배경
-  static const Color coral           = Color(0xFFFF6B81); // 코럴 포인트
-  static const Color background      = Color(0xFFF4F6FB); // 쿨 펄 그레이
+  static const Color primary         = Color(0xFFB5547C); // 스위트 로즈
+  static const Color accent          = Color(0xFFC9A84C); // 소프트 골드 (유지)
+  static const Color accentLight     = Color(0xFFFDE8F0); // 핑크 연배경
+  static const Color coral           = Color(0xFFF48FB1); // 소프트 핑크
+  static const Color background      = Color(0xFFFFF3F6); // 블러시 화이트
   static const Color surface         = Color(0xFFFFFFFF);
-  static const Color border          = Color(0xFFEEEFF3);
+  static const Color border          = Color(0xFFF5D5E2); // 로즈 보더
 
   // ── Text Colors ───────────────────────────────────────────
-  static const Color textPrimary     = Color(0xFF1A2A4A); // = primary
-  static const Color textSecondary   = Color(0xFF6B7280);
-  static const Color textTertiary    = Color(0xFFB0B7C3); // 힌트/비활성
+  static const Color textPrimary     = Color(0xFF2C1A22); // 따뜻한 다크
+  static const Color textSecondary   = Color(0xFF7B5060); // 웜 뮤트 로즈
+  static const Color textTertiary    = Color(0xFFBF9AAA); // 연한 로즈
 
   // ── Semantic Colors ───────────────────────────────────────
   static const Color success         = Color(0xFF38A169);
@@ -24,23 +24,23 @@ class AppTheme {
   static const Color warning         = Color(0xFFD97706);
 
   // ── Calendar ─────────────────────────────────────────────
-  static const Color dateBorderColor = Color(0xFFC9A84C); // Gold (구 핫핑크)
+  static const Color dateBorderColor = Color(0xFFB5547C); // = primary rose
 
   // ── Shadows ───────────────────────────────────────────────
   static const BoxShadow cardShadow = BoxShadow(
-    color: Color(0x18000000), // 9% black — visible on white bg
+    color: Color(0x1AB5547C), // rose-tinted 10%
     blurRadius: 24,
     spreadRadius: 0,
     offset: Offset(0, 4),
   );
   static const BoxShadow subtleShadow = BoxShadow(
-    color: Color(0x0F000000), // 6% black
+    color: Color(0x12B5547C), // rose-tinted 7%
     blurRadius: 12,
     spreadRadius: 0,
     offset: Offset(0, 2),
   );
   static const BoxShadow navShadow = BoxShadow(
-    color: Color(0x12000000), // 7% black — bottom nav
+    color: Color(0x14B5547C), // rose-tinted nav
     blurRadius: 20,
     offset: Offset(0, -4),
   );
