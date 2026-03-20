@@ -184,35 +184,36 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           body: IndexedStack(index: _currentIndex, children: _screens),
           bottomNavigationBar: Container(
             decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppTheme.border)),
+              color: Colors.white,
+              boxShadow: [AppTheme.navShadow],
             ),
-            child: BottomNavigationBar(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() => _currentIndex = index),
-              items: const [
-                BottomNavigationBarItem(
+            child: NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (i) => setState(() => _currentIndex = i),
+              destinations: const [
+                NavigationDestination(
                   icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home_rounded),
+                  selectedIcon: Icon(Icons.home_rounded),
                   label: '홈',
                 ),
-                BottomNavigationBarItem(
+                NavigationDestination(
                   icon: Icon(Icons.calendar_month_outlined),
-                  activeIcon: Icon(Icons.calendar_month_rounded),
-                  label: '우리의 달력',
+                  selectedIcon: Icon(Icons.calendar_month_rounded),
+                  label: '달력',
                 ),
-                BottomNavigationBarItem(
+                NavigationDestination(
                   icon: Icon(Icons.document_scanner_outlined),
-                  activeIcon: Icon(Icons.document_scanner_rounded),
-                  label: '일정 자동등록',
+                  selectedIcon: Icon(Icons.document_scanner_rounded),
+                  label: '자동등록',
                 ),
-                BottomNavigationBarItem(
+                NavigationDestination(
                   icon: Icon(Icons.notifications_outlined),
-                  activeIcon: Icon(Icons.notifications_rounded),
+                  selectedIcon: Icon(Icons.notifications_rounded),
                   label: '알림',
                 ),
-                BottomNavigationBarItem(
+                NavigationDestination(
                   icon: Icon(Icons.settings_outlined),
-                  activeIcon: Icon(Icons.settings_rounded),
+                  selectedIcon: Icon(Icons.settings_rounded),
                   label: '설정',
                 ),
               ],

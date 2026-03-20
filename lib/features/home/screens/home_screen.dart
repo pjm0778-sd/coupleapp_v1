@@ -9,7 +9,6 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/dday_widget.dart';
 import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
@@ -209,44 +208,18 @@ class _HomeScreenState extends State<HomeScreen> {
     final todayHolidays = HolidayService().getHolidays(today);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '우리의 이야기',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              todayHolidays.isNotEmpty
-                  ? '${today.month}월 ${today.day}일 ($todayWeekday)  ·  ${todayHolidays.first.emoji} ${todayHolidays.first.name}'
-                  : '${today.month}월 ${today.day}일 ($todayWeekday)',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.textSecondary,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() => _isLoading = true);
-              _loadData();
-            },
-            tooltip: '새로고침',
-          ),
-        ],
-      ),
+      backgroundColor: Colors.white,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
           ? _buildNoCoupleState()
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: _buildHomeContent(todayWeekday, tomorrowWeekday),
+          : SafeArea(
+              child: RefreshIndicator(
+                onRefresh: _loadData,
+                child: _buildHomeContent(
+                  today, todayWeekday, tomorrowWeekday, todayHolidays,
+                ),
+              ),
             ),
     );
   }
@@ -271,19 +244,119 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHomeContent(String todayWeekday, String tomorrowWeekday) {
+  Widget _buildHomeContent(
+    DateTime today,
+    String todayWeekday,
+    String tomorrowWeekday,
+    List<dynamic> todayHolidays,
+  ) {
+    final hour = today.hour;
+    final greeting = hour < 6
+        ? '밤 늦게까지 함께해요 🌙'
+        : hour < 12
+        ? '좋은 아침이에요 ☀️'
+        : hour < 17
+        ? '좋은 오후예요 🌤️'
+        : '좋은 저녁이에요 🌆';
+    final partnerName = _partnerNickname ?? '애인';
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // D+day 위젯 (화면 1/6 크기, 탭 설정 없음)
-          DDayWidget(
-            days: _dDays,
-            partnerNickname: _partnerNickname,
-            nextDateDays: _nextDateDaysUntil,
+          // ── 헤더 ──────────────────────────────────
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      greeting,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          '${today.month}월 ${today.day}일 ($todayWeekday)',
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        if (todayHolidays.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentLight,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              todayHolidays.first.name,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.accent,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                  size: 20,
+                  color: AppTheme.textTertiary,
+                ),
+                onPressed: () {
+                  setState(() => _isLoading = true);
+                  _loadData();
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          // 다가오는 데이트
+          const SizedBox(height: 20),
+
+          // ── D+day 컴팩트 스트립 ────────────────────
+          if (_dDays != null) ...[
+            _buildDDayStrip(partnerName),
+            const SizedBox(height: 24),
+          ],
+
+          // ── 오늘의 일정 (HERO) ──────────────────────
+          TodayScheduleWidget(
+            todaySchedules: _todaySchedules ?? {},
+            weekday: todayWeekday,
+            title: '오늘의 일정',
+          ),
+
+          // ── 내일의 일정 ─────────────────────────────
+          if (_hasSchedules(_tomorrowSchedules)) ...[
+            const SizedBox(height: 24),
+            TodayScheduleWidget(
+              todaySchedules: _tomorrowSchedules ?? {},
+              weekday: tomorrowWeekday,
+              title: '내일의 일정',
+            ),
+          ],
+
+          const SizedBox(height: 24),
+
+          // ── 다가오는 데이트 ──────────────────────────
           if (_nextDate != null) ...[
             NextDateWidget(
               nextDateSchedule: _nextDate!['schedule'] as Schedule,
@@ -291,7 +364,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // 교통편 카드 (장거리 + 내 역 + 파트너 역 설정 시)
+
+          // ── 교통편 카드 ─────────────────────────────
           if (_profile?.hasTransportInfo == true) ...[
             TransportPreviewCard(
               fromStation: _profile!.myStation!,
@@ -302,7 +376,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 16),
           ],
-          // 중간지점 찾기 배너
+
+          // ── 중간지점 찾기 배너 ──────────────────────
           _MidpointBanner(
             onTap: () => Navigator.push(
               context,
@@ -310,22 +385,96 @@ class _HomeScreenState extends State<HomeScreen> {
                   builder: (_) => const MidpointSearchScreen()),
             ),
           ),
-          const SizedBox(height: 16),
-          // 오늘의 일정
-          TodayScheduleWidget(
-            todaySchedules: _todaySchedules ?? {},
-            weekday: todayWeekday,
-            title: '오늘의 일정',
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDDayStrip(String partnerName) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1A2A4A), Color(0xFF2C4070)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [AppTheme.cardShadow],
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$partnerName 과 함께',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.white60,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  const Text(
+                    'D+',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppTheme.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    '${_dDays!}',
+                    style: const TextStyle(
+                      fontSize: 34,
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'PlayfairDisplay',
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          // 내일의 일정 (일정이 있을 때만 표시)
-          if (_hasSchedules(_tomorrowSchedules)) ...[
-            const SizedBox(height: 16),
-            TodayScheduleWidget(
-              todaySchedules: _tomorrowSchedules ?? {},
-              weekday: tomorrowWeekday,
-              title: '내일의 일정',
+          const Spacer(),
+          if (_nextDateDaysUntil != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppTheme.accent.withValues(alpha: 0.5)),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    '다음 데이트',
+                    style: TextStyle(fontSize: 10, color: AppTheme.accent),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _nextDateDaysUntil == 0
+                        ? '오늘!'
+                        : _nextDateDaysUntil == 1
+                        ? '내일!'
+                        : 'D-$_nextDateDaysUntil',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                      height: 1.0,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ],
         ],
       ),
     );
@@ -346,8 +495,9 @@ class _MidpointBanner extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: AppTheme.accentLight,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppTheme.accent.withOpacity(0.4)),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+              color: AppTheme.accent.withValues(alpha: 0.35)),
         ),
         child: Row(
           children: [

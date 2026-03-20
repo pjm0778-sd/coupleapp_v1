@@ -8,9 +8,10 @@ class AppTheme {
   static const Color primary         = Color(0xFF1A2A4A); // 딥 네이비
   static const Color accent          = Color(0xFFC9A84C); // 소프트 골드
   static const Color accentLight     = Color(0xFFF5EDD6); // 골드 연배경
-  static const Color background      = Color(0xFFF4F5F9); // 블루그레이 배경
+  static const Color coral           = Color(0xFFFF6B81); // 코럴 포인트
+  static const Color background      = Color(0xFFFFFFFF); // 순백 배경
   static const Color surface         = Color(0xFFFFFFFF);
-  static const Color border          = Color(0xFFE8EAF0);
+  static const Color border          = Color(0xFFEEEFF3);
 
   // ── Text Colors ───────────────────────────────────────────
   static const Color textPrimary     = Color(0xFF1A2A4A); // = primary
@@ -27,14 +28,21 @@ class AppTheme {
 
   // ── Shadows ───────────────────────────────────────────────
   static const BoxShadow cardShadow = BoxShadow(
-    color: Color(0x141A2A4A), // primary 8%
-    blurRadius: 20,
+    color: Color(0x18000000), // 9% black — visible on white bg
+    blurRadius: 24,
+    spreadRadius: 0,
     offset: Offset(0, 4),
   );
   static const BoxShadow subtleShadow = BoxShadow(
-    color: Color(0x0A1A2A4A), // primary 4%
+    color: Color(0x0F000000), // 6% black
     blurRadius: 12,
+    spreadRadius: 0,
     offset: Offset(0, 2),
+  );
+  static const BoxShadow navShadow = BoxShadow(
+    color: Color(0x12000000), // 7% black — bottom nav
+    blurRadius: 20,
+    offset: Offset(0, -4),
   );
 
   // ── Schedule Color Presets (20색 유지, 채도 소폭 조정) ───
@@ -142,7 +150,7 @@ class AppTheme {
         elevation: 0,
         shadowColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(24),
         ),
         margin: EdgeInsets.zero,
       ),
@@ -280,6 +288,29 @@ class AppTheme {
         contentTextStyle: GoogleFonts.notoSansKr(
           color: textSecondary, fontSize: 14, height: 1.5,
         ),
+      ),
+
+      // ── NavigationBar (Material 3) ───────────────────────
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        height: 64,
+        indicatorColor: accentLight,
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return GoogleFonts.notoSansKr(
+              fontSize: 11, fontWeight: FontWeight.w600, color: primary,
+            );
+          }
+          return GoogleFonts.notoSansKr(fontSize: 11, color: textTertiary);
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const IconThemeData(color: primary, size: 22);
+          }
+          return const IconThemeData(color: textTertiary, size: 22);
+        }),
       ),
 
       // ── ProgressIndicator ────────────────────────────────
