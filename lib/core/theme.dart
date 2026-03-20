@@ -9,7 +9,7 @@ class AppTheme {
   static const Color accent          = Color(0xFFC9A84C); // 소프트 골드
   static const Color accentLight     = Color(0xFFF5EDD6); // 골드 연배경
   static const Color coral           = Color(0xFFFF6B81); // 코럴 포인트
-  static const Color background      = Color(0xFFFFFFFF); // 순백 배경
+  static const Color background      = Color(0xFFF4F6FB); // 쿨 펄 그레이
   static const Color surface         = Color(0xFFFFFFFF);
   static const Color border          = Color(0xFFEEEFF3);
 

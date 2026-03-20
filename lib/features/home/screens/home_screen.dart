@@ -13,6 +13,7 @@ import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
+import '../../calendar/widgets/schedule_detail.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -342,6 +343,13 @@ class _HomeScreenState extends State<HomeScreen> {
             todaySchedules: _todaySchedules ?? {},
             weekday: todayWeekday,
             title: '오늘의 일정',
+            partnerNickname: _partnerNickname,
+            onScheduleTap: (s) => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScheduleDetailScreen(schedule: s),
+              ),
+            ),
           ),
 
           // ── 내일의 일정 ─────────────────────────────
@@ -351,6 +359,13 @@ class _HomeScreenState extends State<HomeScreen> {
               todaySchedules: _tomorrowSchedules ?? {},
               weekday: tomorrowWeekday,
               title: '내일의 일정',
+              partnerNickname: _partnerNickname,
+              onScheduleTap: (s) => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ScheduleDetailScreen(schedule: s),
+                ),
+              ),
             ),
           ],
 

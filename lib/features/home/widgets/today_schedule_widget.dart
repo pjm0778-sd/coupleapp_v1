@@ -6,12 +6,16 @@ class TodayScheduleWidget extends StatelessWidget {
   final Map<String, List<Schedule>> todaySchedules;
   final String weekday;
   final String title;
+  final String? partnerNickname;
+  final void Function(Schedule)? onScheduleTap;
 
   const TodayScheduleWidget({
     super.key,
     required this.todaySchedules,
     required this.weekday,
     this.title = '오늘의 일정',
+    this.partnerNickname,
+    this.onScheduleTap,
   });
 
   Color _getCategoryColor(String? category) {
@@ -111,17 +115,19 @@ class TodayScheduleWidget extends StatelessWidget {
                   getCategoryColor: _getCategoryColor,
                   getCategoryIcon: _getCategoryIcon,
                   formatTimeRange: _formatTimeRange,
+                  onTap: onScheduleTap,
                 )),
           ],
           if (partnerSchedules.isNotEmpty) ...[
             if (mySchedules.isNotEmpty) const SizedBox(height: 14),
-            _buildPersonChip('내 애인'),
+            _buildPersonChip(partnerNickname ?? '상대방'),
             const SizedBox(height: 8),
             ...partnerSchedules.map((s) => _ScheduleItem(
                   schedule: s,
                   getCategoryColor: _getCategoryColor,
                   getCategoryIcon: _getCategoryIcon,
                   formatTimeRange: _formatTimeRange,
+                  onTap: onScheduleTap,
                 )),
           ],
         ],
@@ -192,12 +198,14 @@ class _ScheduleItem extends StatelessWidget {
   final Color Function(String?) getCategoryColor;
   final IconData Function(String?) getCategoryIcon;
   final String Function(TimeOfDay?, TimeOfDay?) formatTimeRange;
+  final void Function(Schedule)? onTap;
 
   const _ScheduleItem({
     required this.schedule,
     required this.getCategoryColor,
     required this.getCategoryIcon,
     required this.formatTimeRange,
+    this.onTap,
   });
 
   @override
@@ -210,7 +218,9 @@ class _ScheduleItem extends StatelessWidget {
     final hasLocation =
         schedule.location != null && schedule.location!.isNotEmpty;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap != null ? () => onTap!(schedule) : null,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -307,6 +317,7 @@ class _ScheduleItem extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

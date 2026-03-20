@@ -181,7 +181,21 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           return true;
         },
         child: Scaffold(
-          body: IndexedStack(index: _currentIndex, children: _screens),
+          body: Stack(
+            fit: StackFit.expand,
+            children: List.generate(
+              _screens.length,
+              (i) => AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                opacity: i == _currentIndex ? 1.0 : 0.0,
+                child: IgnorePointer(
+                  ignoring: i != _currentIndex,
+                  child: _screens[i],
+                ),
+              ),
+            ),
+          ),
           bottomNavigationBar: Container(
             decoration: const BoxDecoration(
               color: Colors.white,
