@@ -35,6 +35,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   String? _myUserId;
   String? _partnerId;
   RealtimeChannel? _schedulesChannel;
+  bool _partnerGrayMode = false;
 
   @override
   void initState() {
@@ -264,6 +265,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getScheduleColor(Schedule s) {
+    if (_partnerGrayMode && s.ownerType == 'partner') {
+      return Colors.grey.shade400;
+    }
     if (s.colorHex != null && s.colorHex!.isNotEmpty) {
       try {
         return Color(
@@ -327,31 +331,68 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Future<void> _deleteMyMonthSchedules() async {
     if (_myUserId == null) return;
-    final confirmed = await showDialog<bool>(
+
+    final choice = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('월별 일정 전체 삭제'),
-        content: Text(
-          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 본인 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('${_focusedMonth.year}년 ${_focusedMonth.month}월 일정 삭제'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+              title: const Text('전체 삭제'),
+              subtitle: const Text('이달 내 모든 내 일정 삭제'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              onTap: () => Navigator.pop(context, 'all'),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.title_outlined, color: Colors.orange),
+              title: const Text('제목으로 삭제'),
+              subtitle: const Text('특정 제목의 일정만 삭제'),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              onTap: () => Navigator.pop(context, 'title'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(context),
             child: const Text('취소'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-            child: const Text('삭제'),
           ),
         ],
       ),
     );
 
-    if (confirmed == true) {
+    if (choice == null) return;
+
+    if (choice == 'all') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('전체 삭제 확인'),
+          content: Text(
+            '${_focusedMonth.year}년 ${_focusedMonth.month}월의 본인 일정을 모두 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
       try {
         final count = await _service.deleteMyMonthSchedules(_focusedMonth);
         await _loadSchedules(_focusedMonth);
@@ -360,6 +401,64 @@ class _CalendarScreenState extends State<CalendarScreen> {
             SnackBar(
               content: Text(
                 count > 0 ? '$count개의 일정을 삭제했습니다.' : '삭제할 일정이 없습니다.',
+              ),
+            ),
+          );
+        }
+      } catch (e) {
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')),
+          );
+        }
+      }
+    } else if (choice == 'title') {
+      final controller = TextEditingController();
+      final title = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('제목으로 삭제'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: '삭제할 일정 제목',
+              border: OutlineInputBorder(),
+              hintText: '예: 근무, 출근',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('삭제'),
+            ),
+          ],
+        ),
+      );
+      if (title == null || title.isEmpty) return;
+      try {
+        final count = await _service.deleteMyMonthSchedulesByTitle(
+          _focusedMonth,
+          title,
+        );
+        await _loadSchedules(_focusedMonth);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                count > 0
+                    ? '"$title" 일정 $count개를 삭제했습니다.'
+                    : '삭제할 일정이 없습니다.',
               ),
             ),
           );
@@ -384,19 +483,19 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final choice = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('누구의 OCR 일정을 삭제할까요?'),
+          title: const Text('누구의 사진 자동 등록 일정을 삭제할까요?'),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
                 leading: const Icon(Icons.person),
-                title: const Text('나의 OCR 일정'),
+                title: const Text('나의 일정'),
                 onTap: () => Navigator.pop(context, 'me'),
               ),
               ListTile(
                 leading: const Icon(Icons.favorite, color: Colors.pinkAccent),
-                title: Text('${_partnerNickname ?? '파트너'}의 OCR 일정'),
+                title: Text('${_partnerNickname ?? '파트너'}의 일정'),
                 onTap: () => Navigator.pop(context, 'partner'),
               ),
             ],
@@ -413,9 +512,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('OCR 일정 삭제'),
+        title: const Text('사진 자동 등록 일정 삭제'),
         content: Text(
-          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 $targetLabel OCR 자동등록 일정을 모두 삭제하시겠습니까?\n구글 캘린더 연동 일정은 삭제되지 않습니다.\n이 작업은 되돌릴 수 없습니다.',
+          '${_focusedMonth.year}년 ${_focusedMonth.month}월의 $targetLabel 사진 자동 등록 일정을 모두 삭제하시겠습니까?\n구글 캘린더 연동 일정은 삭제되지 않습니다.\n이 작업은 되돌릴 수 없습니다.',
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
@@ -456,8 +555,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             SnackBar(
               content: Text(
                 count > 0
-                    ? 'OCR 일정 $count개를 삭제했습니다.'
-                    : '삭제할 OCR 일정이 없습니다.',
+                    ? '사진 자동 등록 일정 $count개를 삭제했습니다.'
+                    : '삭제할 사진 자동 등록 일정이 없습니다.',
               ),
             ),
           );
@@ -466,7 +565,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('OCR 일정 삭제 중 오류가 발생했습니다.')),
+            const SnackBar(content: Text('사진 자동 등록 일정 삭제 중 오류가 발생했습니다.')),
           );
         }
       }
@@ -620,6 +719,16 @@ class _CalendarScreenState extends State<CalendarScreen> {
         centerTitle: false,
         actions: [
           IconButton(
+            icon: Icon(
+              Icons.people_outlined,
+              color: _partnerGrayMode ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+            tooltip: _partnerGrayMode ? '상대방 색상 구분 켜짐' : '상대방 색상 구분하기',
+            onPressed: () => setState(() {
+              _partnerGrayMode = !_partnerGrayMode;
+            }),
+          ),
+          IconButton(
             icon: const Icon(Icons.map_outlined, color: AppTheme.primary),
             tooltip: '장소 지도',
             onPressed: () {
@@ -644,7 +753,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           IconButton(
             icon: const Icon(Icons.document_scanner_outlined,
                 color: AppTheme.warning),
-            tooltip: '이달의 OCR 자동등록 일정 삭제',
+            tooltip: '이달의 사진 자동 등록 일정 삭제',
             onPressed: _deleteOcrMonthSchedules,
           ),
           IconButton(

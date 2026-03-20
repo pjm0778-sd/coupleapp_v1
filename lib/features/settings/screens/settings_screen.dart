@@ -34,6 +34,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
   CoupleProfile? _profile;
   final _profileService = ProfileService();
 
+  // 일반 직장인 근무 색상 (세션 내 유지)
+  String _officeWorkColorHex = '#4CAF50';
+
+  static const _presetWorkColors = [
+    Color(0xFF4CAF50), Color(0xFF2196F3), Color(0xFFE91E63),
+    Color(0xFFFF9800), Color(0xFF9C27B0), Color(0xFFF44336),
+    Color(0xFF00BCD4), Color(0xFF795548), Color(0xFF607D8B),
+    Color(0xFFFFEB3B), Color(0xFF8BC34A), Color(0xFF3F51B5),
+  ];
+
+  Color _hexToColor(String hex) {
+    try {
+      return Color(int.parse('FF${hex.replaceAll('#', '')}', radix: 16));
+    } catch (_) {
+      return const Color(0xFF4CAF50);
+    }
+  }
+
+  Future<void> _pickOfficeWorkColor() async {
+    final picked = await showDialog<Color>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('근무 색상 선택'),
+        content: Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: _presetWorkColors.map((c) {
+            final hex = '#${c.value.toRadixString(16).substring(2).toUpperCase()}';
+            final isSelected = _officeWorkColorHex.toUpperCase() == hex;
+            return GestureDetector(
+              onTap: () => Navigator.pop(ctx, c),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: c,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? Colors.black87 : Colors.transparent,
+                    width: 2.5,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check, color: Colors.white, size: 20)
+                    : null,
+              ),
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+        ],
+      ),
+    );
+
+    if (picked != null) {
+      final hex = '#${picked.value.toRadixString(16).substring(2).toUpperCase()}';
+      setState(() => _officeWorkColorHex = hex);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -284,6 +349,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         startTime: shift.startTime,
         endTime: shift.endTime,
         holidayDates: holidayDates,
+        colorHex: _officeWorkColorHex,
       );
       if (mounted) {
         setState(() => _isLoading = false);
@@ -1291,6 +1357,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ],
                           ),
                           onTap: _editWorkTitle,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: _hexToColor(_officeWorkColorHex),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          title: const Text('근무 색상'),
+                          trailing: const Icon(
+                            Icons.chevron_right,
+                            color: AppTheme.textSecondary,
+                          ),
+                          onTap: _pickOfficeWorkColor,
                         ),
                       ],
                       const Divider(height: 1),

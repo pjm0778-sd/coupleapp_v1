@@ -703,10 +703,23 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.train_outlined,
+                    color: AppTheme.primary,
+                    size: 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 const Text(
-                  '🚆 서로에게 가는 길',
+                  '서로에게 가는 길',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
@@ -795,10 +808,23 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(7),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.location_on_outlined,
+                    color: AppTheme.primary,
+                    size: 15,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 const Text(
-                  '📍 중간지점 찾기',
+                  '중간지점 찾기',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),

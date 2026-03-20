@@ -414,6 +414,7 @@ class ScheduleService {
     required TimeOfDay startTime,
     required TimeOfDay endTime,
     required List<String> holidayDates, // 'yyyy-MM-dd' 형식
+    String? colorHex,
   }) async {
     final userId = currentUserId;
     final now = DateTime.now();
@@ -430,7 +431,8 @@ class ScheduleService {
             'couple_id': coupleId,
             'date': dateStr,
             'title': title,
-            'category': '근무',
+            'category': '출근',
+            if (colorHex != null && colorHex.isNotEmpty) 'color_hex': colorHex,
             'start_time':
                 '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
             'end_time':
@@ -448,5 +450,30 @@ class ScheduleService {
     if (rows.isEmpty) return 0;
     await supabase.from('schedules').insert(rows);
     return rows.length;
+  }
+
+  /// 해당 월의 본인 일정 중 특정 제목과 일치하는 일정 삭제
+  Future<int> deleteMyMonthSchedulesByTitle(
+    DateTime month,
+    String title,
+  ) async {
+    try {
+      final start = DateTime(month.year, month.month, 1);
+      final end = DateTime(month.year, month.month + 1, 0);
+      final currentUserId = supabase.auth.currentUser!.id;
+
+      final data = await supabase
+          .from('schedules')
+          .delete()
+          .eq('user_id', currentUserId)
+          .eq('title', title)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0])
+          .select();
+      return (data as List).length;
+    } catch (e) {
+      debugPrint('deleteMyMonthSchedulesByTitle error: $e');
+      rethrow;
+    }
   }
 }
