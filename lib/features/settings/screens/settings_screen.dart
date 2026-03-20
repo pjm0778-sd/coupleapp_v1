@@ -8,6 +8,8 @@ import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
 import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity, provinceRegions, getCitiesInProvince, getProvinces;
+import '../../../core/holiday_service.dart';
+import '../../calendar/services/schedule_service.dart';
 import '../../profile/models/shift_time.dart';
 import '../../onboarding/widgets/shift_time_editor.dart';
 import '../../onboarding/widgets/region_selector_widget.dart';
@@ -177,6 +179,127 @@ class _SettingsScreenState extends State<SettingsScreen> {
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
     ProfileChangeNotifier().notify();
+  }
+
+  Future<void> _editWorkTitle() async {
+    if (_profile == null || _profile!.shiftTimes.isEmpty) return;
+    final current = _profile!.shiftTimes.first;
+    final controller = TextEditingController(text: current.label);
+
+    final newTitle = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('근무 제목 변경'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(hintText: '예: 근무, 출근, 업무'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
+    );
+
+    if (newTitle != null && newTitle.isNotEmpty) {
+      final updated = [
+        current.copyWith(label: newTitle),
+        ..._profile!.shiftTimes.skip(1),
+      ];
+      await _saveShiftTimes(updated);
+    }
+  }
+
+  Future<void> _applyOfficeSchedulesThisMonth() async {
+    if (_profile == null || _coupleId == null) return;
+    if (_profile!.workPattern != 'office') return;
+    if (_profile!.shiftTimes.isEmpty) return;
+
+    final shift = _profile!.shiftTimes.first;
+    final now = DateTime.now();
+
+    // 이번달 공휴일 목록 수집
+    final firstDay = DateTime(now.year, now.month, 1);
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+    final holidayDates = <String>[];
+    for (var d = firstDay; !d.isAfter(lastDay); d = d.add(const Duration(days: 1))) {
+      if (HolidayService().getHolidays(d).isNotEmpty) {
+        holidayDates.add(d.toIso8601String().split('T')[0]);
+      }
+    }
+
+    // 등록될 평일 수 미리 계산 (확인 다이얼로그용)
+    int weekdayCount = 0;
+    for (var d = firstDay; !d.isAfter(lastDay); d = d.add(const Duration(days: 1))) {
+      if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) {
+        final dateStr = d.toIso8601String().split('T')[0];
+        if (!holidayDates.contains(dateStr)) weekdayCount++;
+      }
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('이번달 근무 일정 등록'),
+        content: Text(
+          '${now.month}월 평일 $weekdayCount일에\n"${shift.label}" 일정을 등록합니다.\n'
+          '(${shift.startHour.toString().padLeft(2, '0')}:${shift.startMinute.toString().padLeft(2, '0')} ~ '
+          '${shift.endHour.toString().padLeft(2, '0')}:${shift.endMinute.toString().padLeft(2, '0')})\n\n'
+          '기존에 같은 날짜에 일정이 있으면 중복으로 추가될 수 있습니다.',
+          style: const TextStyle(fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('등록하기'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final count = await ScheduleService().bulkInsertOfficeSchedules(
+        coupleId: _coupleId!,
+        title: shift.label,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        holidayDates: holidayDates,
+      );
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${count}일의 근무 일정이 등록되었습니다.')),
+        );
+        ProfileChangeNotifier().notify();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('등록 실패: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _saveShiftTimes(List<ShiftTime> times) async {
@@ -1139,6 +1262,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () => _showWorkPatternPicker(),
                     ),
                     if (_profile != null) ...[
+                      // 일반 직장인: 근무 제목 편집
+                      if (_profile!.workPattern == 'office') ...[
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(
+                            Icons.edit_outlined,
+                            color: AppTheme.textPrimary,
+                          ),
+                          title: const Text('근무 제목'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _profile!.shiftTimes.isNotEmpty
+                                    ? _profile!.shiftTimes.first.label
+                                    : '근무',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.chevron_right,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ],
+                          ),
+                          onTap: _editWorkTitle,
+                        ),
+                      ],
                       const Divider(height: 1),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -1155,6 +1309,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               shiftTimes: _profile!.shiftTimes,
                               onChanged: _saveShiftTimes,
                             ),
+                            // 일반 직장인: 이번달 적용 버튼
+                            if (_profile!.workPattern == 'office') ...[
+                              const SizedBox(height: 16),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: _applyOfficeSchedulesThisMonth,
+                                  icon: const Icon(
+                                    Icons.calendar_month_outlined,
+                                    size: 18,
+                                  ),
+                                  label: const Text('이번달에 적용하기'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppTheme.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

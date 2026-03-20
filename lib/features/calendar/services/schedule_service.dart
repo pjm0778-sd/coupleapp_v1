@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
 import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 import '../../../shared/models/repeat_pattern.dart';
@@ -405,4 +406,47 @@ class ScheduleService {
 
   /// 일정이 현재 유저의 것인지 확인
   bool isMine(Schedule schedule) => schedule.userId == currentUserId;
+
+  /// 이번 달 평일(공휴일 제외) 근무 일정 일괄 등록 — 일반 직장인 전용
+  Future<int> bulkInsertOfficeSchedules({
+    required String coupleId,
+    required String title,
+    required TimeOfDay startTime,
+    required TimeOfDay endTime,
+    required List<String> holidayDates, // 'yyyy-MM-dd' 형식
+  }) async {
+    final userId = currentUserId;
+    final now = DateTime.now();
+    final firstDay = DateTime(now.year, now.month, 1);
+    final lastDay = DateTime(now.year, now.month + 1, 0);
+
+    final rows = <Map<String, dynamic>>[];
+    for (var d = firstDay; !d.isAfter(lastDay); d = d.add(const Duration(days: 1))) {
+      if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) {
+        final dateStr = d.toIso8601String().split('T')[0];
+        if (!holidayDates.contains(dateStr)) {
+          rows.add({
+            'user_id': userId,
+            'couple_id': coupleId,
+            'date': dateStr,
+            'title': title,
+            'category': '근무',
+            'start_time':
+                '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}',
+            'end_time':
+                '${endTime.hour.toString().padLeft(2, '0')}:${endTime.minute.toString().padLeft(2, '0')}',
+            'owner_type': 'me',
+            'is_ocr': false,
+            'is_google_calendar': false,
+            'is_date': false,
+            'is_anniversary': false,
+          });
+        }
+      }
+    }
+
+    if (rows.isEmpty) return 0;
+    await supabase.from('schedules').insert(rows);
+    return rows.length;
+  }
 }

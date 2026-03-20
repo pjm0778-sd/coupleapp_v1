@@ -704,18 +704,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 const Text(
-                  '서로에게 가는 길',
+                  '🚆 서로에게 가는 길',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.train_outlined,
-                  size: 13,
-                  color: AppTheme.textTertiary,
                 ),
               ],
             ),
@@ -802,18 +796,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 const Text(
-                  '중간지점 찾기',
+                  '📍 중간지점 찾기',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                   ),
-                ),
-                const Spacer(),
-                const Icon(
-                  Icons.location_on_outlined,
-                  size: 13,
-                  color: AppTheme.textTertiary,
                 ),
               ],
             ),
