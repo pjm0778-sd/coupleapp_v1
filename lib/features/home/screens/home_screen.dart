@@ -10,6 +10,7 @@ import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
 import '../widgets/travel_together_card.dart';
+import '../../calendar/screens/calendar_screen.dart';
 import 'relationship_timeline_screen.dart';
 
 // ─── Animated D-day Counter ──────────────────────────────────────────────────
@@ -402,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 20),
 
           // ── Bento Box Grid (오늘 + 내일 + 다음 데이트 포함) ──
-          _buildBentoGrid(partnerName, todayWeekday, tomorrowWeekday),
+          _buildBentoGrid(partnerName, today, tomorrow),
           const SizedBox(height: 20),
 
           // ── 이동 통합 카드 (교통편 + 중간지점) ─────────
@@ -422,10 +423,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildBentoGrid(
     String partnerName,
-    String todayWeekday,
-    String tomorrowWeekday,
+    DateTime today,
+    DateTime tomorrow,
   ) {
-    // 오늘+내일 일정을 오른쪽 컬럼에, D+day 카드를 왼쪽에 배치
+    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
+    final todayWeekday = weekdays[today.weekday - 1];
+    final tomorrowWeekday = weekdays[tomorrow.weekday - 1];
+
     return SizedBox(
       height: 310,
       child: Row(
@@ -443,11 +447,11 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               children: [
                 Expanded(
-                  child: _buildTodayScheduleMini(todayWeekday),
+                  child: _buildTodayScheduleMini(today, todayWeekday),
                 ),
                 const SizedBox(height: 8),
                 Expanded(
-                  child: _buildTomorrowScheduleMini(tomorrowWeekday),
+                  child: _buildTomorrowScheduleMini(tomorrow, tomorrowWeekday),
                 ),
                 const SizedBox(height: 8),
                 _buildNextDateMini(),
@@ -535,13 +539,32 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Partner name label
-            Text(
-              '$partnerName 과 함께',
-              style: const TextStyle(
-                fontSize: 11,
-                color: Colors.white60,
-              ),
+            // Partner name + nav indicator
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: Text(
+                    '$partnerName 과 함께',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Colors.white60,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.open_in_new_rounded,
+                    size: 12,
+                    color: Colors.white54,
+                  ),
+                ),
+              ],
             ),
             // D+ label + counter
             Column(
@@ -634,14 +657,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTodayScheduleMini(String todayWeekday) {
+  Widget _buildTodayScheduleMini(DateTime date, String todayWeekday) {
     final schedules = _todaySchedules;
     final mySchedules = schedules?['mine'] ?? [];
     final partnerSchedules = schedules?['partner'] ?? [];
     final partnerName = _partnerNickname ?? '애인';
     final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CalendarScreen(initialDate: date),
+        ),
+      ),
+      child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -705,17 +735,24 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
-    );
+    ));
   }
 
-  Widget _buildTomorrowScheduleMini(String tomorrowWeekday) {
+  Widget _buildTomorrowScheduleMini(DateTime date, String tomorrowWeekday) {
     final schedules = _tomorrowSchedules;
     final mySchedules = schedules?['mine'] ?? [];
     final partnerSchedules = schedules?['partner'] ?? [];
     final partnerName = _partnerNickname ?? '애인';
     final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
 
-    return Container(
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CalendarScreen(initialDate: date),
+        ),
+      ),
+      child: Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -779,7 +816,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
         ],
       ),
-    );
+    ));
   }
 
   Widget _buildMiniScheduleRow(String label, List<Schedule> schedules) {
@@ -844,11 +881,12 @@ class _HomeScreenState extends State<HomeScreen> {
     final nextDate = _nextDate;
 
     String dateLabel = '';
+    DateTime? nextDateTime;
     if (nextDate != null) {
       try {
         final schedule = nextDate['schedule'] as Schedule;
-        final dt = schedule.date;
-        dateLabel = '${dt.month}월 ${dt.day}일';
+        nextDateTime = schedule.date;
+        dateLabel = '${nextDateTime.month}월 ${nextDateTime.day}일';
       } catch (_) {}
     }
 
@@ -860,7 +898,16 @@ class _HomeScreenState extends State<HomeScreen> {
         ? '내일!'
         : 'D-$daysUntil';
 
-    return Container(
+    return GestureDetector(
+      onTap: nextDateTime != null
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CalendarScreen(initialDate: nextDateTime),
+                ),
+              )
+          : null,
+      child: Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -907,7 +954,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ],
       ),
-    );
+    ));
   }
 }
 

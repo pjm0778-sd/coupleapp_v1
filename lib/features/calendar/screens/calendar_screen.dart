@@ -11,7 +11,9 @@ import '../widgets/day_detail_sheet.dart';
 import 'date_map_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
-  const CalendarScreen({super.key});
+  final DateTime? initialDate;
+
+  const CalendarScreen({super.key, this.initialDate});
 
   @override
   State<CalendarScreen> createState() => _CalendarScreenState();
@@ -21,8 +23,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
   final _service = ScheduleService();
   final _holidayService = HolidayService();
 
-  DateTime _focusedMonth = DateTime.now();
-  DateTime _selectedDay = DateTime.now();
+  late DateTime _focusedMonth;
+  late DateTime _selectedDay;
   Map<DateTime, List<Schedule>> _events = {};
   Map<DateTime, List<Holiday>> _holidays = {};
   bool _isLoading = true;
@@ -38,6 +40,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void initState() {
     super.initState();
     _myUserId = Supabase.instance.client.auth.currentUser?.id;
+    final base = widget.initialDate ?? DateTime.now();
+    _selectedDay = DateTime(base.year, base.month, base.day);
+    _focusedMonth = DateTime(base.year, base.month, base.day);
     _init();
   }
 
@@ -77,6 +82,30 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
     _loadHolidays(_focusedMonth);
     await _loadSchedules(_focusedMonth);
+
+    // 홈화면에서 특정 날짜로 진입한 경우 자동으로 상세 시트 오픈
+    if (widget.initialDate != null && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openDayDetail(_selectedDay);
+      });
+    }
+  }
+
+  void _openDayDetail(DateTime date) {
+    final events = _getEventsForDay(date);
+    final holidays = _getHolidaysForDay(date);
+    DayDetailSheet.show(
+      context,
+      date: date,
+      schedules: _service.sortByOwner(events, _myUserId ?? ''),
+      holidays: holidays,
+      myUserId: _myUserId ?? '',
+      partnerNickname: _partnerNickname,
+      getColor: _getScheduleColor,
+      onEdit: _editScheduleItem,
+      onDelete: _deleteScheduleItem,
+      onAddTap: () => _showAddSheet(date),
+    );
   }
 
   void _setupRealtime() {
