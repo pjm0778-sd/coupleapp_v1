@@ -7,9 +7,9 @@ class AppTheme {
   // ── Core Colors ──────────────────────────────────────────
   static const Color primary         = Color(0xFF3D7068); // 딥 세이지 (대비율 ↑)
   static const Color primaryLight    = Color(0xFFD4E8E4); // 연 세이지 (내비 인디케이터)
-  static const Color accent          = Color(0xFFF28482); // 더스티 핑크
-  static const Color accentLight     = Color(0xFFFDE8E8); // 더스티 핑크 연배경
-  static const Color coral           = Color(0xFFF28482); // = accent
+  static const Color accent          = Color(0xFFC97454); // 테라코타 (세이지와 자연 조화)
+  static const Color accentLight     = Color(0xFFF7E3D4); // 연 테라코타/피치
+  static const Color coral           = Color(0xFFE8927A); // 소프트 코럴
   static const Color background      = Color(0xFFF5F1EB); // 중립 크림 (언더톤 조정)
   static const Color surface         = Color(0xFFFFFFFF);
   static const Color border          = Color(0xFFE8E0D6); // 중립 크림 보더
