@@ -265,9 +265,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Color _getScheduleColor(Schedule s) {
-    if (_partnerGrayMode && s.ownerType == 'partner') {
-      return Colors.grey.shade400;
-    }
     if (s.colorHex != null && s.colorHex!.isNotEmpty) {
       try {
         return Color(
@@ -859,6 +856,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       holidays: _getHolidaysForDay(day),
       getColor: _getScheduleColor,
       onEventTap: _onScheduleTap,
+      partnerGrayMode: _partnerGrayMode,
     );
   }
 }
@@ -874,6 +872,7 @@ class _CalendarCell extends StatelessWidget {
   final List<Holiday> holidays;
   final Color Function(Schedule) getColor;
   final void Function(Schedule) onEventTap;
+  final bool partnerGrayMode;
 
   const _CalendarCell({
     required this.day,
@@ -883,6 +882,7 @@ class _CalendarCell extends StatelessWidget {
     required this.holidays,
     required this.getColor,
     required this.onEventTap,
+    this.partnerGrayMode = false,
   });
 
   @override
@@ -1011,9 +1011,14 @@ class _CalendarCell extends StatelessWidget {
             final titleDay = visStart.add(Duration(days: spanDays ~/ 2));
             final showTitle = normDay == titleDay;
 
+            final barColor = s.isAnniversary
+                ? AppTheme.accent
+                : (partnerGrayMode && s.ownerType == 'partner'
+                    ? Colors.grey.shade400
+                    : getColor(s));
             return _EventBar(
               schedule: s,
-              color: s.isAnniversary ? AppTheme.accent : getColor(s),
+              color: barColor,
               onTap: s.isAnniversary ? null : () => onEventTap(s),
               isStart: isStart,
               isEnd: isEnd,
