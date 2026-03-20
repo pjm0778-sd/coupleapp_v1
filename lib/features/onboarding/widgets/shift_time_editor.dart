@@ -25,6 +25,19 @@ class _ShiftTimeEditorState extends State<ShiftTimeEditor> {
     _times = List<ShiftTime>.from(widget.shiftTimes);
   }
 
+  @override
+  void didUpdateWidget(ShiftTimeEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 근무 유형 변경 등으로 외부 shiftTimes가 바뀌면 내부 상태 동기화
+    final old = oldWidget.shiftTimes;
+    final next = widget.shiftTimes;
+    final changed = old.length != next.length ||
+        Iterable.generate(old.length).any((i) => old[i] != next[i]);
+    if (changed) {
+      setState(() => _times = List<ShiftTime>.from(next));
+    }
+  }
+
   Future<void> _pickTime(int index, bool isStart) async {
     final current = _times[index];
     final initial = isStart ? current.startTime : current.endTime;

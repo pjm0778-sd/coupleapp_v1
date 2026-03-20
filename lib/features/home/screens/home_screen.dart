@@ -9,8 +9,7 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/transport_preview_card.dart';
-import '../../midpoint/screens/midpoint_search_screen.dart';
+import '../widgets/travel_together_card.dart';
 import 'relationship_timeline_screen.dart';
 
 // ─── Animated D-day Counter ──────────────────────────────────────────────────
@@ -406,25 +405,13 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildBentoGrid(partnerName, todayWeekday, tomorrowWeekday),
           const SizedBox(height: 20),
 
-          // ── 교통편 카드 ─────────────────────────────
-          if (_profile?.hasTransportInfo == true) ...[
-            TransportPreviewCard(
-              fromStation: _profile!.myStation!,
-              toStation: _profile!.partnerStation!,
-              nextDate: _nextDate != null
-                  ? (_nextDate!['schedule'] as Schedule).date
-                  : null,
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // ── 중간지점 찾기 배너 ──────────────────────
-          _MidpointBanner(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const MidpointSearchScreen()),
-            ),
+          // ── 이동 통합 카드 (교통편 + 중간지점) ─────────
+          TravelTogetherCard(
+            fromStation: _profile?.myStation,
+            toStation: _profile?.partnerStation,
+            nextDate: _nextDate != null
+                ? (_nextDate!['schedule'] as Schedule).date
+                : null,
           ),
         ],
       ),
@@ -924,51 +911,3 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ─── _MidpointBanner ─────────────────────────────────────────────────────────
-
-class _MidpointBanner extends StatelessWidget {
-  final VoidCallback onTap;
-
-  const _MidpointBanner({required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: AppTheme.accentLight,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppTheme.accent.withValues(alpha: 0.35)),
-        ),
-        child: Row(
-          children: [
-            const Text('📍', style: TextStyle(fontSize: 24)),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('중간지점 찾기',
-                      style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textPrimary)),
-                  SizedBox(height: 2),
-                  Text('우리 사이 딱 중간 어딘가에서',
-                      style: TextStyle(
-                          fontSize: 12, color: AppTheme.textSecondary)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios,
-                size: 14, color: AppTheme.textSecondary),
-          ],
-        ),
-      ),
-    );
-  }
-}
