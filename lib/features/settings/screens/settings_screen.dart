@@ -7,7 +7,7 @@ import '../../notifications/screens/notification_settings_screen.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
-import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity;
+import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity, provinceRegions, getCitiesInProvince, getProvinces;
 import '../../profile/models/shift_time.dart';
 import '../../onboarding/widgets/shift_time_editor.dart';
 import '../../onboarding/widgets/region_selector_widget.dart';
@@ -186,6 +186,120 @@ class _SettingsScreenState extends State<SettingsScreen> {
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
     ProfileChangeNotifier().notify();
+  }
+
+  Future<void> _saveWeatherCity({String? myCity, String? partnerCity}) async {
+    final current = _profile ?? const CoupleProfile(
+      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
+    );
+    final updated = current.copyWith(
+      myCity: myCity ?? current.myCity,
+      partnerCity: partnerCity ?? current.partnerCity,
+    );
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
+  }
+
+  void _showWeatherCityPicker({required bool isMe}) {
+    final provinces = getProvinces();
+    String? selectedProvince;
+    String? selectedCity = isMe ? _profile?.myCity : _profile?.partnerCity;
+    if (selectedCity != null) {
+      selectedProvince = provinces.firstWhere(
+        (p) => getCitiesInProvince(p).contains(selectedCity),
+        orElse: () => provinces.first,
+      );
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 20, right: 20, top: 16,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isMe ? '내 위치 도시 설정' : '파트너 위치 도시 설정',
+                  style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // 도 선택
+                DropdownButtonFormField<String>(
+                  value: selectedProvince,
+                  decoration: InputDecoration(
+                    labelText: '도/광역시',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: provinces
+                      .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                      .toList(),
+                  onChanged: (v) => setSheet(() {
+                    selectedProvince = v;
+                    selectedCity = null;
+                  }),
+                ),
+                const SizedBox(height: 12),
+                // 시/군 선택
+                if (selectedProvince != null)
+                  DropdownButtonFormField<String>(
+                    value: selectedCity,
+                    decoration: InputDecoration(
+                      labelText: '시/군',
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    items: getCitiesInProvince(selectedProvince!)
+                        .map((c) =>
+                            DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (v) => setSheet(() => selectedCity = v),
+                  ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: selectedCity == null
+                        ? null
+                        : () async {
+                            Navigator.pop(ctx);
+                            if (isMe) {
+                              await _saveWeatherCity(myCity: selectedCity);
+                            } else {
+                              await _saveWeatherCity(
+                                  partnerCity: selectedCity);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('저장'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _saveDistanceType(String distanceType) async {
@@ -1122,6 +1236,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: _showDistancePicker,
                         ),
                       ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 32),
+
+                // 날씨 위치 설정
+                _buildSectionTitle('날씨 위치'),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: const [AppTheme.subtleShadow],
+                  ),
+                  child: Column(
+                    children: [
+                      ListTile(
+                        leading: const Icon(
+                          Icons.wb_sunny_outlined,
+                          color: Color(0xFF1976D2),
+                        ),
+                        title: const Text('내 위치 도시'),
+                        trailing: Text(
+                          _profile?.myCity ?? '미설정',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _profile?.myCity != null
+                                ? AppTheme.textSecondary
+                                : AppTheme.textTertiary,
+                          ),
+                        ),
+                        onTap: () => _showWeatherCityPicker(isMe: true),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.favorite_border,
+                          color: AppTheme.accent,
+                        ),
+                        title: const Text('파트너 위치 도시'),
+                        trailing: Text(
+                          _profile?.partnerCity ?? '미설정',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: _profile?.partnerCity != null
+                                ? AppTheme.textSecondary
+                                : AppTheme.textTertiary,
+                          ),
+                        ),
+                        onTap: () => _showWeatherCityPicker(isMe: false),
+                      ),
                     ],
                   ),
                 ),

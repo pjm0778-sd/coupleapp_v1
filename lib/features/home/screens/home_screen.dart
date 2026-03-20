@@ -10,7 +10,9 @@ import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
 import '../widgets/travel_together_card.dart';
+import '../widgets/weather_card.dart';
 import '../../calendar/screens/calendar_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 import 'relationship_timeline_screen.dart';
 
 // ─── Animated D-day Counter ──────────────────────────────────────────────────
@@ -413,6 +415,18 @@ class _HomeScreenState extends State<HomeScreen> {
             nextDate: _nextDate != null
                 ? (_nextDate!['schedule'] as Schedule).date
                 : null,
+          ),
+          const SizedBox(height: 16),
+
+          // ── 날씨 카드 ────────────────────────────────
+          WeatherCard(
+            myCity: _profile?.myCity,
+            partnerCity: _profile?.partnerCity,
+            partnerNickname: _partnerNickname,
+            onSetupTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
