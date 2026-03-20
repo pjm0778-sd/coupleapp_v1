@@ -916,12 +916,20 @@ class _HomeCardPagerState extends State<_HomeCardPager> {
                 padding: const EdgeInsets.symmetric(horizontal: 6),
                 child: _TransportCard(
                   profile: widget.profile,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TransportSearchScreen(),
-                    ),
-                  ),
+                  onTap: () {
+                    final p = widget.profile;
+                    if (p?.hasTransportInfo == true) {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TransportSearchScreen(
+                            fromStation: p!.myStation!,
+                            toStation: p.partnerStation!,
+                          ),
+                        ),
+                      );
+                    }
+                  },
                 ),
               ),
               Padding(
@@ -1066,7 +1074,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final todaySchedules =
         data['today_schedules'] as Map<String, List<Schedule>>?;
     if (todaySchedules != null) {
-      final allToday = [
+      final allToday = <Schedule>[
         ...(todaySchedules['mine'] ?? []),
         ...(todaySchedules['partner'] ?? []),
       ];
@@ -1089,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final tomorrowSchedules =
         data['tomorrow_schedules'] as Map<String, List<Schedule>>?;
     if (tomorrowSchedules != null) {
-      final allTomorrow = [
+      final allTomorrow = <Schedule>[
         ...(tomorrowSchedules['mine'] ?? []),
         ...(tomorrowSchedules['partner'] ?? []),
       ];
