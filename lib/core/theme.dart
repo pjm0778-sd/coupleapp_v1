@@ -5,17 +5,18 @@ class AppTheme {
   AppTheme._();
 
   // ── Core Colors ──────────────────────────────────────────
-  static const Color primary         = Color(0xFF84A59D); // 세이지 그린
+  static const Color primary         = Color(0xFF3D7068); // 딥 세이지 (대비율 ↑)
+  static const Color primaryLight    = Color(0xFFD4E8E4); // 연 세이지 (내비 인디케이터)
   static const Color accent          = Color(0xFFF28482); // 더스티 핑크
   static const Color accentLight     = Color(0xFFFDE8E8); // 더스티 핑크 연배경
   static const Color coral           = Color(0xFFF28482); // = accent
-  static const Color background      = Color(0xFFF7EDE2); // 크림 웜화이트
+  static const Color background      = Color(0xFFF5F1EB); // 중립 크림 (언더톤 조정)
   static const Color surface         = Color(0xFFFFFFFF);
-  static const Color border          = Color(0xFFEDE0D4); // 웜 크림 보더
+  static const Color border          = Color(0xFFE8E0D6); // 중립 크림 보더
 
   // ── Text Colors ───────────────────────────────────────────
   static const Color textPrimary     = Color(0xFF3D3535); // 웜 다크 그레이
-  static const Color textSecondary   = Color(0xFF7A6E6E); // 웜 미디엄
+  static const Color textSecondary   = Color(0xFF5A5050); // 대비율 4.8:1 확보 ↑
   static const Color textTertiary    = Color(0xFFC0B0AC); // 웜 라이트
 
   // ── Semantic Colors ───────────────────────────────────────
@@ -24,23 +25,23 @@ class AppTheme {
   static const Color warning         = Color(0xFFE8935A);
 
   // ── Calendar ─────────────────────────────────────────────
-  static const Color dateBorderColor = Color(0xFF84A59D); // = primary sage
+  static const Color dateBorderColor = Color(0xFF3D7068); // = primary
 
   // ── Shadows ───────────────────────────────────────────────
   static const BoxShadow cardShadow = BoxShadow(
-    color: Color(0x1884A59D), // sage-tinted 10%
+    color: Color(0x183D7068), // deep sage-tinted 10%
     blurRadius: 24,
     spreadRadius: 0,
     offset: Offset(0, 4),
   );
   static const BoxShadow subtleShadow = BoxShadow(
-    color: Color(0x1284A59D), // sage-tinted 7%
+    color: Color(0x123D7068), // deep sage-tinted 7%
     blurRadius: 12,
     spreadRadius: 0,
     offset: Offset(0, 2),
   );
   static const BoxShadow navShadow = BoxShadow(
-    color: Color(0x1684A59D), // sage-tinted nav
+    color: Color(0x163D7068), // deep sage-tinted nav
     blurRadius: 20,
     offset: Offset(0, -4),
   );
@@ -296,7 +297,7 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         height: 64,
-        indicatorColor: accentLight,
+        indicatorColor: primaryLight,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.notoSansKr(
