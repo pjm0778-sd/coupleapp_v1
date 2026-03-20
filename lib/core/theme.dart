@@ -25,6 +25,7 @@ class AppTheme {
   static const Color warning         = Color(0xFFE8935A);
 
   // ── Home Card Pastels ─────────────────────────────────────
+  static const Color cardPastelSky      = Color(0xFFE0F2FF); // Card 1: 일정
   static const Color cardPastelPeach    = Color(0xFFFFF0E8); // Card 2: 다음 만남
   static const Color cardPastelMint     = Color(0xFFE8F5F2); // Card 3: 교통편
   static const Color cardPastelLavender = Color(0xFFF0ECFF); // Card 4: 중간지점

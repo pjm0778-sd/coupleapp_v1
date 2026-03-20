@@ -11,6 +11,7 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
+import '../../calendar/widgets/schedule_detail.dart';
 import '../../transport/screens/transport_search_screen.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
 import 'relationship_timeline_screen.dart';
@@ -48,27 +49,54 @@ class _RotatingHeader extends StatefulWidget {
   State<_RotatingHeader> createState() => _RotatingHeaderState();
 }
 
-class _RotatingHeaderState extends State<_RotatingHeader> {
+class _RotatingHeaderState extends State<_RotatingHeader>
+    with SingleTickerProviderStateMixin {
   static const _prefKey = 'home_phrase_index';
 
-  // (prefix, useOrdinal, suffix)
-  // useOrdinal=true → 숫자를 서수로 표현 (100th), false → 그냥 숫자
+  // 숫자 아래 2줄 문구 (\n으로 균형 분리)
   static const _phrases = [
-    ('', false, ' Days of Love'),
-    ('Day ', false, ' with You'),
-    ('Together for ', false, ' Days'),
-    ('Our ', true, ' Page'),
-    ('', false, ' Days of Us'),
-    ('A Journey of ', false, ' Days'),
-    ('', false, ' & Still Counting'),
+    'Days of\nLove',
+    'Days spent\nwith You',
+    'Days of\nUs',
+    'Still going\nStrong',
+    'Days and\nCounting',
+    'Our Story\nUnfolds',
+    'Days &\nStill Yours',
   ];
 
   int _index = 0;
+  late AnimationController _animController;
+  late Animation<int> _countAnim;
 
   @override
   void initState() {
     super.initState();
+    _animController = AnimationController(
+      duration: const Duration(milliseconds: 1600),
+      vsync: this,
+    );
+    _countAnim = IntTween(begin: 0, end: widget.dDays).animate(
+      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+    );
     _loadAndAdvance();
+    _animController.forward();
+  }
+
+  @override
+  void didUpdateWidget(_RotatingHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.dDays != widget.dDays) {
+      _countAnim = IntTween(begin: 0, end: widget.dDays).animate(
+        CurvedAnimation(parent: _animController, curve: Curves.easeOut),
+      );
+      _animController.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAndAdvance() async {
@@ -81,8 +109,7 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
 
   @override
   Widget build(BuildContext context) {
-    final (prefix, useOrdinal, suffix) = _phrases[_index];
-    final numStr = useOrdinal ? _ordinal(widget.dDays) : '${widget.dDays}';
+    final phrase = _phrases[_index];
     final nickname = widget.nickname ?? '우리';
 
     return GestureDetector(
@@ -105,6 +132,7 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Row 1: 인사말
           Text(
             '안녕, $nickname',
             style: GoogleFonts.notoSansKr(
@@ -113,40 +141,27 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
               fontWeight: FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 4),
-          // 한 줄: prefix + 숫자(크게) + suffix
-          RichText(
-            text: TextSpan(
-              children: [
-                if (prefix.isNotEmpty)
-                  TextSpan(
-                    text: prefix,
-                    style: GoogleFonts.cormorantGaramond(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w300,
-                      color: AppTheme.textSecondary,
-                      height: 1.1,
-                    ),
-                  ),
-                TextSpan(
-                  text: numStr,
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: 88,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                    height: 1.0,
-                  ),
-                ),
-                TextSpan(
-                  text: suffix,
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w300,
-                    color: AppTheme.textSecondary,
-                    height: 1.1,
-                  ),
-                ),
-              ],
+          // Row 2: 숫자 카운트업 애니메이션
+          AnimatedBuilder(
+            animation: _countAnim,
+            builder: (context, _) => Text(
+              '${_countAnim.value}',
+              style: GoogleFonts.cormorantGaramond(
+                fontSize: 88,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+                height: 1.0,
+              ),
+            ),
+          ),
+          // Row 3: 균형잡힌 2줄 문구
+          Text(
+            phrase,
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 32,
+              fontWeight: FontWeight.w300,
+              color: AppTheme.textSecondary,
+              height: 1.25,
             ),
           ),
         ],
@@ -190,11 +205,13 @@ class _ScheduleCard extends StatefulWidget {
   final Map<String, List<Schedule>>? todaySchedules;
   final Map<String, List<Schedule>>? tomorrowSchedules;
   final String partnerName;
+  final VoidCallback? onArrowTap;
 
   const _ScheduleCard({
     required this.todaySchedules,
     required this.tomorrowSchedules,
     required this.partnerName,
+    this.onArrowTap,
   });
 
   @override
@@ -215,30 +232,49 @@ class _ScheduleCardState extends State<_ScheduleCard> {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.cardPastelSky,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: const [AppTheme.cardShadow],
+        boxShadow: const [AppTheme.subtleShadow],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 상단 토글
+          // 상단: 토글 + 화살표
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 14, 14, 0),
             child: Row(
               children: [
                 _ToggleTab(
-                  label: '오늘',
+                  label: "Today's Plan",
                   active: _isToday,
                   onTap: () => setState(() => _isToday = true),
-                  fontSize: 15,
+                  fontSize: 13,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 _ToggleTab(
-                  label: '내일',
+                  label: "Tomorrow's Plan",
                   active: !_isToday,
                   onTap: () => setState(() => _isToday = false),
-                  fontSize: 15,
+                  fontSize: 13,
+                ),
+                const Spacer(),
+                GestureDetector(
+                  onTap: widget.onArrowTap,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppTheme.textTertiary.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.arrow_outward_rounded,
+                      size: 14,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -246,7 +282,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
           Divider(
             height: 14,
             thickness: 1,
-            color: AppTheme.border,
+            color: Colors.white.withValues(alpha: 0.6),
             indent: 16,
             endIndent: 16,
           ),
@@ -259,7 +295,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                 children: [
                   Expanded(
                     child: _ScheduleColumn(
-                      label: '나',
+                      label: 'Me',
                       schedules: mySchedules,
                     ),
                   ),
@@ -281,7 +317,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               padding: const EdgeInsets.symmetric(vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.accentLight,
+                color: Colors.white.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -289,7 +325,7 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                 textAlign: TextAlign.center,
                 style: GoogleFonts.notoSansKr(
                   fontSize: 12,
-                  color: AppTheme.accent,
+                  color: AppTheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -428,8 +464,9 @@ class _ScheduleItem extends StatelessWidget {
 class _NextMeetingCard extends StatelessWidget {
   final Map<String, dynamic>? nextDate;
   final DateTime? lastMeeting;
+  final VoidCallback? onArrowTap;
 
-  const _NextMeetingCard({this.nextDate, this.lastMeeting});
+  const _NextMeetingCard({this.nextDate, this.lastMeeting, this.onArrowTap});
 
   double _calcProgress(int daysUntil) {
     if (lastMeeting != null) {
@@ -447,7 +484,7 @@ class _NextMeetingCard extends StatelessWidget {
     final daysSince = DateTime.now().difference(lastMeeting!).inDays;
     if (daysSince == 0) return '오늘 막 헤어졌어요';
     if (daysSince == 1) return '벌써 하루가 지났어요';
-    return '보고싶은지 ${daysSince}일째';
+    return '보고싶은지 ${daysSince}일째에요';
   }
 
   @override
@@ -466,9 +503,14 @@ class _NextMeetingCard extends StatelessWidget {
     String dateLabel = '';
     try {
       final dt = schedule.date;
-      const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-      final wd = weekdays[dt.weekday - 1];
-      dateLabel = '${dt.month}월 ${dt.day}일 $wd요일';
+      const months = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+      const weekdays = [
+        'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+      ];
+      dateLabel = '${months[dt.month - 1]} ${dt.day}, ${weekdays[dt.weekday - 1]}';
     } catch (_) {}
 
     final dDayText = isToday ? '오늘!' : 'D-$daysUntil';
@@ -496,19 +538,22 @@ class _NextMeetingCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: AppTheme.textTertiary.withValues(alpha: 0.4),
+              GestureDetector(
+                onTap: onArrowTap,
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppTheme.textTertiary.withValues(alpha: 0.4),
+                    ),
                   ),
-                ),
-                child: Icon(
-                  Icons.arrow_outward_rounded,
-                  size: 14,
-                  color: AppTheme.textSecondary,
+                  child: Icon(
+                    Icons.arrow_outward_rounded,
+                    size: 14,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -518,7 +563,7 @@ class _NextMeetingCard extends StatelessWidget {
 
           // ── 중앙: 다음 만남 (대형) + 날짜
           Text(
-            '다음 만남',
+            'Next Date',
             style: GoogleFonts.cormorantGaramond(
               fontSize: 34,
               fontWeight: FontWeight.w700,
@@ -528,11 +573,12 @@ class _NextMeetingCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            isToday ? '오늘이에요 💕' : dateLabel,
-            style: GoogleFonts.notoSansKr(
-              fontSize: 13,
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w500,
+            isToday ? 'Today 💕' : dateLabel,
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 34,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimary,
+              height: 1.1,
             ),
           ),
 
@@ -611,7 +657,7 @@ class _NextMeetingCard extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            '다음 만남',
+            'Next Date',
             style: GoogleFonts.cormorantGaramond(
               fontSize: 34,
               fontWeight: FontWeight.w700,
@@ -931,13 +977,92 @@ class _HomeCardPager extends StatefulWidget {
 }
 
 class _HomeCardPagerState extends State<_HomeCardPager> {
-  final _controller = PageController(viewportFraction: 0.72);
+  static const _cardCount = 4;
+  static const _loopMultiplier = 500;
+  static const _initialPage = _cardCount * _loopMultiplier;
+
+  late final PageController _controller;
   int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(
+      viewportFraction: 0.72,
+      initialPage: _initialPage,
+    );
+  }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  Widget _buildCard(BuildContext context, int realIndex) {
+    switch (realIndex) {
+      case 0:
+        return _ScheduleCard(
+          todaySchedules: widget.todaySchedules,
+          tomorrowSchedules: widget.tomorrowSchedules,
+          partnerName: widget.partnerName,
+          onArrowTap: () {
+            final schedules = widget.todaySchedules;
+            final first = (schedules?['mine']?.isNotEmpty == true)
+                ? schedules!['mine']!.first
+                : (schedules?['partner']?.isNotEmpty == true)
+                    ? schedules!['partner']!.first
+                    : null;
+            if (first == null || first.userId == 'system') return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScheduleDetailScreen(schedule: first),
+              ),
+            );
+          },
+        );
+      case 1:
+        return _NextMeetingCard(
+          nextDate: widget.nextDate,
+          lastMeeting: widget.lastMeeting,
+          onArrowTap: () {
+            final schedule = widget.nextDate?['schedule'] as Schedule?;
+            if (schedule == null || schedule.userId == 'system') return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ScheduleDetailScreen(schedule: schedule),
+              ),
+            );
+          },
+        );
+      case 2:
+        return _TransportCard(
+          profile: widget.profile,
+          onTap: () {
+            final p = widget.profile;
+            if (p?.hasTransportInfo == true) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TransportSearchScreen(
+                    fromStation: p!.myStation!,
+                    toStation: p.partnerStation!,
+                  ),
+                ),
+              );
+            }
+          },
+        );
+      default:
+        return _MidpointCard(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const MidpointSearchScreen()),
+          ),
+        );
+    }
   }
 
   @override
@@ -948,62 +1073,23 @@ class _HomeCardPagerState extends State<_HomeCardPager> {
       children: [
         SizedBox(
           height: cardHeight,
-          child: PageView(
+          child: PageView.builder(
             controller: _controller,
             clipBehavior: Clip.none,
-            onPageChanged: (i) => setState(() => _currentPage = i),
-            children: [
-              Padding(
+            itemCount: _cardCount * _loopMultiplier * 2,
+            onPageChanged: (i) =>
+                setState(() => _currentPage = i % _cardCount),
+            itemBuilder: (context, index) {
+              final realIndex = index % _cardCount;
+              return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _ScheduleCard(
-                  todaySchedules: widget.todaySchedules,
-                  tomorrowSchedules: widget.tomorrowSchedules,
-                  partnerName: widget.partnerName,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _NextMeetingCard(
-                  nextDate: widget.nextDate,
-                  lastMeeting: widget.lastMeeting,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _TransportCard(
-                  profile: widget.profile,
-                  onTap: () {
-                    final p = widget.profile;
-                    if (p?.hasTransportInfo == true) {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TransportSearchScreen(
-                            fromStation: p!.myStation!,
-                            toStation: p.partnerStation!,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                child: _MidpointCard(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MidpointSearchScreen(),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+                child: _buildCard(context, realIndex),
+              );
+            },
           ),
         ),
         const SizedBox(height: 14),
-        _DotIndicator(count: 4, current: _currentPage),
+        _DotIndicator(count: _cardCount, current: _currentPage),
       ],
     );
   }
