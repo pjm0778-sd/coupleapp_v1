@@ -122,7 +122,7 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
                   TextSpan(
                     text: prefix,
                     style: GoogleFonts.cormorantGaramond(
-                      fontSize: 28,
+                      fontSize: 36,
                       fontWeight: FontWeight.w300,
                       color: AppTheme.textSecondary,
                       height: 1.1,
@@ -131,7 +131,7 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
                 TextSpan(
                   text: numStr,
                   style: GoogleFonts.cormorantGaramond(
-                    fontSize: 64,
+                    fontSize: 88,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
                     height: 1.0,
@@ -140,7 +140,7 @@ class _RotatingHeaderState extends State<_RotatingHeader> {
                 TextSpan(
                   text: suffix,
                   style: GoogleFonts.cormorantGaramond(
-                    fontSize: 28,
+                    fontSize: 36,
                     fontWeight: FontWeight.w300,
                     color: AppTheme.textSecondary,
                     height: 1.1,
@@ -231,12 +231,14 @@ class _ScheduleCardState extends State<_ScheduleCard> {
                   label: '오늘',
                   active: _isToday,
                   onTap: () => setState(() => _isToday = true),
+                  fontSize: 15,
                 ),
                 const SizedBox(width: 8),
                 _ToggleTab(
                   label: '내일',
                   active: !_isToday,
                   onTap: () => setState(() => _isToday = false),
+                  fontSize: 15,
                 ),
               ],
             ),
@@ -302,11 +304,13 @@ class _ToggleTab extends StatelessWidget {
   final String label;
   final bool active;
   final VoidCallback onTap;
+  final double fontSize;
 
   const _ToggleTab({
     required this.label,
     required this.active,
     required this.onTap,
+    this.fontSize = 13,
   });
 
   @override
@@ -323,7 +327,7 @@ class _ToggleTab extends StatelessWidget {
         child: Text(
           label,
           style: GoogleFonts.notoSansKr(
-            fontSize: 13,
+            fontSize: fontSize,
             fontWeight: FontWeight.w600,
             color: active ? Colors.white : AppTheme.textTertiary,
           ),
@@ -347,8 +351,8 @@ class _ScheduleColumn extends StatelessWidget {
         Text(
           label,
           style: GoogleFonts.notoSansKr(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
             color: AppTheme.textSecondary,
           ),
         ),
@@ -357,7 +361,7 @@ class _ScheduleColumn extends StatelessWidget {
           Text(
             '일정 없음',
             style: GoogleFonts.notoSansKr(
-              fontSize: 11,
+              fontSize: 13,
               color: AppTheme.textTertiary,
             ),
           )
@@ -406,7 +410,7 @@ class _ScheduleItem extends StatelessWidget {
             child: Text(
               '$timeStr${schedule.title ?? schedule.category ?? '일정'}',
               style: GoogleFonts.notoSansKr(
-                fontSize: 11,
+                fontSize: 13,
                 color: AppTheme.textPrimary,
               ),
               maxLines: 2,
@@ -876,7 +880,7 @@ class _HomeCardPager extends StatefulWidget {
 }
 
 class _HomeCardPagerState extends State<_HomeCardPager> {
-  final _controller = PageController(viewportFraction: 0.92);
+  final _controller = PageController(viewportFraction: 0.72);
   int _currentPage = 0;
 
   @override
@@ -887,7 +891,7 @@ class _HomeCardPagerState extends State<_HomeCardPager> {
 
   @override
   Widget build(BuildContext context) {
-    final cardHeight = MediaQuery.of(context).size.height * 0.40;
+    final cardHeight = MediaQuery.of(context).size.height * 0.32;
 
     return Column(
       children: [
@@ -895,6 +899,7 @@ class _HomeCardPagerState extends State<_HomeCardPager> {
           height: cardHeight,
           child: PageView(
             controller: _controller,
+            clipBehavior: Clip.none,
             onPageChanged: (i) => setState(() => _currentPage = i),
             children: [
               Padding(
@@ -1122,7 +1127,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Colors.white,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _coupleId == null
@@ -1224,7 +1229,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // ── 스와이프 카드 ─────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 18),
+            padding: const EdgeInsets.only(left: 20),
             child: _HomeCardPager(
               todaySchedules: _todaySchedules,
               tomorrowSchedules: _tomorrowSchedules,
