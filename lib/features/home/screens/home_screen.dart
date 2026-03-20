@@ -439,17 +439,15 @@ class _NextMeetingCard extends StatelessWidget {
       if (total <= 0) return 1.0;
       return (elapsed / total).clamp(0.0, 1.0);
     }
-    // fallback: D-14 기준
     return ((14 - daysUntil) / 14).clamp(0.0, 1.0);
   }
 
-  String _buildMessage(int daysUntil) {
-    if (daysUntil == 0) return '오늘 드디어 만나는 날이에요 💕';
+  String _missMessage() {
     if (lastMeeting == null) return '곧 만나요, 설레는 중이에요';
     final daysSince = DateTime.now().difference(lastMeeting!).inDays;
     if (daysSince == 0) return '오늘 막 헤어졌어요';
     if (daysSince == 1) return '벌써 하루가 지났어요';
-    return '보고 싶은 지 ${daysSince}일째예요';
+    return '보고싶은지 ${daysSince}일째';
   }
 
   @override
@@ -473,11 +471,7 @@ class _NextMeetingCard extends StatelessWidget {
       dateLabel = '${dt.month}월 ${dt.day}일 $wd요일';
     } catch (_) {}
 
-    final dDayText = daysUntil == 0
-        ? '오늘!'
-        : daysUntil == 1
-        ? 'D-1'
-        : 'D-$daysUntil';
+    final dDayText = isToday ? '오늘!' : 'D-$daysUntil';
 
     return Container(
       decoration: BoxDecoration(
@@ -489,59 +483,108 @@ class _NextMeetingCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '다음 만남',
-            style: GoogleFonts.notoSansKr(
-              fontSize: 12,
-              color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 8),
+          // ── 상단: 보고싶은지 N일째  +  화살표 아이콘
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
                 child: Text(
-                  dateLabel,
-                  style: GoogleFonts.cormorantGaramond(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textPrimary,
+                  _missMessage(),
+                  style: GoogleFonts.notoSansKr(
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              Text(
-                dDayText,
-                style: GoogleFonts.cormorantGaramond(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                  color: isToday ? AppTheme.accent : AppTheme.primary,
-                  height: 1.0,
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppTheme.textTertiary.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Icon(
+                  Icons.arrow_outward_rounded,
+                  size: 14,
+                  color: AppTheme.textSecondary,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          // 게이지
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: progress,
-              backgroundColor: Colors.white.withValues(alpha: 0.5),
-              valueColor: AlwaysStoppedAnimation(
-                isToday ? AppTheme.accent : AppTheme.primary,
-              ),
-              minHeight: 8,
+
+          const Spacer(),
+
+          // ── 중앙: 다음 만남 (대형) + 날짜
+          Text(
+            '다음 만남',
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              height: 1.0,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 4),
           Text(
-            _buildMessage(daysUntil),
+            isToday ? '오늘이에요 💕' : dateLabel,
             style: GoogleFonts.notoSansKr(
-              fontSize: 12,
+              fontSize: 13,
               color: AppTheme.textSecondary,
+              fontWeight: FontWeight.w500,
             ),
+          ),
+
+          const Spacer(),
+
+          // ── 하단: 하트 아이콘 + D-day 숫자 + 게이지
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // 하트/달력 아이콘 원형
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isToday
+                      ? Icons.favorite_rounded
+                      : Icons.calendar_month_rounded,
+                  size: 16,
+                  color: isToday ? AppTheme.accent : AppTheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // D-day 숫자
+              Text(
+                dDayText,
+                style: GoogleFonts.cormorantGaramond(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: isToday ? AppTheme.accent : AppTheme.textPrimary,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(width: 10),
+              // 게이지
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: Colors.white.withValues(alpha: 0.5),
+                    valueColor: AlwaysStoppedAnimation(
+                      isToday ? AppTheme.accent : AppTheme.primary,
+                    ),
+                    minHeight: 6,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -560,23 +603,31 @@ class _NextMeetingCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '다음 만남',
+            '곧 만나요, 설레는 중이에요',
             style: GoogleFonts.notoSansKr(
               fontSize: 12,
               color: AppTheme.textSecondary,
-              fontWeight: FontWeight.w500,
             ),
           ),
           const Spacer(),
           Text(
-            '다음 데이트를\n캘린더에 등록해봐요 💌',
-            style: GoogleFonts.notoSansKr(
-              fontSize: 14,
-              color: AppTheme.textSecondary,
-              height: 1.5,
+            '다음 만남',
+            style: GoogleFonts.cormorantGaramond(
+              fontSize: 34,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.textPrimary,
+              height: 1.0,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text(
+            '캘린더에 등록해봐요 💌',
+            style: GoogleFonts.notoSansKr(
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
