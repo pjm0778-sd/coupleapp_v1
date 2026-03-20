@@ -9,7 +9,6 @@ import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
-import '../widgets/next_date_widget.dart';
 import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
@@ -456,7 +455,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ── Bento Grid ────────────────────────────────────────────────────────────
 
   Widget _buildBentoGrid(String partnerName, String todayWeekday) {
-    return IntrinsicHeight(
+    // IntrinsicHeight 대신 고정 높이 사용 — Expanded/Spacer와 호환
+    return SizedBox(
+      height: 200,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -471,12 +472,10 @@ class _HomeScreenState extends State<HomeScreen> {
             flex: 5,
             child: Column(
               children: [
-                // Today schedule mini card
                 Expanded(
                   child: _buildTodayScheduleMini(todayWeekday),
                 ),
                 const SizedBox(height: 10),
-                // Next date mini card
                 _buildNextDateMini(),
               ],
             ),
@@ -541,20 +540,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white60,
               ),
             ),
-            const SizedBox(height: 8),
-            // D+ label
-            const Text(
-              'D+',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppTheme.accent,
-                fontWeight: FontWeight.w700,
-              ),
+            const SizedBox(height: 4),
+            // D+ label + counter
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'D+',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.accent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (_dDays != null) _AnimatedDayCounter(days: _dDays!),
+              ],
             ),
-            // Animated counter
-            if (_dDays != null) _AnimatedDayCounter(days: _dDays!),
-            const Spacer(),
-            // Relationship start date
+            // Relationship start date (spaceBetween이 자동으로 밀어줌)
             if (startDateLabel.isNotEmpty)
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -618,7 +620,8 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 8),
           if (!hasAny)
             const Expanded(
-              child: Center(
+              child: Align(
+                alignment: Alignment.centerLeft,
                 child: Text(
                   '일정 없음',
                   style: TextStyle(
@@ -682,7 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 Expanded(
                   child: Text(
-                    '$timeStr${s.category}',
+                    '$timeStr${s.title ?? s.category ?? '일정'}',
                     style: const TextStyle(
                       fontSize: 11,
                       color: AppTheme.textPrimary,
