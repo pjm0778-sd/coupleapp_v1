@@ -323,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String tomorrowWeekday,
     List<dynamic> todayHolidays,
   ) {
+    final tomorrow = today.add(const Duration(days: 1));
     final hour = today.hour;
     final greeting = hour < 6
         ? '밤 늦게까지 함께해요 🌙'
