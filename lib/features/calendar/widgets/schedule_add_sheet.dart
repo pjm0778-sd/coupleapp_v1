@@ -73,6 +73,9 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
   late double? _latitude;
   late double? _longitude;
 
+  bool _isSaving = false;
+  bool _isSaved = false;
+
   static const _colorPalette = <String, Color>{
     '#E53935': Color(0xFFE53935),
     '#E91E63': Color(0xFFE91E63),
@@ -95,7 +98,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
     '#212121': Color(0xFF212121),
   };
 
-  static const _categories = ['근무', '약속', '여행', '데이트', '기타'];
+  static const _categories = ['출근', '외출', '여행', '데이트', '기타'];
 
   @override
   void initState() {
@@ -163,7 +166,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
     return widget.myUserId;
   }
 
-  void _onSave() {
+  Future<void> _onSave() async {
     final title = _titleController.text.trim();
     _location = _locationController.text.trim();
     _note = _noteController.text.trim();
@@ -173,6 +176,19 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
       );
       return;
     }
+
+    // Phase 1: show saving spinner
+    setState(() {
+      _isSaving = true;
+      _isSaved = false;
+    });
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Phase 2: show saved checkmark
+    if (mounted) {
+      setState(() => _isSaved = true);
+    }
+    await Future.delayed(const Duration(milliseconds: 500));
 
     final s = widget.existingSchedule;
     final schedule = s != null
@@ -213,7 +229,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
             longitude: _longitude,
           );
 
-    Navigator.pop(context, schedule);
+    if (mounted) Navigator.pop(context, schedule);
   }
 
   Future<void> _pickDate({required bool isStart}) async {
@@ -510,23 +526,82 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                   const SizedBox(height: 24),
 
                   // 저장 버튼
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      onPressed: _onSave,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accent,
-                        foregroundColor: AppTheme.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  AnimatedScale(
+                    scale: _isSaving && !_isSaved ? 0.97 : 1.0,
+                    duration: const Duration(milliseconds: 100),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: _isSaving ? null : _onSave,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isSaved
+                              ? const Color(0xFF4CAF50)
+                              : AppTheme.accent,
+                          foregroundColor: AppTheme.primary,
+                          disabledBackgroundColor: _isSaved
+                              ? const Color(0xFF4CAF50)
+                              : AppTheme.accent,
+                          disabledForegroundColor: AppTheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        isEdit ? '수정 완료' : '저장',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 200),
+                          transitionBuilder: (child, animation) =>
+                              ScaleTransition(scale: animation, child: child),
+                          child: _isSaved
+                              ? Row(
+                                  key: const ValueKey('saved'),
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Icon(Icons.check,
+                                        size: 20, color: Colors.white),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      '저장됨!',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : _isSaving
+                                  ? Row(
+                                      key: const ValueKey('saving'),
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    Colors.white),
+                                          ),
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          '저장 중...',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Text(
+                                      key: const ValueKey('normal'),
+                                      isEdit ? '수정 완료' : '저장',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
                         ),
                       ),
                     ),

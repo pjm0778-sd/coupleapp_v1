@@ -260,7 +260,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('일정 자동등록'),
+        title: const Text('일정 가져오기'),
         bottom: TabBar(
           controller: _tabController,
           labelStyle: const TextStyle(
@@ -272,9 +272,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           unselectedLabelColor: AppTheme.textSecondary,
           indicatorColor: AppTheme.accent,
           tabs: const [
-            Tab(text: '캘린더 앱 분석'),
-            Tab(text: '구글 캘린더'),
-            Tab(text: '근무표 불러오기'),
+            Tab(text: '사진으로'),
+            Tab(text: '구글에서'),
+            Tab(text: '근무표로'),
           ],
         ),
       ),
@@ -299,7 +299,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           _buildTabHeader(
             icon: Icons.phone_android_outlined,
             iconColor: AppTheme.primary,
-            title: '캘린더 앱 화면 분석',
+            title: '사진으로 가져오기',
             description:
                 '삼성 캘린더, 아이폰 캘린더, 구글 캘린더 등\n다른 앱의 달력 화면을 캡처하여 가져옵니다.\nAI가 일정을 자동으로 인식합니다.',
           ),
@@ -337,7 +337,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           _buildTabHeader(
             icon: Icons.calendar_today_outlined,
             iconColor: const Color(0xFF4285F4),
-            title: '구글 캘린더 연동',
+            title: '구글에서 가져오기',
             description:
                 '구글 계정으로 로그인하여\n구글 캘린더의 일정을 직접 가져옵니다.\n가장 정확한 방법입니다.',
           ),
@@ -375,7 +375,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           _buildTabHeader(
             icon: Icons.table_chart_outlined,
             iconColor: const Color(0xFF1D6F42),
-            title: '근무표 자동 등록',
+            title: '근무표로 가져오기',
             description:
                 '병원·편의점·공장 등의 근무표에서\n내 이름을 지정하면 해당 근무 일정을\n달력에 자동 등록합니다.',
           ),

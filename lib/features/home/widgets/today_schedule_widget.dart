@@ -20,15 +20,18 @@ class TodayScheduleWidget extends StatelessWidget {
 
   Color _getCategoryColor(String? category) {
     switch (category) {
-      case '근무':
+      case '출근':
+      case '근무': // 기존 데이터 호환
         return const Color(0xFF4CAF50);
-      case '약속':
+      case '외출':
+      case '약속': // 기존 데이터 호환
         return const Color(0xFF2196F3);
       case '여행':
         return const Color(0xFFFF9800);
       case '데이트':
         return const Color(0xFFE91E63);
-      case '휴무':
+      case '쉬는날':
+      case '휴무': // 기존 데이터 호환
         return const Color(0xFF9E9E9E);
       default:
         return AppTheme.primary;
@@ -37,15 +40,18 @@ class TodayScheduleWidget extends StatelessWidget {
 
   IconData _getCategoryIcon(String? category) {
     switch (category) {
-      case '근무':
-        return Icons.work_outline;
-      case '약속':
-        return Icons.handshake_outlined;
+      case '출근':
+      case '근무': // 기존 데이터 호환
+        return Icons.local_hospital_outlined;
+      case '외출':
+      case '약속': // 기존 데이터 호환
+        return Icons.directions_walk_outlined;
       case '여행':
         return Icons.flight_takeoff_outlined;
       case '데이트':
         return Icons.favorite_outline;
-      case '휴무':
+      case '쉬는날':
+      case '휴무': // 기존 데이터 호환
         return Icons.beach_access_outlined;
       default:
         return Icons.event_outlined;

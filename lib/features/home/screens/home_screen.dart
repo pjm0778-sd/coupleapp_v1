@@ -14,6 +14,75 @@ import '../widgets/today_schedule_widget.dart';
 import '../widgets/transport_preview_card.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
 import '../../calendar/widgets/schedule_detail.dart';
+import 'relationship_timeline_screen.dart';
+
+// ─── Animated D-day Counter ──────────────────────────────────────────────────
+
+class _AnimatedDayCounter extends StatefulWidget {
+  final int days;
+
+  const _AnimatedDayCounter({required this.days});
+
+  @override
+  State<_AnimatedDayCounter> createState() => _AnimatedDayCounterState();
+}
+
+class _AnimatedDayCounterState extends State<_AnimatedDayCounter>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<int> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    _animation = IntTween(begin: 0, end: widget.days).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedDayCounter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.days != widget.days) {
+      _animation = IntTween(begin: 0, end: widget.days).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+      );
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, _) {
+        return Text(
+          '${_animation.value}',
+          style: const TextStyle(
+            fontSize: 40,
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontFamily: 'PlayfairDisplay',
+            height: 1.0,
+          ),
+        );
+      },
+    );
+  }
+}
+
+// ─── HomeScreen ──────────────────────────────────────────────────────────────
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -199,6 +268,10 @@ class _HomeScreenState extends State<HomeScreen> {
         (schedules['partner']?.isNotEmpty ?? false);
   }
 
+  // ─── Relationship start date from data ───────────────────────────────────
+  String? get _relationshipStartDate =>
+      _data['d_days']?['started_at'] as String?;
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -332,29 +405,14 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ── D+day 컴팩트 스트립 ────────────────────
+          // ── Bento Box Grid ─────────────────────────
           if (_dDays != null) ...[
-            _buildDDayStrip(partnerName),
-            const SizedBox(height: 24),
+            _buildBentoGrid(partnerName, todayWeekday),
+            const SizedBox(height: 20),
           ],
 
-          // ── 오늘의 일정 (HERO) ──────────────────────
-          TodayScheduleWidget(
-            todaySchedules: _todaySchedules ?? {},
-            weekday: todayWeekday,
-            title: '오늘의 일정',
-            partnerNickname: _partnerNickname,
-            onScheduleTap: (s) => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ScheduleDetailScreen(schedule: s),
-              ),
-            ),
-          ),
-
-          // ── 내일의 일정 ─────────────────────────────
+          // ── 내일의 일정 (full width) ────────────────
           if (_hasSchedules(_tomorrowSchedules)) ...[
-            const SizedBox(height: 24),
             TodayScheduleWidget(
               todaySchedules: _tomorrowSchedules ?? {},
               weekday: tomorrowWeekday,
@@ -367,17 +425,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-          ],
-
-          const SizedBox(height: 24),
-
-          // ── 다가오는 데이트 ──────────────────────────
-          if (_nextDate != null) ...[
-            NextDateWidget(
-              nextDateSchedule: _nextDate!['schedule'] as Schedule,
-              daysUntil: _nextDate!['days_until'] as int,
-            ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
           ],
 
           // ── 교통편 카드 ─────────────────────────────
@@ -405,96 +453,333 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDDayStrip(String partnerName) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2D5E58), Color(0xFF3D7068)],
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: const [AppTheme.cardShadow],
-      ),
+  // ── Bento Grid ────────────────────────────────────────────────────────────
+
+  Widget _buildBentoGrid(String partnerName, String todayWeekday) {
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '$partnerName 과 함께',
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.white60,
+          // Left: D-day card (flex 4)
+          Expanded(
+            flex: 4,
+            child: _buildDDayCard(partnerName),
+          ),
+          const SizedBox(width: 12),
+          // Right column (flex 5): today schedule + next date stacked
+          Expanded(
+            flex: 5,
+            child: Column(
+              children: [
+                // Today schedule mini card
+                Expanded(
+                  child: _buildTodayScheduleMini(todayWeekday),
+                ),
+                const SizedBox(height: 10),
+                // Next date mini card
+                _buildNextDateMini(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDDayCard(String partnerName) {
+    // Format relationship start date
+    String startDateLabel = '';
+    if (_relationshipStartDate != null) {
+      try {
+        final dt = DateTime.parse(_relationshipStartDate!);
+        startDateLabel = '${dt.year}.${dt.month.toString().padLeft(2, '0')}.${dt.day.toString().padLeft(2, '0')}';
+      } catch (_) {
+        startDateLabel = _relationshipStartDate!;
+      }
+    }
+
+    return GestureDetector(
+      onTap: () {
+        DateTime? startedAt;
+        if (_relationshipStartDate != null) {
+          try {
+            startedAt = DateTime.parse(_relationshipStartDate!);
+          } catch (_) {}
+        }
+        if (startedAt == null) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RelationshipTimelineScreen(
+              startedAt: startedAt!,
+              myNickname: null,
+              partnerNickname: _partnerNickname,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2D5E58), Color(0xFF3D7068)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: const [AppTheme.cardShadow],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Partner name label
+            Text(
+              '$partnerName 과 함께',
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.white60,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // D+ label
+            const Text(
+              'D+',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppTheme.accent,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            // Animated counter
+            if (_dDays != null) _AnimatedDayCounter(days: _dDays!),
+            const Spacer(),
+            // Relationship start date
+            if (startDateLabel.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  startDateLabel,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Colors.white70,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  const Text(
-                    'D+',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.accent,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${_dDays!}',
-                    style: const TextStyle(
-                      fontSize: 34,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontFamily: 'PlayfairDisplay',
-                      height: 1.0,
-                    ),
-                  ),
-                ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodayScheduleMini(String todayWeekday) {
+    final schedules = _todaySchedules;
+    final mySchedules = schedules?['mine'] ?? [];
+    final partnerSchedules = schedules?['partner'] ?? [];
+    final partnerName = _partnerNickname ?? '애인';
+    final hasAny = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [AppTheme.cardShadow],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text(
+                '오늘의 일정',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                todayWeekday,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textTertiary,
+                ),
               ),
             ],
           ),
-          const Spacer(),
-          if (_nextDateDaysUntil != null)
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppTheme.accent.withValues(alpha: 0.5)),
+          const SizedBox(height: 8),
+          if (!hasAny)
+            const Expanded(
+              child: Center(
+                child: Text(
+                  '일정 없음',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textTertiary,
+                  ),
+                ),
               ),
-              child: Column(
-                children: [
-                  const Text(
-                    '다음 데이트',
-                    style: TextStyle(fontSize: 10, color: AppTheme.accent),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _nextDateDaysUntil == 0
-                        ? '오늘!'
-                        : _nextDateDaysUntil == 1
-                        ? '내일!'
-                        : 'D-$_nextDateDaysUntil',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
+            )
+          else
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (mySchedules.isNotEmpty) ...[
+                      _buildMiniScheduleRow('나', mySchedules),
+                    ],
+                    if (partnerSchedules.isNotEmpty) ...[
+                      if (mySchedules.isNotEmpty) const SizedBox(height: 4),
+                      _buildMiniScheduleRow(partnerName, partnerSchedules),
+                    ],
+                  ],
+                ),
               ),
             ),
         ],
       ),
     );
   }
+
+  Widget _buildMiniScheduleRow(String label, List<Schedule> schedules) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textSecondary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        ...schedules.take(2).map((s) {
+          final timeStr = s.startTime != null
+              ? '${s.startTime!.substring(0, 5)} '
+              : '';
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 2),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 4,
+                  margin: const EdgeInsets.only(right: 5, top: 1),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accent.withValues(alpha: 0.7),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    '$timeStr${s.category}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textPrimary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+        if (schedules.length > 2)
+          Text(
+            '+${schedules.length - 2}개 더',
+            style: const TextStyle(
+              fontSize: 10,
+              color: AppTheme.textTertiary,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildNextDateMini() {
+    final daysUntil = _nextDateDaysUntil;
+    final nextDate = _nextDate;
+
+    String dateLabel = '';
+    if (nextDate != null) {
+      try {
+        final schedule = nextDate['schedule'] as Schedule;
+        final dt = schedule.date;
+        dateLabel = '${dt.month}월 ${dt.day}일';
+      } catch (_) {}
+    }
+
+    final daysText = daysUntil == null
+        ? '일정 없음'
+        : daysUntil == 0
+        ? '오늘!'
+        : daysUntil == 1
+        ? '내일!'
+        : 'D-$daysUntil';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.accentLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppTheme.accent.withValues(alpha: 0.25),
+        ),
+      ),
+      child: Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '다음 데이트',
+                style: TextStyle(
+                  fontSize: 10,
+                  color: AppTheme.accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                daysText,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                  height: 1.0,
+                ),
+              ),
+            ],
+          ),
+          if (dateLabel.isNotEmpty) ...[
+            const Spacer(),
+            Text(
+              dateLabel,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
+
+// ─── _MidpointBanner ─────────────────────────────────────────────────────────
 
 class _MidpointBanner extends StatelessWidget {
   final VoidCallback onTap;
