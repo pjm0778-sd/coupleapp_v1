@@ -1,0 +1,67 @@
+name: Flutter Web → Cloudflare Pages
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 코드 체크아웃
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Flutter 설치
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: false
+
+      # 3. API 키 파일 생성 (gitignore된 파일을 Secret에서 복원)
+      - name: Create api_keys.dart
+        env:
+          TAGO_API_KEY: ${{ secrets.TAGO_API_KEY }}
+          ODSAY_API_KEY: ${{ secrets.ODSAY_API_KEY }}
+        run: |
+          python3 -c "
+          import os
+          tago = os.environ.get('TAGO_API_KEY', '')
+          odsay = os.environ.get('ODSAY_API_KEY', '')
+          content = f\"\"\"class ApiKeys {{
+            static const String tagoKey = '{tago}';
+            static const String odsayKey = '{odsay}';
+            static bool get isTagoConfigured => tagoKey != 'YOUR_TAGO_API_KEY_HERE';
+            static bool get isOdsayConfigured => odsayKey != 'YOUR_ODSAY_API_KEY_HERE';
+          }}
+          \"\"\"
+          with open('lib/core/api_keys.dart', 'w') as f:
+              f.write(content)
+          print('api_keys.dart created')
+          "
+
+      # 4. 패키지 설치
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 5. 웹 빌드
+      - name: Build Flutter Web
+        run: flutter build web --release
+
+      # 6. Cloudflare Pages 배포 (wrangler 직접 실행)
+      - name: Deploy to Cloudflare Pages
+        run: |
+          npx wrangler@3 pages deploy build/web \
+            --project-name=coupleapp-v1 \
+            --commit-message="deploy: ${{ github.sha }}" \
+            --commit-hash="${{ github.sha }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

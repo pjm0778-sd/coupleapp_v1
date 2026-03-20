@@ -1,0 +1,67 @@
+{
+  "timestamp": "2026-03-11T14:23:43.547Z",
+  "reason": "compaction",
+  "status": {
+    "version": "2.0",
+    "lastUpdated": "2026-03-11T00:00:00.000Z",
+    "activeFeatures": [],
+    "primaryFeature": null,
+    "features": {
+      "ocr-schedule": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-03-09T12:36:26.541Z",
+          "lastUpdated": "2026-03-09T13:29:35.250Z"
+        },
+        "lastFile": "C:\\Users\\정민\\Desktop\\app개발\\coupleapp_v1\\supabase\\functions\\ocr-schedule\\index.ts"
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-03-09T12:34:38.455Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-03-11T00:00:00.000Z"
+    },
+    "history": [
+      {
+        "timestamp": "2026-03-09T12:36:26.541Z",
+        "feature": "ocr-schedule",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-09T13:29:35.250Z",
+        "feature": "ocr-schedule",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-03-11T00:00:00.000Z",
+        "feature": "ocr-calendar",
+        "phase": "check",
+        "action": "gap_analysis_completed"
+      },
+      {
+        "timestamp": "2026-03-11T00:00:00.000Z",
+        "feature": "ocr-calendar",
+        "phase": "completed",
+        "action": "report_generated"
+      },
+      {
+        "timestamp": "2026-03-11T00:00:00.000Z",
+        "feature": "ocr-calendar",
+        "phase": "archived",
+        "action": "archived"
+      }
+    ]
+  }
+}

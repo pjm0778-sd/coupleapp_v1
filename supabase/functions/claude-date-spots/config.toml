@@ -1,0 +1,2 @@
+[functions.claude-date-spots]
+verify_jwt = false
