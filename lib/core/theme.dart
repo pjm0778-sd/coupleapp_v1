@@ -5,42 +5,42 @@ class AppTheme {
   AppTheme._();
 
   // ── Core Colors ──────────────────────────────────────────
-  static const Color primary         = Color(0xFFB5547C); // 스위트 로즈
-  static const Color accent          = Color(0xFFC9A84C); // 소프트 골드 (유지)
-  static const Color accentLight     = Color(0xFFFDE8F0); // 핑크 연배경
-  static const Color coral           = Color(0xFFF48FB1); // 소프트 핑크
-  static const Color background      = Color(0xFFFFF3F6); // 블러시 화이트
+  static const Color primary         = Color(0xFF84A59D); // 세이지 그린
+  static const Color accent          = Color(0xFFF28482); // 더스티 핑크
+  static const Color accentLight     = Color(0xFFFDE8E8); // 더스티 핑크 연배경
+  static const Color coral           = Color(0xFFF28482); // = accent
+  static const Color background      = Color(0xFFF7EDE2); // 크림 웜화이트
   static const Color surface         = Color(0xFFFFFFFF);
-  static const Color border          = Color(0xFFF5D5E2); // 로즈 보더
+  static const Color border          = Color(0xFFEDE0D4); // 웜 크림 보더
 
   // ── Text Colors ───────────────────────────────────────────
-  static const Color textPrimary     = Color(0xFF2C1A22); // 따뜻한 다크
-  static const Color textSecondary   = Color(0xFF7B5060); // 웜 뮤트 로즈
-  static const Color textTertiary    = Color(0xFFBF9AAA); // 연한 로즈
+  static const Color textPrimary     = Color(0xFF3D3535); // 웜 다크 그레이
+  static const Color textSecondary   = Color(0xFF7A6E6E); // 웜 미디엄
+  static const Color textTertiary    = Color(0xFFC0B0AC); // 웜 라이트
 
   // ── Semantic Colors ───────────────────────────────────────
-  static const Color success         = Color(0xFF38A169);
-  static const Color error           = Color(0xFFE53E3E);
-  static const Color warning         = Color(0xFFD97706);
+  static const Color success         = Color(0xFF57A882);
+  static const Color error           = Color(0xFFE05C5C);
+  static const Color warning         = Color(0xFFE8935A);
 
   // ── Calendar ─────────────────────────────────────────────
-  static const Color dateBorderColor = Color(0xFFB5547C); // = primary rose
+  static const Color dateBorderColor = Color(0xFF84A59D); // = primary sage
 
   // ── Shadows ───────────────────────────────────────────────
   static const BoxShadow cardShadow = BoxShadow(
-    color: Color(0x1AB5547C), // rose-tinted 10%
+    color: Color(0x1884A59D), // sage-tinted 10%
     blurRadius: 24,
     spreadRadius: 0,
     offset: Offset(0, 4),
   );
   static const BoxShadow subtleShadow = BoxShadow(
-    color: Color(0x12B5547C), // rose-tinted 7%
+    color: Color(0x1284A59D), // sage-tinted 7%
     blurRadius: 12,
     spreadRadius: 0,
     offset: Offset(0, 2),
   );
   static const BoxShadow navShadow = BoxShadow(
-    color: Color(0x14B5547C), // rose-tinted nav
+    color: Color(0x1684A59D), // sage-tinted nav
     blurRadius: 20,
     offset: Offset(0, -4),
   );
