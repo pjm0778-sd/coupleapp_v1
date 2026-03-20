@@ -64,13 +64,8 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
   }
 
   String? _detectCategory(String? workType) {
-    if (workType == null || workType.isEmpty) return null;
+    if (workType == null || workType.isEmpty) return '출근';
     final t = workType.toLowerCase();
-    if (t.contains('야간') || t.contains('주간') || t.contains('근무') ||
-        t.contains('출근') || t.contains('당직') || t.contains('주야') ||
-        t.contains('오전') || t.contains('오후') || t.contains('work')) {
-      return '근무';
-    }
     if (t.contains('여행') || t.contains('출장') || t.contains('trip') ||
         t.contains('travel')) {
       return '여행';
@@ -80,7 +75,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
         t.contains('meeting')) {
       return '약속';
     }
-    return '기타';
+    return '출근';
   }
 
   Future<void> _submit() async {
@@ -142,7 +137,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
           isAnniversary: false,
           isOcr: !widget.isGoogleCalendar,
           isGoogleCalendar: widget.isGoogleCalendar,
-          category: _detectCategory(workType),
+          category: s['category'] as String? ?? _detectCategory(workType),
         );
 
         await service.addSchedule(schedule);

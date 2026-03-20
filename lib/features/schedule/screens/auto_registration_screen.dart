@@ -79,8 +79,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   }
 
   /// OCR 결과에 교대 시간 설정 적용
-  /// work_type이 ShiftTime의 shiftType 또는 label과 일치하면 start/end time 채움
-  /// 이미 시간이 있는 항목은 OCR 결과 유지
+  /// work_type이 ShiftTime의 shiftType 또는 label과 일치하거나
+  /// D*/E*/N* 접두어이면 해당 교대 시간 적용 (DC, EC, NC 등 포함)
+  /// 매칭된 항목은 category를 '출근'으로 설정
   List<Map<String, dynamic>> _applyShiftTimes(
     List<Map<String, dynamic>> schedules,
   ) {
@@ -89,23 +90,45 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
       final existing = s['start_time'] as String?;
       if (existing != null && existing.isNotEmpty) return s;
 
-      final workType = (s['work_type'] as String? ?? '').toLowerCase().trim();
+      final workType = (s['work_type'] as String? ?? '').trim();
       if (workType.isEmpty) return s;
+      final workTypeLower = workType.toLowerCase();
 
       ShiftTime? matched;
+
+      // 1단계: 정확히 일치 (shiftType or label)
       for (final shift in _shiftTimes) {
-        if (shift.shiftType.toLowerCase() == workType ||
-            shift.label.toLowerCase() == workType) {
+        if (shift.shiftType.toLowerCase() == workTypeLower ||
+            shift.label.toLowerCase() == workTypeLower) {
           matched = shift;
           break;
         }
       }
+
+      // 2단계: 접두어 매칭 D*/E*/N* (3교대: D→D, E→E, N→N / 2교대: D→day, N→night)
+      if (matched == null && workTypeLower.isNotEmpty) {
+        final first = workTypeLower[0];
+        if (first == 'd') {
+          final candidates =
+              _shiftTimes.where((sh) => sh.shiftType == 'D' || sh.shiftType == 'day');
+          if (candidates.isNotEmpty) matched = candidates.first;
+        } else if (first == 'e') {
+          final candidates = _shiftTimes.where((sh) => sh.shiftType == 'E');
+          if (candidates.isNotEmpty) matched = candidates.first;
+        } else if (first == 'n') {
+          final candidates =
+              _shiftTimes.where((sh) => sh.shiftType == 'N' || sh.shiftType == 'night');
+          if (candidates.isNotEmpty) matched = candidates.first;
+        }
+      }
+
       if (matched == null) return s;
 
       final pad = (int v) => v.toString().padLeft(2, '0');
       final updated = Map<String, dynamic>.from(s);
       updated['start_time'] = '${pad(matched.startHour)}:${pad(matched.startMinute)}';
       updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
+      updated['category'] = '출근';
       return updated;
     }).toList();
   }

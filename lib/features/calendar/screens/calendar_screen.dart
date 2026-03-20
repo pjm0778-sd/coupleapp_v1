@@ -790,6 +790,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildTableCalendar({double rowHeight = 86}) {
     return TableCalendar<Schedule>(
+      key: ValueKey(_partnerGrayMode),
       locale: 'ko_KR',
       firstDay: DateTime(2020, 1, 1),
       lastDay: DateTime(2030, 12, 31),
@@ -934,6 +935,12 @@ class _CalendarCell extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.only(top: 2),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Color(0xFFE8E8E8), width: 0.5),
+          right: BorderSide(color: Color(0xFFE8E8E8), width: 0.5),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
