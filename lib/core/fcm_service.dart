@@ -30,9 +30,12 @@ class FcmService {
       sound: true,
     );
 
-    // FCM 토큰 저장
+    // FCM 토큰 저장 — 로그인 상태일 때만, 로그인 후에도 재시도
     await _saveToken();
     _fcm.onTokenRefresh.listen(_updateToken);
+    supabase.auth.onAuthStateChange.listen((data) {
+      if (data.session != null) _saveToken();
+    });
 
     // 포그라운드 메시지 처리
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
