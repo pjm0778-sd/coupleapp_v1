@@ -6,7 +6,6 @@ import '../../../core/supabase_client.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../../profile/models/shift_time.dart';
 import '../../profile/services/profile_service.dart';
-import '../../../main.dart';
 import 'ocr_review_screen.dart';
 import 'google_calendar_screen.dart';
 import 'excel_import_screen.dart';
@@ -230,7 +229,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           ),
         );
         if (saved != null && saved > 0 && mounted) {
-          TabSwitchNotification(1).dispatch(context);
+          if (mounted) Navigator.of(context).pop();
         }
       }
     } catch (e) {
@@ -257,7 +256,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
       ),
     );
     if (saved != null && saved > 0 && mounted) {
-      TabSwitchNotification(1).dispatch(context);
+      Navigator.of(context).pop();
     }
   }
 
@@ -275,7 +274,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
       ),
     );
     if (saved != null && saved > 0 && mounted) {
-      TabSwitchNotification(1).dispatch(context);
+      Navigator.of(context).pop();
     }
   }
 

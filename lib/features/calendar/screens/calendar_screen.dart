@@ -9,6 +9,7 @@ import '../services/schedule_service.dart';
 import '../widgets/schedule_add_sheet.dart';
 import '../widgets/day_detail_sheet.dart';
 import 'date_map_screen.dart';
+import '../../../features/schedule/screens/auto_registration_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -626,6 +627,45 @@ class _CalendarScreenState extends State<CalendarScreen> {
     }
   }
 
+  void _showFabMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.edit_calendar_outlined),
+              title: const Text('일정 추가'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showAddSheet(null);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.document_scanner_outlined),
+              title: const Text('자동 등록'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AutoRegistrationScreen(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddSheet(DateTime? date) async {
     if (_coupleId == null || _myUserId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -778,7 +818,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddSheet(null),
+        onPressed: _showFabMenu,
         backgroundColor: AppTheme.primary,
         child: const Icon(Icons.add),
       ),

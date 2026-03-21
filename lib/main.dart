@@ -9,7 +9,6 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
-import 'features/schedule/screens/auto_registration_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
 import 'package:flutter/services.dart' as import_services;
@@ -118,7 +117,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   static const List<Widget> _screens = [
     HomeScreen(),
     CalendarScreen(),
-    AutoRegistrationScreen(),
     NotificationHistoryScreen(),
     SettingsScreen(),
   ];
@@ -214,11 +212,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                   icon: Icon(Icons.calendar_month_outlined),
                   selectedIcon: Icon(Icons.calendar_month_rounded),
                   label: '달력',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.document_scanner_outlined),
-                  selectedIcon: Icon(Icons.document_scanner_rounded),
-                  label: '자동등록',
                 ),
                 NavigationDestination(
                   icon: Icon(Icons.notifications_outlined),
