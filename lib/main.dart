@@ -13,6 +13,7 @@ import 'features/home/screens/home_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' as import_services;
 
 import 'package:intl/date_symbol_data_local.dart';
@@ -26,10 +27,16 @@ class TabSwitchNotification extends Notification {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
-  await Firebase.initializeApp();
+  if (!kIsWeb) {
+    try {
+      await Firebase.initializeApp();
+      await FcmService().initialize();
+    } catch (e) {
+      debugPrint('Firebase init failed: $e');
+    }
+  }
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await NotificationManager().initialize();
-  await FcmService().initialize();
   runApp(const CoupleApp());
 }
 
