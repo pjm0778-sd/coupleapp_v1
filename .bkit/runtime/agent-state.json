@@ -1,14 +1,25 @@
 {
   "version": "1.0",
-  "enabled": false,
+  "enabled": true,
   "teamName": "",
   "feature": "ocr-schedule",
   "pdcaPhase": "do",
   "orchestrationPattern": "leader",
   "ctoAgent": "opus",
-  "startedAt": "2026-03-18T03:51:16.936Z",
-  "lastUpdated": "2026-03-18T03:55:00.525Z",
-  "teammates": [],
+  "startedAt": "2026-03-21T18:14:36.676Z",
+  "lastUpdated": "2026-03-21T18:15:03.611Z",
+  "teammates": [
+    {
+      "name": "a874e656f51a6a447",
+      "role": "Explore",
+      "model": "sonnet",
+      "status": "completed",
+      "currentTask": null,
+      "taskId": null,
+      "startedAt": "2026-03-21T18:14:36.678Z",
+      "lastActivityAt": "2026-03-21T18:15:03.608Z"
+    }
+  ],
   "progress": {
     "totalTasks": 0,
     "completedTasks": 0,
@@ -17,5 +28,5 @@
     "pendingTasks": 0
   },
   "recentMessages": [],
-  "sessionId": "a836adcb-79f9-458e-830d-c04b77d5c210"
+  "sessionId": "c6e3bd0d-770b-4d41-b914-b49212e39987"
 }

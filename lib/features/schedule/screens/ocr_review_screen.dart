@@ -7,6 +7,7 @@ class OcrReviewScreen extends StatefulWidget {
   final List<Map<String, dynamic>> schedules;
   final int ocrYear;
   final int ocrMonth;
+  final String? importLabel;
   final String userId;
   final String? coupleId;
   final bool isGoogleCalendar;
@@ -16,6 +17,7 @@ class OcrReviewScreen extends StatefulWidget {
     required this.schedules,
     required this.ocrYear,
     required this.ocrMonth,
+    this.importLabel,
     required this.userId,
     required this.coupleId,
     this.isGoogleCalendar = false,
@@ -164,7 +166,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('분석 결과 — ${widget.ocrYear}년 ${widget.ocrMonth}월'),
+        title: Text('분석 결과 — ${widget.importLabel ?? '${widget.ocrYear}년 ${widget.ocrMonth}월'}'),
       ),
       body: _schedules.isEmpty
           ? const Center(

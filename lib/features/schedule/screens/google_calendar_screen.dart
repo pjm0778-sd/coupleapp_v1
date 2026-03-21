@@ -22,6 +22,8 @@ class GoogleCalendarScreen extends StatefulWidget {
   State<GoogleCalendarScreen> createState() => _GoogleCalendarScreenState();
 }
 
+enum _ImportMode { month, year, all }
+
 class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
   final _service = GoogleCalendarService();
 
@@ -29,6 +31,7 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
   bool _isLoading = false;
   int _selectedYear = DateTime.now().year;
   int _selectedMonth = DateTime.now().month;
+  _ImportMode _importMode = _ImportMode.month;
 
   @override
   void initState() {
@@ -64,22 +67,34 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
     if (mounted) setState(() => _account = null);
   }
 
+  String get _importLabel {
+    switch (_importMode) {
+      case _ImportMode.month:
+        return '$_selectedYear년 $_selectedMonth월';
+      case _ImportMode.year:
+        return '$_selectedYear년';
+      case _ImportMode.all:
+        return '전체';
+    }
+  }
+
   Future<void> _importEvents() async {
     setState(() => _isLoading = true);
     try {
-      final events = await _service.getMonthEvents(
-        _selectedYear,
-        _selectedMonth,
-      );
+      List<Map<String, dynamic>> events;
+      switch (_importMode) {
+        case _ImportMode.month:
+          events = await _service.getMonthEvents(_selectedYear, _selectedMonth);
+        case _ImportMode.year:
+          events = await _service.getYearEvents(_selectedYear);
+        case _ImportMode.all:
+          events = await _service.getAllEvents();
+      }
 
       if (events.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '$_selectedYear년 $_selectedMonth월에 일정이 없습니다',
-              ),
-            ),
+            SnackBar(content: Text('$_importLabel에 일정이 없습니다')),
           );
         }
         return;
@@ -94,6 +109,7 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
             schedules: events,
             ocrYear: _selectedYear,
             ocrMonth: _selectedMonth,
+            importLabel: _importLabel,
             userId: widget.userId,
             coupleId: widget.coupleId,
             isGoogleCalendar: true,
@@ -128,8 +144,8 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
             const SizedBox(height: 24),
 
             if (_account != null) ...[
-              // 월 선택
-              _buildMonthPicker(),
+              // 가져오기 범위 선택
+              _buildPicker(),
               const SizedBox(height: 32),
 
               // 가져오기 버튼
@@ -148,9 +164,7 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
                         )
                       : const Icon(Icons.download_outlined),
                   label: Text(
-                    _isLoading
-                        ? '불러오는 중...'
-                        : '$_selectedYear년 $_selectedMonth월 일정 가져오기',
+                    _isLoading ? '불러오는 중...' : '$_importLabel 일정 가져오기',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -266,7 +280,7 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
     );
   }
 
-  Widget _buildMonthPicker() {
+  Widget _buildPicker() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -278,95 +292,137 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '가져올 월 선택',
+            '가져올 범위 선택',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          // 모드 선택 탭
           Row(
             children: [
-              // 연도
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '연도',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedYear,
-                          isExpanded: true,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          items: List.generate(5, (i) {
-                            final year = DateTime.now().year - 2 + i;
-                            return DropdownMenuItem(
-                              value: year,
-                              child: Text('$year년'),
-                            );
-                          }),
-                          onChanged: (v) =>
-                              setState(() => _selectedYear = v!),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // 월
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '월',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: AppTheme.border),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int>(
-                          value: _selectedMonth,
-                          isExpanded: true,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          items: List.generate(12, (i) {
-                            return DropdownMenuItem(
-                              value: i + 1,
-                              child: Text('${i + 1}월'),
-                            );
-                          }),
-                          onChanged: (v) =>
-                              setState(() => _selectedMonth = v!),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _modeChip('월 선택', _ImportMode.month),
+              const SizedBox(width: 8),
+              _modeChip('연도 선택', _ImportMode.year),
+              const SizedBox(width: 8),
+              _modeChip('전체', _ImportMode.all),
             ],
           ),
+          if (_importMode != _ImportMode.all) ...[
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                // 연도 드롭다운 (항상 표시)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '연도',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: AppTheme.border),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _selectedYear,
+                            isExpanded: true,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            items: List.generate(5, (i) {
+                              final year = DateTime.now().year - 2 + i;
+                              return DropdownMenuItem(
+                                value: year,
+                                child: Text('$year년'),
+                              );
+                            }),
+                            onChanged: (v) => setState(() => _selectedYear = v!),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // 월 드롭다운 (월 선택 모드일 때만)
+                if (_importMode == _ImportMode.month) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '월',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppTheme.border),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<int>(
+                              value: _selectedMonth,
+                              isExpanded: true,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              items: List.generate(12, (i) {
+                                return DropdownMenuItem(
+                                  value: i + 1,
+                                  child: Text('${i + 1}월'),
+                                );
+                              }),
+                              onChanged: (v) => setState(() => _selectedMonth = v!),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _modeChip(String label, _ImportMode mode) {
+    final selected = _importMode == mode;
+    return GestureDetector(
+      onTap: () => setState(() => _importMode = mode),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFF4285F4)
+              : const Color(0xFF4285F4).withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF4285F4)
+                : const Color(0xFF4285F4).withValues(alpha: 0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? Colors.white : const Color(0xFF4285F4),
+          ),
+        ),
       ),
     );
   }

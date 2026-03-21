@@ -896,6 +896,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       holidays: _getHolidaysForDay(day),
       getColor: _getScheduleColor,
       onEventTap: _onScheduleTap,
+      myUserId: _myUserId ?? '',
       partnerGrayMode: _partnerGrayMode,
     );
   }
@@ -913,6 +914,7 @@ class _CalendarCell extends StatelessWidget {
   final Color Function(Schedule) getColor;
   final void Function(Schedule) onEventTap;
   final bool partnerGrayMode;
+  final String myUserId;
 
   const _CalendarCell({
     required this.day,
@@ -922,6 +924,7 @@ class _CalendarCell extends StatelessWidget {
     required this.holidays,
     required this.getColor,
     required this.onEventTap,
+    required this.myUserId,
     this.partnerGrayMode = false,
   });
 
@@ -1053,7 +1056,7 @@ class _CalendarCell extends StatelessWidget {
 
             final barColor = s.isAnniversary
                 ? AppTheme.accent
-                : (partnerGrayMode && s.ownerType == 'partner'
+                : (partnerGrayMode && s.ownerType != 'couple' && s.userId != myUserId
                     ? Colors.grey.shade400
                     : getColor(s));
             return _EventBar(

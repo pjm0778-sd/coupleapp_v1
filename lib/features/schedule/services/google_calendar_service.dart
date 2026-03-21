@@ -50,59 +50,90 @@ class GoogleCalendarService {
     int month,
   ) async {
     final api = await _getApi();
-
     final timeMin = DateTime(year, month, 1).toUtc();
     final timeMax = DateTime(year, month + 1, 1).toUtc();
+    return _fetchEvents(api, timeMin: timeMin, timeMax: timeMax);
+  }
 
-    final events = await api.events.list(
-      'primary',
-      timeMin: timeMin,
-      timeMax: timeMax,
-      singleEvents: true,
-      orderBy: 'startTime',
-      maxResults: 250,
-    );
+  Future<List<Map<String, dynamic>>> getYearEvents(int year) async {
+    final api = await _getApi();
+    final timeMin = DateTime(year, 1, 1).toUtc();
+    final timeMax = DateTime(year + 1, 1, 1).toUtc();
+    return _fetchEvents(api, timeMin: timeMin, timeMax: timeMax);
+  }
 
+  Future<List<Map<String, dynamic>>> getAllEvents() async {
+    final api = await _getApi();
+    final timeMin = DateTime(2000, 1, 1).toUtc();
+    final timeMax = DateTime(2035, 12, 31).toUtc();
+    return _fetchEvents(api, timeMin: timeMin, timeMax: timeMax);
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchEvents(
+    gcal.CalendarApi api, {
+    DateTime? timeMin,
+    DateTime? timeMax,
+  }) async {
     final result = <Map<String, dynamic>>[];
+    String? pageToken;
 
-    for (final e in (events.items ?? [])) {
-      if (e.summary == null) continue;
+    do {
+      final events = await api.events.list(
+        'primary',
+        timeMin: timeMin,
+        timeMax: timeMax,
+        singleEvents: true,
+        orderBy: 'startTime',
+        maxResults: 250,
+        pageToken: pageToken,
+      );
 
-      String? startDateStr;
-      String? endDateStr;
-      String? startTimeStr;
-      String? endTimeStr;
-
-      if (e.start?.date != null) {
-        // 하루종일 일정: end.date는 exclusive (다음날)이므로 -1일
-        startDateStr = _fmtDate(e.start!.date!);
-        final actualEnd = e.end!.date!.subtract(const Duration(days: 1));
-        endDateStr = _fmtDate(actualEnd);
-      } else if (e.start?.dateTime != null) {
-        // 시간 지정 일정
-        final st = e.start!.dateTime!.toLocal();
-        final et = e.end!.dateTime!.toLocal();
-        startDateStr = _fmtDate(st);
-        endDateStr = _fmtDate(et);
-        startTimeStr = _fmtTime(st);
-        endTimeStr = _fmtTime(et);
+      for (final e in (events.items ?? [])) {
+        final item = _parseEvent(e);
+        if (item != null) result.add(item);
       }
 
-      if (startDateStr == null) continue;
-
-      final item = <String, dynamic>{
-        'start_date': startDateStr,
-        'end_date': endDateStr ?? startDateStr,
-        'work_type': e.summary,
-        'color_hex': _colorIdToHex(e.colorId),
-      };
-      if (startTimeStr != null) item['start_time'] = startTimeStr;
-      if (endTimeStr != null) item['end_time'] = endTimeStr;
-
-      result.add(item);
-    }
+      pageToken = events.nextPageToken;
+    } while (pageToken != null);
 
     return result;
+  }
+
+  Map<String, dynamic>? _parseEvent(gcal.Event e) {
+    if (e.summary == null) return null;
+
+    String? startDateStr;
+    String? endDateStr;
+    String? startTimeStr;
+    String? endTimeStr;
+
+    if (e.start?.date != null) {
+      // 하루종일 일정: end.date는 exclusive (다음날)이므로 -1일
+      startDateStr = _fmtDate(e.start!.date!);
+      final actualEnd = e.end!.date!.subtract(const Duration(days: 1));
+      endDateStr = _fmtDate(actualEnd);
+    } else if (e.start?.dateTime != null) {
+      // 시간 지정 일정
+      final st = e.start!.dateTime!.toLocal();
+      final et = e.end!.dateTime!.toLocal();
+      startDateStr = _fmtDate(st);
+      endDateStr = _fmtDate(et);
+      startTimeStr = _fmtTime(st);
+      endTimeStr = _fmtTime(et);
+    }
+
+    if (startDateStr == null) return null;
+
+    final item = <String, dynamic>{
+      'start_date': startDateStr,
+      'end_date': endDateStr ?? startDateStr,
+      'work_type': e.summary,
+      'color_hex': _colorIdToHex(e.colorId),
+    };
+    if (startTimeStr != null) item['start_time'] = startTimeStr;
+    if (endTimeStr != null) item['end_time'] = endTimeStr;
+
+    return item;
   }
 
   String _fmtDate(DateTime d) =>

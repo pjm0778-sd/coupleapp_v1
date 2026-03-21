@@ -1,12 +1,18 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-03-17T18:00:52.238Z",
+  "lastUpdated": "2026-03-19T16:58:48.064Z",
   "activeFeatures": [
     "ocr-schedule",
     "coupleduty",
     "schedule-table-ocr",
     "excel-schedule-parse",
-    "couple-profile-setup"
+    "couple-profile-setup",
+    "odsay-proxy",
+    "kakao-place-search",
+    "claude-midpoint",
+    "naver-directions-proxy",
+    "naver-place-search",
+    "claude-date-spots"
   ],
   "primaryFeature": "ocr-schedule",
   "features": {
@@ -63,18 +69,98 @@
       "lastFile": "D:\\app개발\\coupleapp_v1\\supabase\\functions\\excel-schedule-parse\\index.ts"
     },
     "couple-profile-setup": {
-      "phase": "act",
+      "phase": "report",
       "phaseNumber": 5,
+      "matchRate": 90,
+      "iterationCount": 2,
+      "requirements": [],
+      "documents": {
+        "plan": "docs/01-plan/features/couple-profile-setup.plan.md",
+        "design": "docs/02-design/features/couple-profile-setup.design.md",
+        "analysis": "docs/03-analysis/couple-profile-setup.analysis.md"
+      },
+      "timestamps": {
+        "started": "2026-03-17T18:00:52.236Z",
+        "lastUpdated": "2026-03-18T12:00:00.000Z"
+      }
+    },
+    "odsay-proxy": {
+      "phase": "do",
+      "phaseNumber": 3,
       "matchRate": null,
       "iterationCount": 0,
       "requirements": [],
       "documents": {},
       "timestamps": {
-        "started": "2026-03-17T18:00:52.236Z",
-        "lastUpdated": "2026-03-17T18:00:52.238Z"
+        "started": "2026-03-18T11:22:04.305Z",
+        "lastUpdated": "2026-03-19T12:59:26.052Z"
       },
-      "previousPhase": "check",
-      "autoAdvanced": true
+      "lastFile": "D:\\appdev\\coupleapp_v1\\supabase\\functions\\odsay-proxy\\index.ts"
+    },
+    "kakao-place-search": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-18T16:21:50.554Z",
+        "lastUpdated": "2026-03-19T13:00:05.773Z"
+      },
+      "lastFile": "D:\\appdev\\coupleapp_v1\\supabase\\functions\\kakao-place-search\\index.ts"
+    },
+    "claude-midpoint": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-19T13:00:34.856Z",
+        "lastUpdated": "2026-03-19T16:58:48.064Z"
+      },
+      "lastFile": "D:/appdev/coupleapp_v1/supabase/functions/claude-midpoint/index.ts"
+    },
+    "naver-directions-proxy": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-19T13:00:53.534Z",
+        "lastUpdated": "2026-03-19T16:04:53.930Z"
+      },
+      "lastFile": "D:\\appdev\\coupleapp_v1\\supabase\\functions\\naver-directions-proxy\\index.ts"
+    },
+    "naver-place-search": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-19T14:03:51.017Z",
+        "lastUpdated": "2026-03-19T14:35:20.079Z"
+      },
+      "lastFile": "D:\\appdev\\coupleapp_v1\\supabase\\functions\\naver-place-search\\index.ts"
+    },
+    "claude-date-spots": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-19T15:07:47.053Z",
+        "lastUpdated": "2026-03-19T16:18:47.013Z"
+      },
+      "lastFile": "D:/appdev/coupleapp_v1/supabase/functions/claude-date-spots/index.ts"
     }
   },
   "pipeline": {
@@ -85,7 +171,7 @@
   "session": {
     "startedAt": "2026-03-09T12:34:38.455Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-03-17T18:00:52.238Z"
+    "lastActivity": "2026-03-19T16:58:48.064Z"
   },
   "history": [
     {
@@ -224,6 +310,138 @@
       "timestamp": "2026-03-17T18:00:52.238Z",
       "feature": "couple-profile-setup",
       "phase": "act",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-18T11:22:04.305Z",
+      "feature": "odsay-proxy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-18T12:00:00.000Z",
+      "feature": "couple-profile-setup",
+      "phase": "report",
+      "action": "gap_analysis_90pct"
+    },
+    {
+      "timestamp": "2026-03-18T16:21:50.554Z",
+      "feature": "kakao-place-search",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T12:59:26.052Z",
+      "feature": "odsay-proxy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T13:00:05.773Z",
+      "feature": "kakao-place-search",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T13:00:34.856Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T13:00:53.534Z",
+      "feature": "naver-directions-proxy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T13:20:41.823Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T13:55:09.963Z",
+      "feature": "naver-directions-proxy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T14:03:51.017Z",
+      "feature": "naver-place-search",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T14:35:20.079Z",
+      "feature": "naver-place-search",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:00:55.718Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:01:43.267Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:07:47.053Z",
+      "feature": "claude-date-spots",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:38:13.382Z",
+      "feature": "claude-date-spots",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:53:45.246Z",
+      "feature": "claude-date-spots",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T15:59:00.184Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T16:04:53.930Z",
+      "feature": "naver-directions-proxy",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T16:18:08.188Z",
+      "feature": "claude-date-spots",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T16:18:47.013Z",
+      "feature": "claude-date-spots",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T16:28:32.976Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-03-19T16:58:48.064Z",
+      "feature": "claude-midpoint",
+      "phase": "do",
       "action": "updated"
     }
   ]
