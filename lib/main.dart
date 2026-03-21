@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'core/supabase_client.dart';
 import 'core/theme.dart';
 import 'core/notification_manager.dart';
+import 'core/fcm_service.dart';
 import 'features/notifications/services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
@@ -24,8 +26,10 @@ class TabSwitchNotification extends Notification {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
+  await Firebase.initializeApp();
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
   await NotificationManager().initialize();
+  await FcmService().initialize();
   runApp(const CoupleApp());
 }
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "397478839683",
+    "project_id": "coupleduty-1158a",
+    "storage_bucket": "coupleduty-1158a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397478839683:android:7452cf6dcfadd5bddba2b6",
+        "android_client_info": {
+          "package_name": "com.coupleduty.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsSsSmLtY6RSuv7ZHK0BCxYXSYczXU_aQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
