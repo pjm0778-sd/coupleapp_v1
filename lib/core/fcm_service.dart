@@ -44,6 +44,8 @@ class FcmService {
     FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpened);
   }
 
+  Future<String?> getToken() => _fcm.getToken();
+
   Future<void> _saveToken() async {
     try {
       final token = await _fcm.getToken();
