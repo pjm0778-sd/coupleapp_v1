@@ -16,6 +16,7 @@ import '../../onboarding/widgets/region_selector_widget.dart';
 import '../../auth/services/auth_service.dart';
 import '../../couple/screens/couple_connect_screen.dart';
 import '../../../core/fcm_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1683,7 +1684,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 // [DEBUG] FCM 토큰 확인
                 FutureBuilder<String?>(
-                  future: FcmService().getToken(),
+                  future: kIsWeb ? Future.value(null) : FcmService().getToken(),
                   builder: (context, snap) {
                     final token = snap.data;
                     return GestureDetector(
