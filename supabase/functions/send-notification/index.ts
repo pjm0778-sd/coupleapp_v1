@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // FCM v1 API — 서비스 계정 JSON으로 액세스 토큰 생성 후 전송
-const FCM_PROJECT_ID = 'coupleduty'
+const FCM_PROJECT_ID = 'coupleduty-1158a'
 const FCM_URL = `https://fcm.googleapis.com/v1/projects/${FCM_PROJECT_ID}/messages:send`
 
 // 서비스 계정 JSON에서 JWT assertion으로 OAuth2 토큰 획득
