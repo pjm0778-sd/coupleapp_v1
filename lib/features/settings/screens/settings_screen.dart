@@ -15,8 +15,7 @@ import '../../onboarding/widgets/shift_time_editor.dart';
 import '../../onboarding/widgets/region_selector_widget.dart';
 import '../../auth/services/auth_service.dart';
 import '../../couple/screens/couple_connect_screen.dart';
-import '../../../core/fcm_service.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -1681,35 +1680,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
 
                 const SizedBox(height: 32),
-
-                // [DEBUG] FCM 토큰 확인
-                FutureBuilder<String?>(
-                  future: kIsWeb ? Future.value(null) : FcmService().getToken(),
-                  builder: (context, snap) {
-                    final token = snap.data;
-                    return GestureDetector(
-                      onTap: () {
-                        if (token != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('FCM: $token'), duration: const Duration(seconds: 10)),
-                          );
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade100,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          token != null ? '[DEBUG] FCM 토큰: ${token.substring(0, 20)}...' : '[DEBUG] FCM 토큰: null',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
 
                 // 로그아웃
                 OutlinedButton.icon(
