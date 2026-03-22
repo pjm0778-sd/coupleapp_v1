@@ -40,6 +40,7 @@ class RepeatPattern {
         if (startDate != null && date.isBefore(startDate!)) return false;
         if (endDate != null && date.isAfter(endDate!)) return false;
         if (interval == null || interval == 1) return true;
+        if (startDate == null) return true;
         return date.difference(startDate!).inDays % interval! == 0;
 
       case 'weekly':
@@ -49,6 +50,7 @@ class RepeatPattern {
       case 'monthly':
         if (startDate != null && date.isBefore(startDate!)) return false;
         if (endDate != null && date.isAfter(endDate!)) return false;
+        if (startDate == null) return false;
         return date.day == startDate!.day;
 
       case 'yearly':

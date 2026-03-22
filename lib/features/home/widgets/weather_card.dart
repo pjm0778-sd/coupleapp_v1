@@ -28,7 +28,6 @@ class _WeatherCardState extends State<WeatherCard> {
   WeatherData? _partnerWeather;
   bool _loading = true;
   bool _hasError = false;
-
   // 파트너 도시가 내 도시와 다를 때만 별도 표시
   bool get _showBoth =>
       widget.partnerCity != null &&

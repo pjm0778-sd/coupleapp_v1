@@ -6,7 +6,8 @@ import '../models/couple_profile.dart';
 class ProfileService {
   /// 내 프로필 로드
   Future<CoupleProfile?> loadMyProfile() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
     final data = await supabase
         .from('profiles')
         .select(
@@ -20,13 +21,15 @@ class ProfileService {
 
   /// 프로필 저장 (온보딩 완료 포함)
   Future<void> saveProfile(CoupleProfile profile) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     await supabase.from('profiles').update(profile.toMap()).eq('id', userId);
   }
 
   /// 사귄 날짜 저장 (couples 테이블 — 기존 로직 유지)
   Future<void> saveCoupleStartDate(DateTime date) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     final profile = await supabase
         .from('profiles')
         .select('couple_id')
@@ -42,7 +45,8 @@ class ProfileService {
 
   /// 닉네임 저장 (profiles 테이블 — 기존 로직 유지)
   Future<void> saveNickname(String nickname) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     await supabase
         .from('profiles')
         .update({'nickname': nickname})
@@ -65,7 +69,8 @@ class ProfileService {
 
   /// 온보딩 완료 여부 확인
   Future<bool> isOnboardingCompleted() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return false;
     final data = await supabase
         .from('profiles')
         .select('onboarding_completed')
@@ -77,7 +82,8 @@ class ProfileService {
   /// 설정 화면용 기본 정보 로드 (nickname, couple_id)
   /// 프로필이 없으면 userMetadata 닉네임으로 생성 후 반환
   Future<({String? nickname, String? coupleId})> loadBasicProfile() async {
-    final user = supabase.auth.currentUser!;
+    final user = supabase.auth.currentUser;
+    if (user == null) return (nickname: null, coupleId: null);
     final data = await supabase
         .from('profiles')
         .select('nickname, couple_id')
@@ -106,12 +112,14 @@ class ProfileService {
     required String coupleId,
     required String nickname,
   }) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     final couple = await supabase
         .from('couples')
         .select('user1_id, user2_id')
         .eq('id', coupleId)
-        .single();
+        .maybeSingle();
+    if (couple == null) return;
     final partnerId = couple['user1_id'] == userId
         ? couple['user2_id']
         : couple['user1_id'];
@@ -124,7 +132,8 @@ class ProfileService {
 
   /// 파트너 닉네임 로드 (couples + profiles 조인)
   Future<String?> loadPartnerNickname(String coupleId) async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
     final couple = await supabase
         .from('couples')
         .select('user1_id, user2_id, started_at')

@@ -254,7 +254,8 @@ class ScheduleService {
     try {
       final start = DateTime(month.year, month.month, 1);
       final end = DateTime(month.year, month.month + 1, 0);
-      final currentUserId = supabase.auth.currentUser!.id;
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return 0;
 
       final data = await supabase
           .from('schedules')
@@ -280,7 +281,8 @@ class ScheduleService {
     try {
       final start = DateTime(month.year, month.month, 1);
       final end = DateTime(month.year, month.month + 1, 0);
-      final currentUserId = supabase.auth.currentUser!.id;
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return 0;
 
       final data = await supabase
           .from('schedules')
@@ -334,7 +336,8 @@ class ScheduleService {
     try {
       final start = DateTime(month.year, month.month, 1);
       final end = DateTime(month.year, month.month + 1, 0);
-      final currentUserId = supabase.auth.currentUser!.id;
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return 0;
 
       final data = await supabase
           .from('schedules')
@@ -392,7 +395,8 @@ class ScheduleService {
 
   /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
     final profile = await supabase
         .from('profiles')
         .select('couple_id')
@@ -401,8 +405,8 @@ class ScheduleService {
     return profile?['couple_id'] as String?;
   }
 
-  /// 현재 유저 ID
-  String get currentUserId => supabase.auth.currentUser!.id;
+  /// 현재 유저 ID (미로그인 시 빈 문자열 반환)
+  String get currentUserId => supabase.auth.currentUser?.id ?? '';
 
   /// 일정이 현재 유저의 것인지 확인
   bool isMine(Schedule schedule) => schedule.userId == currentUserId;
@@ -460,7 +464,8 @@ class ScheduleService {
     try {
       final start = DateTime(month.year, month.month, 1);
       final end = DateTime(month.year, month.month + 1, 0);
-      final currentUserId = supabase.auth.currentUser!.id;
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return 0;
 
       final data = await supabase
           .from('schedules')

@@ -128,9 +128,14 @@ JSON만 출력 (코드블록 없이):
       .replace(/```\s*/g, '')
       .trim()
     const match = cleaned.match(/\{[\s\S]*\}/)
-    const resultJson = match
-      ? JSON.parse(match[0])
-      : { year: targetYear, month: targetMonth, schedules: [] }
+    let resultJson: Record<string, unknown>
+    try {
+      resultJson = match
+        ? JSON.parse(match[0])
+        : { year: targetYear, month: targetMonth, schedules: [] }
+    } catch {
+      resultJson = { year: targetYear, month: targetMonth, schedules: [] }
+    }
 
     resultJson.year = resultJson.year ?? targetYear
     resultJson.month = resultJson.month ?? targetMonth

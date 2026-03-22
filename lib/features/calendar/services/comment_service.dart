@@ -30,9 +30,11 @@ class CommentService {
 
   /// 댓글 추가
   Future<void> addComment(String scheduleId, String content) async {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
     await supabase.from('schedule_comments').insert({
       'schedule_id': scheduleId,
-      'user_id': supabase.auth.currentUser!.id,
+      'user_id': userId,
       'content': content,
     });
   }
@@ -44,5 +46,5 @@ class CommentService {
 
   /// 댓글이 현재 유저의 것인지 확인
   bool isMine(ScheduleComment comment) =>
-      comment.userId == supabase.auth.currentUser!.id;
+      comment.userId == supabase.auth.currentUser?.id;
 }

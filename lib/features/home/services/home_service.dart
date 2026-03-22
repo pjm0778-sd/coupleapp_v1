@@ -8,8 +8,9 @@ class HomeService {
         .from('couples')
         .select('started_at, user1_id, user2_id')
         .eq('id', coupleId)
-        .single();
+        .maybeSingle();
 
+    if (coupleData == null) return {};
     final startedAt = coupleData['started_at'] as String?;
     if (startedAt == null) return {};
 
@@ -17,7 +18,8 @@ class HomeService {
     final now = DateTime.now();
     final diff = now.difference(startedDate);
 
-    final currentUserId = supabase.auth.currentUser!.id;
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return {};
     final partnerId = coupleData['user1_id'] == currentUserId
         ? coupleData['user2_id']
         : coupleData['user1_id'];
@@ -43,7 +45,8 @@ class HomeService {
   Future<Map<String, List<Schedule>>> getTodaySchedules(String coupleId) async {
     final today = DateTime.now();
     final todayStr = today.toIso8601String().split('T')[0];
-    final currentUserId = supabase.auth.currentUser!.id;
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return {'mine': <Schedule>[], 'partner': <Schedule>[]};
 
     // 내 오늘 일정 (단일 일정 + 오늘을 포함하는 다중일 일정)
     final myData = await supabase
@@ -80,7 +83,8 @@ class HomeService {
   ) async {
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     final tomorrowStr = tomorrow.toIso8601String().split('T')[0];
-    final currentUserId = supabase.auth.currentUser!.id;
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return {'mine': <Schedule>[], 'partner': <Schedule>[]};
 
     final myData = await supabase
         .from('schedules')
@@ -215,7 +219,8 @@ class HomeService {
 
   /// 현재 유저의 coupleId 가져오기
   Future<String?> getCoupleId() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
     final profile = await supabase
         .from('profiles')
         .select('couple_id')

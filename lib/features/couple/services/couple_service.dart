@@ -10,7 +10,8 @@ class CoupleService {
 
   /// 내 초대 코드 가져오기 (없으면 새로 생성)
   Future<String> getOrCreateMyCode() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) throw Exception('로그인이 필요합니다');
 
     final existing = await supabase
         .from('couples')
@@ -49,17 +50,19 @@ class CoupleService {
 
   /// 현재 커플 정보 가져오기
   Future<Map<String, dynamic>?> getCoupleInfo() async {
-    final userId = supabase.auth.currentUser!.id;
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return null;
+
     final profile = await supabase
         .from('profiles')
         .select('couple_id')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-    final coupleId = profile['couple_id'];
+    final coupleId = profile?['couple_id'];
     if (coupleId == null) return null;
 
-    return await supabase.from('couples').select().eq('id', coupleId).single();
+    return await supabase.from('couples').select().eq('id', coupleId).maybeSingle();
   }
 
   /// 커플 사귄 날짜 업데이트
