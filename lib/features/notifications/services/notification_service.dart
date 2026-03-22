@@ -4,7 +4,6 @@ import '../../../core/notification_manager.dart';
 import '../../../core/supabase_client.dart';
 import '../models/notification.dart';
 import '../models/notification_settings.dart';
-import '../../profile/models/shift_time.dart';
 
 class NotificationService {
   final NotificationManager _manager = NotificationManager();
@@ -65,6 +64,10 @@ class NotificationService {
                 ),
               );
             }
+            // 출근 일정 추가 시 출퇴근 알림 재스케줄링
+            if (record['category'] == '출근') {
+              _schedulePartnerCommuteAlerts();
+            }
           },
         )
         .subscribe();
@@ -98,6 +101,10 @@ class NotificationService {
                   type: NotificationType.scheduleDeleted,
                 ),
               );
+            }
+            // 출근 일정 삭제 시 출퇴근 알림 재스케줄링
+            if (oldRecord['category'] == '출근') {
+              _schedulePartnerCommuteAlerts();
             }
           },
         )
@@ -134,6 +141,10 @@ class NotificationService {
                   type: NotificationType.scheduleUpdated,
                 ),
               );
+            }
+            // 출근 일정 수정 시 출퇴근 알림 재스케줄링
+            if (newRecord['category'] == '출근' || oldRecord['category'] == '출근') {
+              _schedulePartnerCommuteAlerts();
             }
           },
         )
@@ -195,8 +206,7 @@ class NotificationService {
   Future<void> scheduleCommuteAlertsForPartner() =>
       _schedulePartnerCommuteAlerts();
 
-  /// 파트너 출퇴근 알림 스케줄링
-  /// 파트너 프로필의 shiftTimes를 읽어 매일 반복 로컬 알림 예약
+  /// 파트너의 '출근' 카테고리 일정 기반 출퇴근 알림 스케줄링
   Future<void> _schedulePartnerCommuteAlerts() async {
     final myUserId = supabase.auth.currentUser?.id;
     if (myUserId == null) return;
@@ -218,20 +228,33 @@ class NotificationService {
 
     final partnerData = await supabase
         .from('profiles')
-        .select('nickname, shift_times')
+        .select('nickname')
         .eq('id', partnerId)
         .maybeSingle();
     if (partnerData == null) return;
 
     final partnerName = partnerData['nickname'] as String? ?? '파트너';
-    final rawShifts = partnerData['shift_times'];
-    final shiftTimes = rawShifts is List
-        ? rawShifts.cast<Map<String, dynamic>>().map(ShiftTime.fromMap).toList()
-        : <ShiftTime>[];
 
-    await _manager.schedulePartnerCommuteAlerts(
+    // 오늘부터 14일간 파트너의 '출근' 카테고리 일정 조회
+    final today = DateTime.now();
+    final until = today.add(const Duration(days: 14));
+    final todayStr =
+        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+    final untilStr =
+        '${until.year}-${until.month.toString().padLeft(2, '0')}-${until.day.toString().padLeft(2, '0')}';
+
+    final rows = await supabase
+        .from('schedules')
+        .select('date, start_time, end_time')
+        .eq('user_id', partnerId)
+        .eq('category', '출근')
+        .gte('date', todayStr)
+        .lte('date', untilStr)
+        .order('date');
+
+    await _manager.scheduleCommuteFromSchedules(
       partnerName: partnerName,
-      shiftTimes: shiftTimes,
+      scheduleRows: (rows as List).cast<Map<String, dynamic>>(),
     );
   }
 

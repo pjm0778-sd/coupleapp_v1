@@ -381,8 +381,103 @@ class NotificationManager {
   /// 파트너 출퇴근 알림 전체 취소
   Future<void> cancelPartnerCommuteAlerts() async {
     if (kIsWeb) return;
-    for (int i = 9000; i < 9000 + 50; i++) {
+    for (int i = 9000; i < 9100; i++) {
       await _plugin.cancel(i);
+    }
+  }
+
+  /// 파트너의 '출근' 카테고리 일정 기반 출퇴근 알림 예약 (1회성)
+  Future<void> scheduleCommuteFromSchedules({
+    required String partnerName,
+    required List<Map<String, dynamic>> scheduleRows,
+  }) async {
+    if (kIsWeb) return;
+
+    // 기존 출퇴근 알림 전체 취소
+    for (int i = 9000; i < 9100; i++) {
+      await _plugin.cancel(i);
+    }
+
+    if (!_settings.partnerCommuteAlerts) return;
+    if (scheduleRows.isEmpty) return;
+
+    const androidDetails = AndroidNotificationDetails(
+      'couple_commute_channel',
+      '파트너 출퇴근 알림',
+      channelDescription: '파트너의 출퇴근 시간 알림',
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      icon: '@mipmap/ic_launcher',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: true,
+    );
+    const details = NotificationDetails(android: androidDetails, iOS: darwinDetails);
+
+    final now = tz.TZDateTime.now(tz.local);
+    int idCounter = 9000;
+
+    for (final row in scheduleRows) {
+      if (idCounter >= 9100) break;
+
+      final dateStr = row['date'] as String?;
+      if (dateStr == null) continue;
+
+      final date = DateTime.parse(dateStr);
+      final startTimeStr = row['start_time'] as String?;
+      final endTimeStr = row['end_time'] as String?;
+
+      // 출근 알림
+      if (startTimeStr != null) {
+        final parts = startTimeStr.split(':');
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+        final scheduled = tz.TZDateTime(tz.local, date.year, date.month, date.day, h, m);
+        if (scheduled.isAfter(now)) {
+          await _plugin.zonedSchedule(
+            idCounter,
+            '☀️ $partnerName 출근했어요',
+            '${_fmt(h, m)} 출근 시작',
+            scheduled,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        }
+        idCounter++;
+      }
+
+      // 퇴근 알림
+      if (endTimeStr != null && idCounter < 9100) {
+        final parts = endTimeStr.split(':');
+        final h = int.tryParse(parts[0]) ?? 0;
+        final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
+        // 야간근무: 종료시간이 시작시간보다 작으면 다음날
+        int dayOffset = 0;
+        if (startTimeStr != null) {
+          final sh = int.tryParse(startTimeStr.split(':')[0]) ?? 0;
+          if (h < sh) dayOffset = 1;
+        }
+        final endDate = date.add(Duration(days: dayOffset));
+        final scheduled = tz.TZDateTime(
+            tz.local, endDate.year, endDate.month, endDate.day, h, m);
+        if (scheduled.isAfter(now)) {
+          await _plugin.zonedSchedule(
+            idCounter,
+            '🏠 $partnerName 퇴근했어요',
+            '${_fmt(h, m)} 퇴근',
+            scheduled,
+            details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            uiLocalNotificationDateInterpretation:
+                UILocalNotificationDateInterpretation.absoluteTime,
+          );
+        }
+        idCounter++;
+      }
     }
   }
 
