@@ -14,6 +14,7 @@ import '../../profile/models/shift_time.dart';
 import '../../onboarding/widgets/shift_time_editor.dart';
 import '../../onboarding/widgets/region_selector_widget.dart';
 import '../../auth/services/auth_service.dart';
+import '../../couple/screens/couple_connect_screen.dart';
 import '../../../core/fcm_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -1227,6 +1228,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ],
                         ),
                       ),
+                      if (_coupleId == null) ...[
+                        const SizedBox(height: 20),
+                        const Divider(height: 1),
+                        const SizedBox(height: 12),
+                        GestureDetector(
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const CoupleConnectScreen(),
+                              ),
+                            );
+                            _loadData();
+                          },
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.favorite_outline,
+                                size: 16,
+                                color: AppTheme.accent,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                '커플 연동하기',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: AppTheme.accent,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const Spacer(),
+                              const Icon(
+                                Icons.chevron_right,
+                                size: 16,
+                                color: AppTheme.accent,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       if (_coupleId != null) ...[
                         const SizedBox(height: 20),
                         const Divider(height: 1),
