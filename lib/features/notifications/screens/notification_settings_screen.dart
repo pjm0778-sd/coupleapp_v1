@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../models/notification_settings.dart';
+import '../services/notification_service.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -51,6 +52,15 @@ class _NotificationSettingsScreenState
               setState(() {});
             },
           ),
+          _buildSwitchTile(
+            title: '댓글 알림',
+            subtitle: '내 애인이 일정에 댓글을 남기면 알림',
+            value: settings.commentAdded,
+            onChanged: (value) {
+              manager.updateSettings(settings.copyWith(commentAdded: value));
+              setState(() {});
+            },
+          ),
 
           const SizedBox(height: 8),
 
@@ -62,6 +72,11 @@ class _NotificationSettingsScreenState
             value: settings.partnerCommuteAlerts,
             onChanged: (value) {
               manager.updateSettings(settings.copyWith(partnerCommuteAlerts: value));
+              if (value) {
+                NotificationService().scheduleCommuteAlertsForPartner();
+              } else {
+                manager.cancelPartnerCommuteAlerts();
+              }
               setState(() {});
             },
           ),

@@ -191,6 +191,10 @@ class NotificationService {
         .subscribe();
   }
 
+  /// 파트너 출퇴근 알림 스케줄링 (외부 호출 가능)
+  Future<void> scheduleCommuteAlertsForPartner() =>
+      _schedulePartnerCommuteAlerts();
+
   /// 파트너 출퇴근 알림 스케줄링
   /// 파트너 프로필의 shiftTimes를 읽어 매일 반복 로컬 알림 예약
   Future<void> _schedulePartnerCommuteAlerts() async {

@@ -80,6 +80,17 @@ class FcmService {
     final typeStr = data['type'] as String?;
     final type = _parseType(typeStr);
 
+    // 알림 설정 체크
+    final settings = NotificationManager().settings;
+    final enabled = switch (type) {
+      NotificationType.scheduleAdded => settings.scheduleAdded,
+      NotificationType.scheduleUpdated => settings.scheduleUpdated,
+      NotificationType.scheduleDeleted => settings.scheduleDeleted,
+      NotificationType.commentAdded => settings.commentAdded,
+      _ => true,
+    };
+    if (!enabled) return;
+
     // 로컬 알림 표시 + 히스토리 추가
     await NotificationManager().showLocalNotification(
       id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
