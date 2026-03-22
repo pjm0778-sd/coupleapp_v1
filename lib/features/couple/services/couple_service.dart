@@ -36,6 +36,15 @@ class CoupleService {
       'connect_couple',
       params: {'p_invite_code': code.trim().toUpperCase()},
     );
+    // 연결 성공 후 내 미사용 초대 코드(고아 행) 삭제
+    final userId = supabase.auth.currentUser?.id;
+    if (userId != null) {
+      await supabase
+          .from('couples')
+          .delete()
+          .eq('user1_id', userId)
+          .isFilter('user2_id', null);
+    }
   }
 
   /// 현재 커플 정보 가져오기

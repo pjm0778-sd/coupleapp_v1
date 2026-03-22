@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme.dart';
+import '../../../core/supabase_client.dart';
 import '../services/couple_service.dart';
 import '../../auth/services/auth_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CoupleConnectScreen extends StatefulWidget {
   const CoupleConnectScreen({super.key});
@@ -20,17 +22,46 @@ class _CoupleConnectScreenState extends State<CoupleConnectScreen> {
   bool _isLoadingCode = true;
   bool _isConnecting = false;
   bool _showCelebration = false;
+  RealtimeChannel? _profileChannel;
 
   @override
   void initState() {
     super.initState();
     _loadMyCode();
+    _subscribeToPartnerConnect();
   }
 
   @override
   void dispose() {
+    _profileChannel?.unsubscribe();
     _codeController.dispose();
     super.dispose();
+  }
+
+  /// 파트너가 내 코드를 입력했을 때 자동으로 감지해 메인으로 이동
+  void _subscribeToPartnerConnect() {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _profileChannel = supabase
+        .channel('couple_connect_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'profiles',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final coupleId = payload.newRecord['couple_id'];
+            if (coupleId != null && mounted) {
+              Navigator.of(context).pushNamedAndRemoveUntil('/', (r) => false);
+            }
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _loadMyCode() async {
