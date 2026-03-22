@@ -27,6 +27,8 @@ class TabSwitchNotification extends Notification {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('ko_KR', null);
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+  await NotificationManager().initialize();
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
@@ -37,8 +39,6 @@ void main() async {
       debugPrint('[Firebase] init failed: $e');
     }
   }
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-  await NotificationManager().initialize();
   runApp(const CoupleApp());
 }
 
