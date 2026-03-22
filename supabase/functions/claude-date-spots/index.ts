@@ -34,7 +34,11 @@ async function searchPlace(
         'X-Naver-Client-Secret': NAVER_CLIENT_SECRET,
       },
     })
-    if (!res.ok) return null
+    if (!res.ok) {
+      const errorText = await res.text()
+      console.error(`[claude-date-spots] naver API error ${res.status}: ${errorText}`)
+      return null
+    }
     const data = await res.json()
     const items: unknown[] = data.items ?? []
 
@@ -80,6 +84,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    if (!NAVER_CLIENT_ID || !NAVER_CLIENT_SECRET) {
+      console.error('[claude-date-spots] NAVER_SEARCH_CLIENT_ID or NAVER_SEARCH_CLIENT_SECRET not set')
+      return new Response(
+        JSON.stringify({ spots: [], error: 'naver_credentials_missing' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
     const url  = new URL(req.url)
     const city = url.searchParams.get('city')
     const mode = url.searchParams.get('mode') ?? 'preview'

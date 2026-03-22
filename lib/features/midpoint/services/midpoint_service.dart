@@ -496,9 +496,16 @@ class MidpointService {
         '&mode=$modeParam$excludeParam',
       );
       final res = await http.get(uri, headers: _authHeaders());
-      if (res.statusCode != 200) return [];
+      if (res.statusCode != 200) {
+        debugPrint('[MidpointService] date spots HTTP ${res.statusCode}: ${res.body}');
+        return [];
+      }
 
       final data = jsonDecode(res.body) as Map<String, dynamic>;
+      if (data['error'] != null) {
+        debugPrint('[MidpointService] date spots error: ${data['error']}');
+        return [];
+      }
       final spots = data['spots'] as List? ?? [];
       return spots.map((s) => DateSpot(
         name: s['name'] as String,
