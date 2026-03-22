@@ -7,7 +7,7 @@ import '../../notifications/screens/notification_settings_screen.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
-import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity, provinceRegions, getCitiesInProvince, getProvinces;
+import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity, getCitiesInProvince, getProvinces;
 import '../../../core/holiday_service.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../../profile/models/shift_time.dart';
@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           spacing: 12,
           runSpacing: 12,
           children: _presetWorkColors.map((c) {
-            final hex = '#${c.value.toRadixString(16).substring(2).toUpperCase()}';
+            final hex = '#${c.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
             final isSelected = _officeWorkColorHex.toUpperCase() == hex;
             return GestureDetector(
               onTap: () => Navigator.pop(ctx, c),
@@ -96,7 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (picked != null) {
-      final hex = '#${picked.value.toRadixString(16).substring(2).toUpperCase()}';
+      final hex = '#${picked.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
       setState(() => _officeWorkColorHex = hex);
     }
   }
@@ -356,7 +356,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${count}일의 근무 일정이 등록되었습니다.')),
+          SnackBar(content: Text('$count일의 근무 일정이 등록되었습니다.')),
         );
         ProfileChangeNotifier().notify();
       }
@@ -430,7 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 16),
                 // 도 선택
                 DropdownButtonFormField<String>(
-                  value: selectedProvince,
+                  initialValue: selectedProvince,
                   decoration: InputDecoration(
                     labelText: '도/광역시',
                     border: OutlineInputBorder(
@@ -448,7 +448,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // 시/군 선택
                 if (selectedProvince != null)
                   DropdownButtonFormField<String>(
-                    value: selectedCity,
+                    initialValue: selectedCity,
                     decoration: InputDecoration(
                       labelText: '시/군',
                       border: OutlineInputBorder(

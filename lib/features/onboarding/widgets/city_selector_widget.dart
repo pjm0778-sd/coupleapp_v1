@@ -117,7 +117,7 @@ class _CitySelectorWidgetState extends State<CitySelectorWidget> {
 
         // 도시 드롭다운
         DropdownButtonFormField<String>(
-          value: dropdownValue,
+          initialValue: dropdownValue,
           hint: const Text('도시 선택'),
           decoration: _inputDeco(),
           items: getCities()
@@ -157,7 +157,7 @@ class _CitySelectorWidgetState extends State<CitySelectorWidget> {
           // 입력된 도시명에 알려진 역/터미널이 있으면 드롭다운, 없으면 텍스트 필드
           if (customKnownStations.isNotEmpty)
             DropdownButtonFormField<String>(
-              value: (widget.selectedStation != null &&
+              initialValue: (widget.selectedStation != null &&
                       customKnownStations.contains(widget.selectedStation))
                   ? widget.selectedStation
                   : null,
@@ -180,7 +180,7 @@ class _CitySelectorWidgetState extends State<CitySelectorWidget> {
         if (!_isCustom && predefinedStations.isNotEmpty) ...[
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: widget.selectedStation,
+            initialValue: widget.selectedStation,
             hint: const Text('역 / 터미널 선택'),
             decoration: _inputDeco(),
             items: predefinedStations

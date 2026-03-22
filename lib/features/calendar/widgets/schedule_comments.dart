@@ -180,13 +180,13 @@ class _EmptyState extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: AppTheme.textSecondary.withOpacity(0.4), size: 32),
+          Icon(icon, color: AppTheme.textSecondary.withValues(alpha: 0.4), size: 32),
           const SizedBox(width: 12),
           Text(
             message,
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.textSecondary.withOpacity(0.6),
+              color: AppTheme.textSecondary.withValues(alpha: 0.6),
             ),
           ),
         ],

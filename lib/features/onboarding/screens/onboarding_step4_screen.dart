@@ -253,7 +253,7 @@ class _WorkPatternIllustration extends StatelessWidget {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3D7068).withOpacity(0.07),
+                  color: const Color(0xFF3D7068).withValues(alpha: 0.07),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -266,7 +266,7 @@ class _WorkPatternIllustration extends StatelessWidget {
                 width: 70,
                 height: 70,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFC97454).withOpacity(0.08),
+                  color: const Color(0xFFC97454).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -405,7 +405,7 @@ class _WorkPatternIllustration extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 4,
             offset: const Offset(1, 2),
           ),
@@ -470,7 +470,7 @@ class _WorkPatternIllustration extends StatelessWidget {
             child: Container(
               height: 5,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.6),
+                color: color.withValues(alpha: 0.6),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -524,7 +524,7 @@ class _WorkPatternIllustration extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(5),
-        border: Border.all(color: fg.withOpacity(0.4), width: 1),
+        border: Border.all(color: fg.withValues(alpha: 0.4), width: 1),
       ),
       alignment: Alignment.center,
       child: Text(
@@ -560,7 +560,7 @@ class _ClockPainter extends CustomPainter {
 
     // Hour markers
     final markerPaint = Paint()
-      ..color = const Color(0xFF3D7068).withOpacity(0.5)
+      ..color = const Color(0xFF3D7068).withValues(alpha: 0.5)
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
     for (int i = 0; i < 12; i++) {

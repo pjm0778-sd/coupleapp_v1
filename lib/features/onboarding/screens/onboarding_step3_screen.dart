@@ -190,7 +190,7 @@ class _DistanceIllustration extends StatelessWidget {
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3D7068).withOpacity(0.07),
+                  color: const Color(0xFF3D7068).withValues(alpha: 0.07),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -349,7 +349,7 @@ class _DashedLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF3D7068).withOpacity(0.45)
+      ..color = const Color(0xFF3D7068).withValues(alpha: 0.45)
       ..strokeWidth = 1.8
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round;

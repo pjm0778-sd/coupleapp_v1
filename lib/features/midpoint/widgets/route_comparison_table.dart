@@ -93,7 +93,7 @@ class _Row extends StatelessWidget {
     final bgColor = isHeader
         ? AppTheme.background
         : highlight
-            ? AppTheme.accent.withOpacity(0.06)
+            ? AppTheme.accent.withValues(alpha: 0.06)
             : AppTheme.surface;
 
     final textStyle = TextStyle(

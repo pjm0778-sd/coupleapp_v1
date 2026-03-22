@@ -154,7 +154,7 @@ class _NurseWavingIllustration extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3D7068).withOpacity(0.08),
+                  color: const Color(0xFF3D7068).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -166,7 +166,7 @@ class _NurseWavingIllustration extends StatelessWidget {
                 width: 80,
                 height: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF3D7068).withOpacity(0.06),
+                  color: const Color(0xFF3D7068).withValues(alpha: 0.06),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -275,7 +275,7 @@ class _NurseWavingIllustration extends StatelessWidget {
                 borderRadius: BorderRadius.circular(5),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
+                    color: Colors.black.withValues(alpha: 0.08),
                     blurRadius: 2,
                     offset: const Offset(0, 1),
                   ),
@@ -326,12 +326,12 @@ class _NurseWavingIllustration extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF3D7068).withOpacity(0.3),
+          color: const Color(0xFF3D7068).withValues(alpha: 0.3),
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

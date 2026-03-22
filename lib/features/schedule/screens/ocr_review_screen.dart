@@ -230,10 +230,10 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: color.withOpacity(0.07),
+                              color: color.withValues(alpha: 0.07),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: color.withOpacity(0.3),
+                                color: color.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Row(

@@ -92,7 +92,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
 
         // 도/광역시 선택
         DropdownButtonFormField<String>(
-          value: _province,
+          initialValue: _province,
           hint: const Text('도 / 광역시 선택'),
           decoration: _inputDeco(),
           isExpanded: true,
@@ -113,7 +113,7 @@ class _RegionSelectorWidgetState extends State<RegionSelectorWidget> {
         if (_province != null && cities.isNotEmpty) ...[
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: (_city != null && cities.contains(_city)) ? _city : null,
+            initialValue: (_city != null && cities.contains(_city)) ? _city : null,
             hint: const Text('시 / 군 선택'),
             decoration: _inputDeco(),
             isExpanded: true,

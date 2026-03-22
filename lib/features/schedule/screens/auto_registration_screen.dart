@@ -123,7 +123,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
 
       if (matched == null) return s;
 
-      final pad = (int v) => v.toString().padLeft(2, '0');
+      String pad(int v) => v.toString().padLeft(2, '0');
       final updated = Map<String, dynamic>.from(s);
       updated['start_time'] = '${pad(matched.startHour)}:${pad(matched.startMinute)}';
       updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
@@ -436,9 +436,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.06),
+        color: iconColor.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: iconColor.withOpacity(0.15)),
+        border: Border.all(color: iconColor.withValues(alpha: 0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,7 +447,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.12),
+              color: iconColor.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -507,7 +507,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: isLoading
@@ -542,7 +542,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: badgeColor.withOpacity(0.12),
+                          color: badgeColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -570,7 +570,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
             ),
             Icon(
               Icons.chevron_right,
-              color: AppTheme.textSecondary.withOpacity(0.5),
+              color: AppTheme.textSecondary.withValues(alpha: 0.5),
             ),
           ],
         ),
@@ -584,7 +584,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
       decoration: BoxDecoration(
         color: AppTheme.accentLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

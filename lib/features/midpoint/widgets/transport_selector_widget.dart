@@ -95,7 +95,7 @@ class _ModeButton extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.accent.withOpacity(0.15) : AppTheme.surface,
+            color: selected ? AppTheme.accent.withValues(alpha: 0.15) : AppTheme.surface,
             border: Border.all(
               color: selected ? AppTheme.accent : AppTheme.border,
               width: selected ? 1.5 : 1,
@@ -145,7 +145,7 @@ class _CarTypeButton extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? AppTheme.primary.withOpacity(0.06) : AppTheme.background,
+            color: selected ? AppTheme.primary.withValues(alpha: 0.06) : AppTheme.background,
             border: Border.all(
               color: selected ? AppTheme.primary : AppTheme.border,
             ),

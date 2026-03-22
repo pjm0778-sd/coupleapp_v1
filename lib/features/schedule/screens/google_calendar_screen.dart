@@ -238,9 +238,9 @@ class _GoogleCalendarScreenState extends State<GoogleCalendarScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF4285F4).withOpacity(0.06),
+        color: const Color(0xFF4285F4).withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF4285F4).withOpacity(0.3)),
+        border: Border.all(color: const Color(0xFF4285F4).withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

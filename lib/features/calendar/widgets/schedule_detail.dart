@@ -154,8 +154,6 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
     }
   }
 
-  bool get _isMine => _scheduleService.isMine(_currentSchedule);
-
   Widget _buildEmptyMessage() {
     return Center(
       child: Column(

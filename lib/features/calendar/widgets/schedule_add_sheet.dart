@@ -949,7 +949,7 @@ class _PlaceSearchSheetState extends State<_PlaceSearchSheet> {
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             itemCount: _results.length,
-                            separatorBuilder: (_, __) =>
+                            separatorBuilder: (_, _) =>
                                 const Divider(height: 1, indent: 56),
                             itemBuilder: (ctx, i) {
                               final p = _results[i];

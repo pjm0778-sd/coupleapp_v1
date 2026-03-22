@@ -131,7 +131,7 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
+                  color: Colors.black.withValues(alpha: 0.06),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -141,7 +141,7 @@ class _OriginInputWidgetState extends State<OriginInputWidget> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: _suggestions.length,
-              separatorBuilder: (_, __) =>
+              separatorBuilder: (_, _) =>
                   const Divider(height: 1, color: AppTheme.border),
               itemBuilder: (_, i) {
                 final p = _suggestions[i];

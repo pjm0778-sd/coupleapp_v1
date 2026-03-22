@@ -200,7 +200,7 @@ class _TimelineItem extends StatelessWidget {
                     left: 19,
                     child: Container(
                       width: 2,
-                      color: AppTheme.primary.withOpacity(0.25),
+                      color: AppTheme.primary.withValues(alpha: 0.25),
                     ),
                   ),
                 if (!isLast)
@@ -210,7 +210,7 @@ class _TimelineItem extends StatelessWidget {
                     left: 19,
                     child: Container(
                       width: 2,
-                      color: AppTheme.primary.withOpacity(0.25),
+                      color: AppTheme.primary.withValues(alpha: 0.25),
                     ),
                   ),
 
@@ -243,7 +243,7 @@ class _TimelineItem extends StatelessWidget {
                                 color: (milestone.isSpecial
                                         ? AppTheme.accent
                                         : AppTheme.primary)
-                                    .withOpacity(0.35),
+                                    .withValues(alpha: 0.35),
                                 blurRadius: 6,
                                 spreadRadius: 0,
                               ),
@@ -305,7 +305,7 @@ class _TimelineItem extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -334,10 +334,10 @@ class _TimelineItem extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: AppTheme.accentLight.withOpacity(0.55),
+          color: AppTheme.accentLight.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppTheme.accent.withOpacity(0.3),
+            color: AppTheme.accent.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -354,10 +354,10 @@ class _TimelineItem extends StatelessWidget {
                     vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.accent.withOpacity(0.15),
+                    color: AppTheme.accent.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: AppTheme.accent.withOpacity(0.4),
+                      color: AppTheme.accent.withValues(alpha: 0.4),
                       width: 1,
                     ),
                   ),
@@ -374,7 +374,7 @@ class _TimelineItem extends StatelessWidget {
                   child: Text(
                     milestone.label,
                     style: TextStyle(
-                      color: AppTheme.textPrimary.withOpacity(0.75),
+                      color: AppTheme.textPrimary.withValues(alpha: 0.75),
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -388,7 +388,7 @@ class _TimelineItem extends StatelessWidget {
                 Text(
                   _formattedDate(milestone.date),
                   style: TextStyle(
-                    color: AppTheme.textSecondary.withOpacity(0.65),
+                    color: AppTheme.textSecondary.withValues(alpha: 0.65),
                     fontSize: 12,
                   ),
                 ),
@@ -458,7 +458,7 @@ class _TimelineItem extends StatelessWidget {
             height: 28,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
             ),
             child: Icon(
               Icons.check,

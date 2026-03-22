@@ -8,8 +8,11 @@ import 'package:flutter/foundation.dart';
 class HomeWidgetService {
   HomeWidgetService._();
 
+  // ignore: unused_field
   static const _appGroupId = 'group.com.coupleapp';
+  // ignore: unused_field
   static const _iOSWidgetName = 'CoupleWidget';
+  // ignore: unused_field
   static const _androidWidgetName = 'CoupleWidgetProvider';
 
   /// Update home widget data (D-days, partner name, today's schedule).

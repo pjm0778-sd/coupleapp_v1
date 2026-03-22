@@ -367,6 +367,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (choice == null) return;
 
     if (choice == 'all') {
+      if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -412,6 +413,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         }
       }
     } else if (choice == 'title') {
+      if (!mounted) return;
       final controller = TextEditingController();
       final title = await showDialog<String>(
         context: context,
@@ -880,7 +882,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _buildCell(day, isSelected: true, isToday: false),
         todayBuilder: (ctx, day, _) =>
             _buildCell(day, isSelected: false, isToday: true),
-        markerBuilder: (_, __, ___) => const SizedBox.shrink(),
+        markerBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
     );
   }

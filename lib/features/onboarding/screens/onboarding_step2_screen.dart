@@ -29,6 +29,7 @@ class _OnboardingStep2ScreenState extends State<OnboardingStep2Screen> {
   String? _myCode;
   bool _isLoadingCode = true;
   bool _isConnecting = false;
+  // ignore: unused_field
   bool _connected = false;
   bool _showCelebration = false;
 
@@ -234,6 +235,7 @@ class _CelebrationOverlay extends StatefulWidget {
   final VoidCallback onComplete;
 
   const _CelebrationOverlay({
+    // ignore: unused_element_parameter
     this.partnerNickname,
     required this.onComplete,
   });
@@ -305,7 +307,7 @@ class _CelebrationOverlayState extends State<_CelebrationOverlay>
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.white.withOpacity(0.88),
+        color: Colors.white.withValues(alpha: 0.88),
         child: Stack(
           children: [
             // Floating hearts

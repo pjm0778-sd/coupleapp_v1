@@ -262,12 +262,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _data['next_date'] as Map<String, dynamic>?;
   int? get _nextDateDaysUntil => _data['next_date']?['days_until'] as int?;
 
-  bool _hasSchedules(Map<String, List<Schedule>>? schedules) {
-    if (schedules == null) return false;
-    return (schedules['mine']?.isNotEmpty ?? false) ||
-        (schedules['partner']?.isNotEmpty ?? false);
-  }
-
   // ─── Relationship start date from data ───────────────────────────────────
   String? get _relationshipStartDate =>
       _data['d_days']?['started_at'] as String?;
@@ -436,10 +430,6 @@ class _HomeScreenState extends State<HomeScreen> {
     DateTime today,
     DateTime tomorrow,
   ) {
-    final weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final todayWeekday = weekdays[today.weekday - 1];
-    final tomorrowWeekday = weekdays[tomorrow.weekday - 1];
-
     return SizedBox(
       height: 310,
       child: Row(

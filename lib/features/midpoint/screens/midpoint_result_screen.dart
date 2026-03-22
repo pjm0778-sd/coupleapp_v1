@@ -135,9 +135,9 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: AppTheme.accent.withOpacity(0.08),
+                color: AppTheme.accent.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppTheme.accent.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.accent.withValues(alpha: 0.3)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,15 +229,6 @@ class _MidpointResultScreenState extends State<MidpointResultScreen> {
     );
   }
 
-  void _showAddScheduleSnackbar(BuildContext context) {
-    // TODO Phase D: 캘린더 ScheduleAddSheet 연동
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('일정 추가 기능은 곧 연동됩니다.'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
 }
 
 class _SectionLabel extends StatelessWidget {

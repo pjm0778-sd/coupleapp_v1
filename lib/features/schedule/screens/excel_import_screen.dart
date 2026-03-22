@@ -396,9 +396,9 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.05),
+        color: AppTheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,7 +531,7 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
             border: Border.all(color: AppTheme.border),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -543,7 +543,7 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: isThisLoading
@@ -578,7 +578,7 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: badgeColor.withOpacity(0.12),
+                            color: badgeColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -606,7 +606,7 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
               ),
               Icon(
                 Icons.chevron_right,
-                color: AppTheme.textSecondary.withOpacity(0.4),
+                color: AppTheme.textSecondary.withValues(alpha: 0.4),
                 size: 20,
               ),
             ],
