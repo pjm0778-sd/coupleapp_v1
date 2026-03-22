@@ -192,7 +192,10 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
 
     final s = widget.existingSchedule;
     final schedule = s != null
-        ? s.copyWith(
+        ? Schedule(
+            id: s.id,
+            userId: s.userId,
+            coupleId: s.coupleId,
             date: _startDate,
             startDate: _startDate,
             endDate: _endDate != _startDate ? _endDate : null,
@@ -205,6 +208,14 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
             note: _note.trim().isEmpty ? null : _note.trim(),
             ownerType: _ownerType,
             isDate: _ownerType == 'couple',
+            isAnniversary: s.isAnniversary,
+            reminderMinutes: s.reminderMinutes,
+            repeatPattern: s.repeatPattern,
+            workType: s.workType,
+            emoji: s.emoji,
+            repeatGroupId: s.repeatGroupId,
+            isOcr: s.isOcr,
+            isGoogleCalendar: s.isGoogleCalendar,
             latitude: _latitude,
             longitude: _longitude,
           )
