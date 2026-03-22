@@ -30,9 +30,11 @@ void main() async {
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
+      debugPrint('[Firebase] initialized successfully');
       await FcmService().initialize();
+      debugPrint('[FCM] service initialized');
     } catch (e) {
-      debugPrint('Firebase init failed: $e');
+      debugPrint('[Firebase] init failed: $e');
     }
   }
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);

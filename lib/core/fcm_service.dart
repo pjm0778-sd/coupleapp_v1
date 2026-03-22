@@ -47,19 +47,26 @@ class FcmService {
   Future<void> _saveToken() async {
     try {
       final token = await _fcm.getToken();
+      debugPrint('[FCM] getToken result: $token');
       if (token != null) await _updateToken(token);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[FCM] getToken error: $e');
+    }
   }
 
   Future<void> _updateToken(String token) async {
     final userId = supabase.auth.currentUser?.id;
+    debugPrint('[FCM] userId: $userId');
     if (userId == null) return;
     try {
       await supabase
           .from('profiles')
           .update({'fcm_token': token})
           .eq('id', userId);
-    } catch (_) {}
+      debugPrint('[FCM] token saved successfully');
+    } catch (e) {
+      debugPrint('[FCM] token save error: $e');
+    }
   }
 
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
