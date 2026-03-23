@@ -10,6 +10,9 @@ import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
 import '../services/home_service.dart';
 import '../widgets/weather_card.dart';
+import '../widgets/longing_gauge_card.dart';
+import '../services/weather_service.dart';
+import '../../../core/home_widget_service.dart';
 import '../../calendar/screens/calendar_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 import '../../transport/screens/transport_search_screen.dart';
@@ -200,12 +203,71 @@ class _HomeScreenState extends State<HomeScreen> {
         _setupRealtime();
         // 데이트 알림 자동 체크
         _checkNotifications(_data);
+        // 홈 위젯 업데이트
+        _updateHomeWidget();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _updateHomeWidget() async {
+    final dDays       = _dDays ?? 0;
+    final partnerName = _partnerNickname ?? '애인';
+
+    // 오늘 일정 첫 번째
+    final myList      = _todaySchedules?['mine']    ?? [];
+    final partnerList = _todaySchedules?['partner'] ?? [];
+    final mySchedule  = myList.isNotEmpty
+        ? (myList.first.title ?? myList.first.category ?? '일정')
+        : '여유로운 하루';
+    final partnerSchedule = partnerList.isNotEmpty
+        ? (partnerList.first.title ?? partnerList.first.category ?? '일정')
+        : '여유로운 하루';
+
+    // 날씨 (Medium용)
+    String myWeather      = '';
+    String partnerWeather = '';
+    final myCity      = _profile?.myCity;
+    final partnerCity = _profile?.partnerCity;
+    final weatherSvc  = WeatherService();
+    if (myCity != null) {
+      final w = await weatherSvc.getWeather(myCity);
+      if (w != null) {
+        myWeather = HomeWidgetService.formatWeather(
+          city: myCity, temperature: w.temperature, weatherCode: w.weatherCode,
+        );
+      }
+    }
+    if (partnerCity != null) {
+      final w = await weatherSvc.getWeather(partnerCity);
+      if (w != null) {
+        partnerWeather = HomeWidgetService.formatWeather(
+          city: partnerCity, temperature: w.temperature, weatherCode: w.weatherCode,
+        );
+      }
+    }
+
+    // 다음 데이트
+    final nextDays  = _nextDateDaysUntil ?? -1;
+    String nextLabel = '';
+    if (_nextDate != null) {
+      final s = _nextDate!['schedule'] as Schedule;
+      nextLabel = '${s.date.month}월 ${s.date.day}일';
+    }
+
+    await HomeWidgetService.updateWidget(
+      dDays:           dDays,
+      partnerName:     partnerName,
+      mySchedule:      mySchedule,
+      partnerSchedule: partnerSchedule,
+      myWeather:       myWeather,
+      partnerWeather:  partnerWeather,
+      nextDateDays:    nextDays,
+      nextDateLabel:   nextLabel,
+    );
   }
 
   Future<void> _checkNotifications(Map<String, dynamic> data) async {
@@ -266,6 +328,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String? get _relationshipStartDate =>
       _data['d_days']?['started_at'] as String?;
 
+  Map<String, dynamic>? get _lastDate =>
+      _data['last_date'] as Map<String, dynamic>?;
+
   @override
   Widget build(BuildContext context) {
     final today = DateTime.now();
@@ -278,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppTheme.background,
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? _buildSkeletonLoading()
           : _coupleId == null
           ? _buildNoCoupleState()
           : SafeArea(
@@ -289,6 +354,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildSkeletonLoading() {
+    return const SafeArea(
+      child: _HomeSkeletonLoader(),
     );
   }
 
@@ -403,6 +474,10 @@ class _HomeScreenState extends State<HomeScreen> {
           // ── Bento Box Grid (오늘 + 내일 + 다음 데이트 포함) ──
           _buildBentoGrid(partnerName, today, tomorrow),
           const SizedBox(height: 20),
+
+          // ── 보고 싶은 마음 게이지 카드 ───────────────────
+          _buildLongingGaugeCard(),
+          const SizedBox(height: 16),
 
           // ── 오늘 + 내일 일정 통합 카드 ──────────────────
           _buildScheduleCombinedCard(today, tomorrow, todayWeekday, tomorrowWeekday),
@@ -840,6 +915,56 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ── 보고 싶은 마음 게이지 카드 ──────────────────────────────────────────
+
+  Widget _buildLongingGaugeCard() {
+    final lastDate = _lastDate;
+    final nextDate = _nextDate;
+
+    // 마지막 만남 이후 일수
+    int longingDays = 0;
+    String lastDateLabel = '';
+    if (lastDate != null) {
+      longingDays = (lastDate['days_since'] as int?) ?? 0;
+      final s = lastDate['schedule'] as Schedule;
+      lastDateLabel = '${s.date.month}월 ${s.date.day}일';
+    } else if (_relationshipStartDate != null) {
+      // 등록된 데이트가 없으면 사귄 날부터 계산
+      try {
+        final start = DateTime.parse(_relationshipStartDate!);
+        final now = DateTime.now();
+        longingDays = DateTime(now.year, now.month, now.day)
+            .difference(DateTime(start.year, start.month, start.day))
+            .inDays;
+        lastDateLabel =
+            '${start.month}월 ${start.day}일';
+      } catch (_) {}
+    }
+
+    // 다음 만남
+    int? daysUntil = _nextDateDaysUntil;
+    String nextDateLabel = '';
+    if (nextDate != null) {
+      final s = nextDate['schedule'] as Schedule;
+      nextDateLabel = '${s.date.month}월 ${s.date.day}일';
+    }
+
+    // 게이지 비율
+    double progress = 0;
+    if (daysUntil != null) {
+      final total = longingDays + daysUntil;
+      progress = total > 0 ? (longingDays / total).clamp(0.0, 1.0) : 0;
+    }
+
+    return LongingGaugeCard(
+      longingDays: longingDays,
+      progress: progress,
+      lastDateLabel: lastDateLabel,
+      nextDateLabel: nextDateLabel,
+      daysUntil: daysUntil,
+    );
+  }
+
   // ── 오늘 + 내일 일정 통합 카드 ───────────────────────────────────────────
 
   Widget _buildScheduleCombinedCard(
@@ -1140,6 +1265,232 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     ));
+  }
+}
+
+// ─── Home Skeleton Loader ─────────────────────────────────────────────────────
+
+class _HomeSkeletonLoader extends StatefulWidget {
+  const _HomeSkeletonLoader();
+
+  @override
+  State<_HomeSkeletonLoader> createState() => _HomeSkeletonLoaderState();
+}
+
+class _HomeSkeletonLoaderState extends State<_HomeSkeletonLoader>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmerCtrl;
+  late Animation<double> _shimmerAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmerCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
+    _shimmerAnim = CurvedAnimation(
+      parent: _shimmerCtrl,
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _shimmerCtrl.dispose();
+    super.dispose();
+  }
+
+  Widget _shimmerBox({
+    required double width,
+    required double height,
+    double radius = 10,
+  }) {
+    return AnimatedBuilder(
+      animation: _shimmerAnim,
+      builder: (context, _) {
+        final shimmerColor = Color.lerp(
+          const Color(0xFFE8E0D6),
+          const Color(0xFFF5F0EB),
+          _shimmerAnim.value,
+        )!;
+        return Container(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: shimmerColor,
+            borderRadius: BorderRadius.circular(radius),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = screenWidth - 40;
+
+    return SingleChildScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 헤더 스켈레톤
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _shimmerBox(width: 130, height: 13),
+                    const SizedBox(height: 8),
+                    _shimmerBox(width: 200, height: 22),
+                  ],
+                ),
+              ),
+              _shimmerBox(width: 36, height: 36, radius: 18),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // D-Day 카드 스켈레톤
+          Container(
+            width: cardWidth,
+            height: 140,
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _shimmerBox(width: 80, height: 13),
+                const SizedBox(height: 12),
+                _shimmerBox(width: 60, height: 40, radius: 8),
+                const Spacer(),
+                _shimmerBox(width: 140, height: 11),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 오늘 일정 카드 스켈레톤
+          Container(
+            width: cardWidth,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _shimmerBox(width: 90, height: 14),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    _shimmerBox(width: 32, height: 32, radius: 8),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _shimmerBox(width: 60, height: 11),
+                        const SizedBox(height: 6),
+                        _shimmerBox(width: 120, height: 14),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _shimmerBox(width: 32, height: 32, radius: 8),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _shimmerBox(width: 60, height: 11),
+                        const SizedBox(height: 6),
+                        _shimmerBox(width: 100, height: 14),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 날씨 카드 스켈레톤
+          Container(
+            width: cardWidth,
+            height: 88,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                _shimmerBox(width: 44, height: 44, radius: 22),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _shimmerBox(width: 80, height: 11),
+                    const SizedBox(height: 6),
+                    _shimmerBox(width: 50, height: 18),
+                  ],
+                ),
+                const Spacer(),
+                _shimmerBox(width: 44, height: 44, radius: 22),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _shimmerBox(width: 80, height: 11),
+                    const SizedBox(height: 6),
+                    _shimmerBox(width: 50, height: 18),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // 다음 데이트 카드 스켈레톤
+          Container(
+            width: cardWidth,
+            height: 80,
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+            child: Row(
+              children: [
+                _shimmerBox(width: 36, height: 36, radius: 10),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _shimmerBox(width: 70, height: 11),
+                    const SizedBox(height: 6),
+                    _shimmerBox(width: 130, height: 14),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

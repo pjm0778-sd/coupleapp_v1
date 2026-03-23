@@ -84,12 +84,12 @@ class _SignupScreenState extends State<SignupScreen> {
           children: [
             const SizedBox(height: 12),
             Text(
-              'DEUX',
+              '커플듀티',
               style: GoogleFonts.playfairDisplay(
-                fontSize: 32,
+                fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.accent,
-                letterSpacing: 2.0,
+                letterSpacing: 1.0,
               ),
             ),
             const SizedBox(height: 6),

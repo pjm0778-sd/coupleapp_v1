@@ -72,12 +72,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 72),
                 // 로고 / 타이틀
                 Text(
-                  'DEUX',
+                  '커플듀티',
                   style: GoogleFonts.playfairDisplay(
-                    fontSize: 40,
+                    fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.accent,
-                    letterSpacing: 2.0,
+                    letterSpacing: 1.0,
                   ),
                 ),
                 const SizedBox(height: 6),

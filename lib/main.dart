@@ -10,6 +10,7 @@ import 'features/notifications/services/notification_service.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/home/screens/home_screen.dart';
+import 'features/splash/splash_screen.dart';
 import 'features/calendar/screens/calendar_screen.dart';
 import 'features/settings/screens/settings_screen.dart';
 import 'features/notifications/screens/notification_history_screen.dart';
@@ -84,31 +85,42 @@ class AppRouter extends StatelessWidget {
       builder: (context, authSnap) {
         final session = authSnap.data?.session ?? supabase.auth.currentSession;
 
-        // 미로그인
-        if (session == null) return const LoginScreen();
+        Widget child;
 
-        // 로그인 → 커플 연결 여부 확인
-        return FutureBuilder<Map<String, dynamic>?>(
-          key: ValueKey(session.user.id),
-          future: supabase
-              .from('profiles')
-              .select('couple_id, onboarding_completed')
-              .eq('id', session.user.id)
-              .maybeSingle(),
-          builder: (context, profileSnap) {
-            if (profileSnap.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            // null  → 기존 유저(컬럼 없거나 미설정) → MainShell
-            // false → 신규 유저(온보딩 미완료)     → OnboardingFlow
-            // true  → 온보딩 완료                  → MainShell
-            final onboardingCompleted =
-                profileSnap.data?['onboarding_completed'] as bool?;
-            if (onboardingCompleted == false) return const OnboardingFlow();
-            return const MainShell();
-          },
+        if (session == null) {
+          // 미로그인
+          child = const LoginScreen(key: ValueKey('login'));
+        } else {
+          // 로그인 → 커플 연결 여부 확인
+          child = FutureBuilder<Map<String, dynamic>?>(
+            key: ValueKey(session.user.id),
+            future: supabase
+                .from('profiles')
+                .select('couple_id, onboarding_completed')
+                .eq('id', session.user.id)
+                .maybeSingle(),
+            builder: (context, profileSnap) {
+              if (profileSnap.connectionState == ConnectionState.waiting) {
+                return const SplashScreen(key: ValueKey('splash'));
+              }
+              // null  → 기존 유저(컬럼 없거나 미설정) → MainShell
+              // false → 신규 유저(온보딩 미완료)     → OnboardingFlow
+              // true  → 온보딩 완료                  → MainShell
+              final onboardingCompleted =
+                  profileSnap.data?['onboarding_completed'] as bool?;
+              if (onboardingCompleted == false) {
+                return const OnboardingFlow(key: ValueKey('onboarding'));
+              }
+              return const MainShell(key: ValueKey('main'));
+            },
+          );
+        }
+
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 350),
+          transitionBuilder: (child, animation) =>
+              FadeTransition(opacity: animation, child: child),
+          child: child,
         );
       },
     );
