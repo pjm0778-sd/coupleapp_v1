@@ -169,13 +169,14 @@ class _MidpointSearchScreenState extends State<MidpointSearchScreen> {
             // ── 검색 버튼 ──
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _canSearch && !_loading ? _search : null,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accent,
-                  foregroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
                   disabledBackgroundColor: AppTheme.border,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   elevation: 0,

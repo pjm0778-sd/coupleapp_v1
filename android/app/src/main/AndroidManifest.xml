@@ -52,6 +52,32 @@
             android:exported="false"
             android:stopWithTask="false"/>
 
+        <!-- 홈 위젯 — Small (2×2) -->
+        <receiver
+            android:name=".CoupleWidgetProvider"
+            android:exported="true"
+            android:label="커플듀티 위젯">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_small" />
+        </receiver>
+
+        <!-- 홈 위젯 — Medium (4×2) -->
+        <receiver
+            android:name=".CoupleWidgetProviderMedium"
+            android:exported="true"
+            android:label="커플듀티 위젯 (넓게)">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_info_medium" />
+        </receiver>
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="14dp"
+    android:background="@drawable/widget_background">
+
+    <!-- 헤더: D+N + 파트너명 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="💑 "
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="D+"
+            android:textSize="11sp"
+            android:textColor="#CBA258"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_d_days"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="---"
+            android:textSize="24sp"
+            android:textColor="#3D3535"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tv_partner_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="애인과 함께"
+            android:textSize="10sp"
+            android:textColor="#9E8E8E" />
+    </LinearLayout>
+
+    <!-- 구분선 -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#E0D8CC"
+        android:layout_marginTop="7dp"
+        android:layout_marginBottom="7dp" />
+
+    <!-- 일정 + 날씨 (좌우 분할) -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <!-- 왼쪽: 일정 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical">
+
+            <!-- 나 일정 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:text="나"
+                    android:textSize="9sp"
+                    android:textColor="#9E8E8E" />
+
+                <TextView
+                    android:id="@+id/tv_my_schedule"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="여유로운 하루"
+                    android:textSize="11sp"
+                    android:textColor="#3D3535"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+
+            <!-- 파트너 일정 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="5dp">
+
+                <TextView
+                    android:id="@+id/tv_partner_label"
+                    android:layout_width="24dp"
+                    android:layout_height="wrap_content"
+                    android:text="파트"
+                    android:textSize="9sp"
+                    android:textColor="#9E8E8E" />
+
+                <TextView
+                    android:id="@+id/tv_partner_schedule"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="여유로운 하루"
+                    android:textSize="11sp"
+                    android:textColor="#3D3535"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 세로 구분선 -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#E0D8CC"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp" />
+
+        <!-- 오른쪽: 날씨 -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tv_my_weather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="#3D3535"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/tv_partner_weather"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="#3D3535"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:layout_marginTop="5dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 다음 데이트 (조건부 표시) -->
+    <LinearLayout
+        android:id="@+id/layout_next_date"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <!-- 구분선 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#E0D8CC"
+            android:layout_marginTop="7dp"
+            android:layout_marginBottom="5dp" />
+    </LinearLayout>
+
+    <!-- 다음 데이트 행 (항상 inflate, visibility로 제어) -->
+    <LinearLayout
+        android:id="@+id/layout_next_date_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📅 "
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/tv_next_date"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="#5A5050" />
+
+        <TextView
+            android:id="@+id/tv_next_date_d"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="#CBA258"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

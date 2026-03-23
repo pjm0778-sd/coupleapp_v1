@@ -202,18 +202,48 @@ class HomeService {
     return {'schedule': next, 'days_until': diff};
   }
 
+  /// 마지막 데이트 조회 (오늘 이전 가장 최근 커플 데이트)
+  Future<Map<String, dynamic>?> getLastDateSchedule(String coupleId) async {
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    final result = await supabase
+        .from('schedules')
+        .select()
+        .eq('couple_id', coupleId)
+        .or('category.eq.데이트,is_date.eq.true')
+        .lt('date', todayStr)
+        .order('date', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (result == null) return null;
+
+    final schedule = Schedule.fromMap(result);
+    final nowDate = DateTime(now.year, now.month, now.day);
+    final lastDate = DateTime(
+        schedule.date.year, schedule.date.month, schedule.date.day);
+    final daysSince = nowDate.difference(lastDate).inDays;
+
+    return {'schedule': schedule, 'days_since': daysSince};
+  }
+
   /// 홈 화면 요약 데이터
   Future<Map<String, dynamic>> getHomeSummary(String coupleId) async {
-    final dDays = await getDDays(coupleId);
-    final todaySchedules = await getTodaySchedules(coupleId);
-    final tomorrowSchedules = await getTomorrowSchedules(coupleId);
-    final nextDate = await getNextDateSchedule(coupleId);
+    final results = await Future.wait([
+      getDDays(coupleId),
+      getTodaySchedules(coupleId),
+      getTomorrowSchedules(coupleId),
+      getNextDateSchedule(coupleId),
+      getLastDateSchedule(coupleId),
+    ]);
 
     return {
-      'd_days': dDays,
-      'today_schedules': todaySchedules,
-      'tomorrow_schedules': tomorrowSchedules,
-      'next_date': nextDate,
+      'd_days': results[0],
+      'today_schedules': results[1],
+      'tomorrow_schedules': results[2],
+      'next_date': results[3],
+      'last_date': results[4],
     };
   }
 

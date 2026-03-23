@@ -370,7 +370,6 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                       const Spacer(),
                       Switch(
                         value: _isAllDay,
-                        activeThumbColor: AppTheme.accent,
                         onChanged: (v) => setState(() => _isAllDay = v),
                       ),
                     ],
@@ -542,18 +541,19 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
                     duration: const Duration(milliseconds: 100),
                     child: SizedBox(
                       width: double.infinity,
-                      height: 50,
+                      height: 52,
                       child: ElevatedButton(
                         onPressed: _isSaving ? null : _onSave,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _isSaved
                               ? const Color(0xFF4CAF50)
                               : AppTheme.accent,
-                          foregroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
                           disabledBackgroundColor: _isSaved
                               ? const Color(0xFF4CAF50)
                               : AppTheme.accent,
-                          disabledForegroundColor: AppTheme.primary,
+                          disabledForegroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
