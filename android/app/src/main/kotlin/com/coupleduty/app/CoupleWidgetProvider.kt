@@ -53,10 +53,20 @@ open class CoupleWidgetProvider : AppWidgetProvider() {
             val layout = if (isMedium) R.layout.widget_medium else R.layout.widget_small
             val views  = RemoteViews(context.packageName, layout)
 
-            // ── 공통 데이터 ─────────────────────────────────────
-            views.setTextViewText(R.id.tv_d_days,          dDays.toString())
-            views.setTextViewText(R.id.tv_partner_name,    "${partnerName}와 함께")
-            views.setTextViewText(R.id.tv_my_schedule,     mySchedule)
+            // ── Small 전용 ─────────────────────────────────────
+            if (!isMedium) {
+                views.setTextViewText(R.id.tv_d_days, dDays.toString())
+            }
+
+            // ── Medium 헤더 ─────────────────────────────────────
+            if (isMedium) {
+                val lastChar = partnerName.lastOrNull() ?: ' '
+                val postfix = if (lastChar.code in 0xAC00..0xD7A3 && (lastChar.code - 0xAC00) % 28 != 0) "과" else "와"
+                views.setTextViewText(R.id.tv_partner_name, "${partnerName}${postfix} 함께한지 D+$dDays")
+            }
+
+            // ── 공통 일정 ─────────────────────────────────────
+            views.setTextViewText(R.id.tv_my_schedule,      mySchedule)
             views.setTextViewText(R.id.tv_partner_schedule, partnerSchedule)
 
             // 파트너 라벨: 닉네임 앞 2글자 (공간 제한)
@@ -75,7 +85,7 @@ open class CoupleWidgetProvider : AppWidgetProvider() {
                         0L   -> "오늘!"
                         else -> "D-$nextDateDays"
                     }
-                    views.setTextViewText(R.id.tv_next_date,   nextDateLabel)
+                    views.setTextViewText(R.id.tv_next_date,   "💕 설레는 다음 만남까지")
                     views.setTextViewText(R.id.tv_next_date_d, dText)
                     views.setViewVisibility(R.id.layout_next_date,     View.VISIBLE)
                     views.setViewVisibility(R.id.layout_next_date_row, View.VISIBLE)

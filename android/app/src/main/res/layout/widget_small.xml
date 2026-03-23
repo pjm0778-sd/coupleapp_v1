@@ -42,16 +42,6 @@
             android:textSize="14sp" />
     </LinearLayout>
 
-    <!-- 파트너명 -->
-    <TextView
-        android:id="@+id/tv_partner_name"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="애인과 함께"
-        android:textSize="9sp"
-        android:textColor="#9E8E8E"
-        android:layout_marginTop="1dp" />
-
     <!-- 구분선 -->
     <View
         android:layout_width="match_parent"

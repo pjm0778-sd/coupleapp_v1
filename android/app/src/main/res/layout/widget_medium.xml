@@ -7,7 +7,7 @@
     android:padding="14dp"
     android:background="@drawable/widget_background">
 
-    <!-- 헤더: D+N + 파트너명 -->
+    <!-- 헤더: 파트너명과 함께한지 D+N -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -21,30 +21,14 @@
             android:textSize="13sp" />
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="D+"
-            android:textSize="11sp"
-            android:textColor="#CBA258"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_d_days"
+            android:id="@+id/tv_partner_name"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="---"
-            android:textSize="24sp"
+            android:text="---와 함께한지 D+---"
+            android:textSize="13sp"
             android:textColor="#3D3535"
             android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_partner_name"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="애인과 함께"
-            android:textSize="10sp"
-            android:textColor="#9E8E8E" />
     </LinearLayout>
 
     <!-- 구분선 -->
@@ -190,12 +174,6 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:visibility="gone">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="📅 "
-            android:textSize="11sp" />
 
         <TextView
             android:id="@+id/tv_next_date"
