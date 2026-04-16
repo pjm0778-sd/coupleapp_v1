@@ -60,6 +60,35 @@ class Schedule {
     this.longitude,
   });
 
+  static bool _isOffToken(String? value) {
+    if (value == null) return false;
+    final normalized = value.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+
+    if (normalized == '휴무' ||
+        normalized == '쉬는날' ||
+        normalized == '오프' ||
+        normalized == 'off' ||
+        normalized == 'x') {
+      return true;
+    }
+
+    // OCR 결과에 "XX", "XXX"처럼 들어오는 패턴도 휴무로 취급
+    final xOnly = RegExp(r'^x+$', caseSensitive: false);
+    return xOnly.hasMatch(normalized);
+  }
+
+  static String? _normalizeCategory({
+    required String? category,
+    required String? title,
+    required String? workType,
+  }) {
+    if (_isOffToken(category) || _isOffToken(title) || _isOffToken(workType)) {
+      return '쉬는날';
+    }
+    return category;
+  }
+
   factory Schedule.fromMap(Map<String, dynamic> map) => Schedule(
     id: map['id'] as String,
     userId: map['user_id'] as String,
@@ -78,7 +107,11 @@ class Schedule {
     endTime: map['end_time'] != null
         ? _parseTime(map['end_time'] as String)
         : null,
-    category: map['category'] as String?,
+    category: _normalizeCategory(
+      category: map['category'] as String?,
+      title: map['title'] as String?,
+      workType: map['work_type'] as String?,
+    ),
     location: map['location'] as String?,
     note: map['note'] as String?,
     reminderMinutes: map['reminder_minutes'] as int?,

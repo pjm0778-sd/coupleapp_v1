@@ -110,5 +110,3 @@ open class CoupleWidgetProvider : AppWidgetProvider() {
     }
 }
 
-/** Medium 위젯 — 동일 로직, 다른 info XML로 크기만 다르게 등록 */
-class CoupleWidgetProviderMedium : CoupleWidgetProvider()

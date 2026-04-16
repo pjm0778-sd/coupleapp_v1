@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'core/supabase_client.dart';
@@ -11,33 +12,44 @@ import 'features/auth/screens/login_screen.dart';
 import 'features/onboarding/onboarding_flow.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/splash/splash_screen.dart';
-import 'features/calendar/screens/calendar_screen.dart';
-import 'features/settings/screens/settings_screen.dart';
-import 'features/notifications/screens/notification_history_screen.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' as import_services;
 
 import 'package:intl/date_symbol_data_local.dart';
-
-/// 탭 전환 알림
-class TabSwitchNotification extends Notification {
-  final int tabIndex;
-  TabSwitchNotification(this.tabIndex);
-}
+import 'core/home_widget_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = true;
   await initializeDateFormatting('ko_KR', null);
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-  await NotificationManager().initialize();
+  debugPrint('[Auth] initialSession=${supabase.auth.currentSession?.user.id}');
+  supabase.auth.onAuthStateChange.listen((data) {
+    debugPrint(
+      '[Auth] event=${data.event} sessionUser=${data.session?.user.id}',
+    );
+  });
+
+  try {
+    await NotificationManager().initialize();
+  } catch (e) {
+    // macOS에서 플러그인 설정 누락 시 앱 부팅이 막히지 않도록 안전하게 진행
+    debugPrint('[Notification] init skipped: $e');
+  }
+  await HomeWidgetService.init();
   if (!kIsWeb) {
     try {
       await Firebase.initializeApp();
       debugPrint('[Firebase] initialized successfully');
+    } catch (e) {
+      // iOS: AppDelegate method swizzling이 이미 configure()를 호출한 경우 무시
+      debugPrint('[Firebase] init skipped (already configured): $e');
+    }
+    try {
       await FcmService().initialize();
       debugPrint('[FCM] service initialized');
     } catch (e) {
-      debugPrint('[Firebase] init failed: $e');
+      debugPrint('[FCM] service init failed: $e');
     }
   }
   runApp(const CoupleApp());
@@ -63,10 +75,7 @@ class CoupleApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('ko', 'KR'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('ko', 'KR'), Locale('en', 'US')],
       debugShowCheckedModeBanner: false,
       initialRoute: '/',
       routes: {'/': (_) => const AppRouter()},
@@ -135,16 +144,8 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
-  int _currentIndex = 0;
   DateTime? _lastBackPressedTime;
   final _notificationService = NotificationService();
-
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    CalendarScreen(),
-    NotificationHistoryScreen(),
-    SettingsScreen(),
-  ];
 
   @override
   void initState() {
@@ -175,84 +176,25 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
 
-        if (_currentIndex != 0) {
-          // 다른 탭에서 홈으로 이동
-          setState(() => _currentIndex = 0);
+        // 홈에서 앱 종료 확인
+        final now = DateTime.now();
+        if (_lastBackPressedTime == null ||
+            now.difference(_lastBackPressedTime!) >
+                const Duration(milliseconds: 1500)) {
+          _lastBackPressedTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('한 번 더 누르면 앱이 종료됩니다'),
+              duration: Duration(milliseconds: 1500),
+            ),
+          );
         } else {
-          // 홈에서 앱 종료 확인
-          final now = DateTime.now();
-          if (_lastBackPressedTime == null ||
-              now.difference(_lastBackPressedTime!) >
-                  const Duration(milliseconds: 1500)) {
-            _lastBackPressedTime = now;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('한 번 더 누르면 앱이 종료됩니다'),
-                duration: Duration(milliseconds: 1500),
-              ),
-            );
-          } else {
-            // 두 번 누름: 앱 종료 허용 (시스템에 백엔드/스택 팝 요청)
-            // 안드로이드에서는 SystemNavigator.pop()을 호출하는 방식 사용
-            import_services.SystemNavigator.pop();
-          }
+          // 두 번 누름: 앱 종료 허용 (시스템에 백엔드/스택 팝 요청)
+          // 안드로이드에서는 SystemNavigator.pop()을 호출하는 방식 사용
+          import_services.SystemNavigator.pop();
         }
       },
-      child: NotificationListener<TabSwitchNotification>(
-        onNotification: (notification) {
-          setState(() => _currentIndex = notification.tabIndex);
-          return true;
-        },
-        child: Scaffold(
-          body: Stack(
-            fit: StackFit.expand,
-            children: List.generate(
-              _screens.length,
-              (i) => AnimatedOpacity(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeInOut,
-                opacity: i == _currentIndex ? 1.0 : 0.0,
-                child: IgnorePointer(
-                  ignoring: i != _currentIndex,
-                  child: _screens[i],
-                ),
-              ),
-            ),
-          ),
-          bottomNavigationBar: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              boxShadow: [AppTheme.navShadow],
-            ),
-            child: NavigationBar(
-              selectedIndex: _currentIndex,
-              onDestinationSelected: (i) => setState(() => _currentIndex = i),
-              destinations: const [
-                NavigationDestination(
-                  icon: Icon(Icons.home_outlined),
-                  selectedIcon: Icon(Icons.home_rounded),
-                  label: '홈',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.calendar_month_outlined),
-                  selectedIcon: Icon(Icons.calendar_month_rounded),
-                  label: '달력',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.notifications_outlined),
-                  selectedIcon: Icon(Icons.notifications_rounded),
-                  label: '알림',
-                ),
-                NavigationDestination(
-                  icon: Icon(Icons.settings_outlined),
-                  selectedIcon: Icon(Icons.settings_rounded),
-                  label: '설정',
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: const Scaffold(body: HomeScreen()),
     );
   }
 }

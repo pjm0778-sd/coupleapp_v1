@@ -3,9 +3,15 @@ import '../../../core/theme.dart';
 import '../../../core/notification_manager.dart';
 import '../models/notification.dart';
 
-class NotificationHistoryScreen extends StatelessWidget {
+class NotificationHistoryScreen extends StatefulWidget {
   const NotificationHistoryScreen({super.key});
 
+  @override
+  State<NotificationHistoryScreen> createState() =>
+      _NotificationHistoryScreenState();
+}
+
+class _NotificationHistoryScreenState extends State<NotificationHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final manager = NotificationManager();
@@ -29,29 +35,46 @@ class NotificationHistoryScreen extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: AppTheme.background,
         appBar: AppBar(
           title: Text('알림${unreadCount > 0 ? ' ($unreadCount)' : ''}'),
+          backgroundColor: AppTheme.surface,
+          foregroundColor: AppTheme.textPrimary,
           actions: [
             if (unreadCount > 0)
               TextButton(
                 onPressed: () {
                   manager.markAllAsRead();
+                  setState(() {});
                 },
-                child: const Text('모두 읽음', style: TextStyle(fontSize: 13)),
+                child: const Text(
+                  '모두 읽음',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
           ],
           bottom: const TabBar(
+            indicatorColor: AppTheme.primary,
+            labelColor: AppTheme.textPrimary,
+            unselectedLabelColor: AppTheme.textSecondary,
             tabs: [
               Tab(text: '일반 알림'),
               Tab(text: '이벤트 알림'),
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildNotificationList(generalAlerts),
-            _buildNotificationList(scheduleAlerts),
-          ],
+        body: Container(
+          decoration: AppTheme.pageGradient,
+          child: TabBarView(
+            children: [
+              _buildNotificationList(generalAlerts),
+              _buildNotificationList(scheduleAlerts),
+            ],
+          ),
         ),
       ),
     );
@@ -65,14 +88,11 @@ class NotificationHistoryScreen extends StatelessWidget {
               children: [
                 Icon(
                   Icons.notifications_none_outlined,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.textTertiary,
                   size: 48,
                 ),
                 SizedBox(height: 16),
-                Text(
-                  '알림이 없어요',
-                  style: TextStyle(color: AppTheme.textSecondary),
-                ),
+                Text('알림이 없어요', style: TextStyle(color: AppTheme.textTertiary)),
               ],
             ),
           )
@@ -98,12 +118,15 @@ class _NotificationCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: notification.isRead ? AppTheme.surface : AppTheme.accentLight,
-        borderRadius: BorderRadius.circular(12),
+        color: notification.isRead ? AppTheme.surface : const Color(0xFFFFFBF8),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: notification.isRead
+              ? AppTheme.border
+              : AppTheme.primary.withValues(alpha: 0.45),
+          width: notification.isRead ? 1 : 1.2,
+        ),
         boxShadow: const [AppTheme.subtleShadow],
-        border: notification.isRead
-            ? null
-            : Border(left: BorderSide(color: AppTheme.accent, width: 3)),
       ),
       child: Row(
         children: [
@@ -116,7 +139,9 @@ class _NotificationCard extends StatelessWidget {
             ),
             child: Icon(
               notification.type.icon,
-              color: notification.type.color,
+              color: notification.isRead
+                  ? AppTheme.textSecondary
+                  : AppTheme.primary,
               size: 20,
             ),
           ),
@@ -134,24 +159,25 @@ class _NotificationCard extends StatelessWidget {
                     fontSize: 14,
                     color: AppTheme.textPrimary,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (notification.body != null) ...[
                   const SizedBox(height: 4),
                   Text(
                     notification.body!,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       color: AppTheme.textSecondary,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 const SizedBox(height: 4),
                 Text(
                   _formatTime(notification.createdAt),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AppTheme.textTertiary),
                 ),
               ],
             ),

@@ -84,7 +84,6 @@ class _WeatherCardState extends State<WeatherCard> {
         boxShadow: const [AppTheme.cardShadow],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           // ── 헤더 ───────────────────────────────────
           Padding(

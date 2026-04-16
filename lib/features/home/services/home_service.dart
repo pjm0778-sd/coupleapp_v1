@@ -2,6 +2,45 @@ import '../../../core/supabase_client.dart';
 import '../../../shared/models/schedule.dart';
 
 class HomeService {
+  bool _isOffCategory(String? category) =>
+      category == '휴무' || category == '쉬는날';
+
+  String _formatDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<Map<String, List<Schedule>>> getSchedulesForDate(
+    String coupleId,
+    DateTime date,
+  ) async {
+    final dateStr =
+        '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) {
+      return {'mine': <Schedule>[], 'partner': <Schedule>[]};
+    }
+
+    final myData = await supabase
+        .from('schedules')
+        .select()
+        .eq('user_id', currentUserId)
+        .eq('couple_id', coupleId)
+        .or('date.eq.$dateStr,and(start_date.lte.$dateStr,end_date.gte.$dateStr)')
+        .order('start_time', ascending: true);
+
+    final partnerData = await supabase
+        .from('schedules')
+        .select()
+        .neq('user_id', currentUserId)
+        .eq('couple_id', coupleId)
+        .or('date.eq.$dateStr,and(start_date.lte.$dateStr,end_date.gte.$dateStr)')
+        .order('start_time', ascending: true);
+
+    return {
+      'mine': (myData as List).map((e) => Schedule.fromMap(e)).toList(),
+      'partner': (partnerData as List).map((e) => Schedule.fromMap(e)).toList(),
+    };
+  }
+
   /// D-day 정보 + 내 애인 닉네임 조회
   Future<Map<String, dynamic>> getDDays(String coupleId) async {
     final coupleData = await supabase
@@ -43,69 +82,14 @@ class HomeService {
 
   /// 오늘의 일정 요약
   Future<Map<String, List<Schedule>>> getTodaySchedules(String coupleId) async {
-    final today = DateTime.now();
-    final todayStr = today.toIso8601String().split('T')[0];
-    final currentUserId = supabase.auth.currentUser?.id;
-    if (currentUserId == null) return {'mine': <Schedule>[], 'partner': <Schedule>[]};
-
-    // 내 오늘 일정 (단일 일정 + 오늘을 포함하는 다중일 일정)
-    final myData = await supabase
-        .from('schedules')
-        .select()
-        .eq('user_id', currentUserId)
-        .eq('couple_id', coupleId)
-        .or('date.eq.$todayStr,and(start_date.lte.$todayStr,end_date.gte.$todayStr)')
-        .order('start_time', ascending: true);
-
-    final mySchedules = (myData as List)
-        .map((e) => Schedule.fromMap(e))
-        .toList();
-
-    // 내 애인 오늘 일정
-    final partnerData = await supabase
-        .from('schedules')
-        .select()
-        .neq('user_id', currentUserId)
-        .eq('couple_id', coupleId)
-        .or('date.eq.$todayStr,and(start_date.lte.$todayStr,end_date.gte.$todayStr)')
-        .order('start_time', ascending: true);
-
-    final partnerSchedules = (partnerData as List)
-        .map((e) => Schedule.fromMap(e))
-        .toList();
-
-    return {'mine': mySchedules, 'partner': partnerSchedules};
+    return getSchedulesForDate(coupleId, DateTime.now());
   }
 
   /// 내일의 일정 요약
   Future<Map<String, List<Schedule>>> getTomorrowSchedules(
     String coupleId,
   ) async {
-    final tomorrow = DateTime.now().add(const Duration(days: 1));
-    final tomorrowStr = tomorrow.toIso8601String().split('T')[0];
-    final currentUserId = supabase.auth.currentUser?.id;
-    if (currentUserId == null) return {'mine': <Schedule>[], 'partner': <Schedule>[]};
-
-    final myData = await supabase
-        .from('schedules')
-        .select()
-        .eq('user_id', currentUserId)
-        .eq('couple_id', coupleId)
-        .or('date.eq.$tomorrowStr,and(start_date.lte.$tomorrowStr,end_date.gte.$tomorrowStr)')
-        .order('start_time', ascending: true);
-
-    final partnerData = await supabase
-        .from('schedules')
-        .select()
-        .neq('user_id', currentUserId)
-        .eq('couple_id', coupleId)
-        .or('date.eq.$tomorrowStr,and(start_date.lte.$tomorrowStr,end_date.gte.$tomorrowStr)')
-        .order('start_time', ascending: true);
-
-    return {
-      'mine': (myData as List).map((e) => Schedule.fromMap(e)).toList(),
-      'partner': (partnerData as List).map((e) => Schedule.fromMap(e)).toList(),
-    };
+    return getSchedulesForDate(coupleId, DateTime.now().add(const Duration(days: 1)));
   }
 
   /// 다음 데이트 조회 (직접 등록한 데이트 일정 + 시스템 기념일 포함)
@@ -205,27 +189,119 @@ class HomeService {
   /// 마지막 데이트 조회 (오늘 이전 가장 최근 커플 데이트)
   Future<Map<String, dynamic>?> getLastDateSchedule(String coupleId) async {
     final now = DateTime.now();
-    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    final todayDate = DateTime(now.year, now.month, now.day);
+    final todayStr =
+        '${todayDate.year}-${todayDate.month.toString().padLeft(2, '0')}-${todayDate.day.toString().padLeft(2, '0')}';
 
-    final result = await supabase
+    final results = await supabase
         .from('schedules')
         .select()
         .eq('couple_id', coupleId)
-        .or('category.eq.데이트,is_date.eq.true')
+        .or('category.eq.데이트,category.eq.여행,is_date.eq.true,owner_type.eq.couple')
         .lt('date', todayStr)
         .order('date', ascending: false)
-        .limit(1)
-        .maybeSingle();
+        .limit(200);
 
-    if (result == null) return null;
+    if ((results as List).isEmpty) return null;
 
-    final schedule = Schedule.fromMap(result);
-    final nowDate = DateTime(now.year, now.month, now.day);
-    final lastDate = DateTime(
-        schedule.date.year, schedule.date.month, schedule.date.day);
-    final daysSince = nowDate.difference(lastDate).inDays;
+    Schedule? lastSchedule;
+    DateTime? lastMetDate;
 
-    return {'schedule': schedule, 'days_since': daysSince};
+    for (final row in results) {
+      final schedule = Schedule.fromMap(row);
+      final candidateSource = schedule.endDate ?? schedule.date;
+      final candidateDate = DateTime(
+        candidateSource.year,
+        candidateSource.month,
+        candidateSource.day,
+      );
+
+      if (!candidateDate.isBefore(todayDate)) {
+        continue;
+      }
+
+      if (lastMetDate == null || candidateDate.isAfter(lastMetDate)) {
+        lastMetDate = candidateDate;
+        lastSchedule = schedule;
+      }
+    }
+
+    if (lastSchedule == null || lastMetDate == null) return null;
+
+    final daysSince = todayDate.difference(lastMetDate).inDays;
+
+    return {
+      'schedule': lastSchedule,
+      'days_since': daysSince,
+      'last_met_date': lastMetDate,
+    };
+  }
+
+  /// 다음 동시 휴무일 조회 (오늘 포함, 최대 90일 이내)
+  Future<Map<String, dynamic>?> getNextBothOff(String coupleId) async {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final todayStr = _formatDate(today);
+    final limitDate = today.add(const Duration(days: 90));
+    final limitStr = _formatDate(limitDate);
+
+    final currentUserId = supabase.auth.currentUser?.id;
+    if (currentUserId == null) return null;
+
+    final myRaw = await supabase
+        .from('schedules')
+        .select('date, category')
+        .eq('couple_id', coupleId)
+        .eq('user_id', currentUserId)
+        .gte('date', todayStr)
+        .lte('date', limitStr);
+
+    final partnerRaw = await supabase
+        .from('schedules')
+        .select('date, category')
+        .eq('couple_id', coupleId)
+        .neq('user_id', currentUserId)
+        .gte('date', todayStr)
+        .lte('date', limitStr);
+
+    final myCategoriesByDate = <String, List<String?>>{};
+    for (final row in (myRaw as List)) {
+      final date = row['date'] as String?;
+      if (date == null) continue;
+      myCategoriesByDate.putIfAbsent(date, () => <String?>[]).add(
+        row['category'] as String?,
+      );
+    }
+
+    final partnerCategoriesByDate = <String, List<String?>>{};
+    for (final row in (partnerRaw as List)) {
+      final date = row['date'] as String?;
+      if (date == null) continue;
+      partnerCategoriesByDate.putIfAbsent(date, () => <String?>[]).add(
+        row['category'] as String?,
+      );
+    }
+
+    bool isOffDay(Map<String, List<String?>> byDate, String dateKey) {
+      final categories = byDate[dateKey];
+      if (categories == null || categories.isEmpty) {
+        // 일정이 아예 없으면 쉬는날로 간주
+        return true;
+      }
+      return categories.any(_isOffCategory);
+    }
+
+    for (int i = 0; i <= 90; i++) {
+      final candidate = today.add(Duration(days: i));
+      final key = _formatDate(candidate);
+      final mineOff = isOffDay(myCategoriesByDate, key);
+      final partnerOff = isOffDay(partnerCategoriesByDate, key);
+      if (mineOff && partnerOff) {
+        return {'date': candidate, 'days_until': i};
+      }
+    }
+
+    return null;
   }
 
   /// 홈 화면 요약 데이터
@@ -236,6 +312,7 @@ class HomeService {
       getTomorrowSchedules(coupleId),
       getNextDateSchedule(coupleId),
       getLastDateSchedule(coupleId),
+      getNextBothOff(coupleId),
     ]);
 
     return {
@@ -244,6 +321,7 @@ class HomeService {
       'tomorrow_schedules': results[2],
       'next_date': results[3],
       'last_date': results[4],
+      'next_both_off': results[5],
     };
   }
 

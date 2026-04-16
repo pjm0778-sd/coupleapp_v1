@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../features/profile/models/couple_profile.dart';
-import '../../features/profile/data/shift_defaults.dart' show getShiftDefaults;
-import '../../features/profile/services/profile_service.dart';
+
 import '../../core/services/feature_flag_service.dart';
+import '../../core/theme.dart';
+import '../../features/profile/data/shift_defaults.dart' show getShiftDefaults;
+import '../../features/profile/models/couple_profile.dart';
+import '../../features/profile/services/profile_service.dart';
 import 'screens/onboarding_step1_screen.dart';
 import 'screens/onboarding_step2_screen.dart';
 import 'screens/onboarding_step3_screen.dart';
@@ -60,9 +62,7 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
       // 닉네임 저장
       await service.saveNickname(_nickname);
       // 프로필 저장 (onboarding_completed = true)
-      await service.saveProfile(
-        _draft.copyWith(onboardingCompleted: true),
-      );
+      await service.saveProfile(_draft.copyWith(onboardingCompleted: true));
       // FeatureFlag 갱신
       FeatureFlagService().refresh(_draft.copyWith(onboardingCompleted: true));
     } catch (e) {
@@ -87,39 +87,67 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: PageView(
-          controller: _pageController,
-          physics: const NeverScrollableScrollPhysics(),
-          children: [
-            OnboardingStep1Screen(
-              currentStep: _currentStep,
-              nickname: _nickname,
-              onNicknameChanged: (v) => setState(() => _nickname = v),
-              onNext: _goNext,
+      backgroundColor: AppTheme.background,
+      body: Stack(
+        children: [
+          Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: const [AppTheme.cardShadow],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: PageView(
+                        controller: _pageController,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          OnboardingStep1Screen(
+                            currentStep: _currentStep,
+                            nickname: _nickname,
+                            onNicknameChanged: (v) =>
+                                setState(() => _nickname = v),
+                            onNext: _goNext,
+                          ),
+                          OnboardingStep2Screen(
+                            currentStep: _currentStep,
+                            onNext: _goNext,
+                            onBack: _goPrev,
+                            onSkip: _goNext,
+                          ),
+                          OnboardingStep3Screen(
+                            currentStep: _currentStep,
+                            draft: _draft,
+                            onChanged: (updated) =>
+                                setState(() => _draft = updated),
+                            onNext: _goNext,
+                            onBack: _goPrev,
+                          ),
+                          OnboardingStep4Screen(
+                            currentStep: _currentStep,
+                            draft: _draft,
+                            onChanged: (updated) =>
+                                setState(() => _draft = updated),
+                            onBack: _goPrev,
+                            onComplete: _complete,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            OnboardingStep2Screen(
-              currentStep: _currentStep,
-              onNext: _goNext,
-              onBack: _goPrev,
-              onSkip: _goNext,
-            ),
-            OnboardingStep3Screen(
-              currentStep: _currentStep,
-              draft: _draft,
-              onChanged: (updated) => setState(() => _draft = updated),
-              onNext: _goNext,
-              onBack: _goPrev,
-            ),
-            OnboardingStep4Screen(
-              currentStep: _currentStep,
-              draft: _draft,
-              onChanged: (updated) => setState(() => _draft = updated),
-              onBack: _goPrev,
-              onComplete: _complete,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -11,7 +11,7 @@ class ProfileService {
     final data = await supabase
         .from('profiles')
         .select(
-          'distance_type, my_city, my_station, partner_city, partner_station, '
+          'couple_type, distance_type, my_city, my_station, partner_city, partner_station, '
           'work_pattern, shift_times, notify_minutes_before, has_car, onboarding_completed',
         )
         .eq('id', userId)
@@ -59,7 +59,7 @@ class ProfileService {
         .from('profiles')
         .select(
           'id, user_id, couple_id, nickname, '
-          'distance_type, my_city, my_station, partner_city, partner_station, '
+          'couple_type, distance_type, my_city, my_station, partner_city, partner_station, '
           'work_pattern, shift_times, notify_minutes_before, has_car, onboarding_completed',
         )
         .eq('id', partnerId)

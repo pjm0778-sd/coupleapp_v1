@@ -1,5 +1,20 @@
 import 'shift_time.dart';
 
+/// 커플 유형 — DB 값: 'together' | 'distance'
+enum CoupleType {
+  together('together'), // 매일 함께
+  distance('distance'); // 설레는 거리
+
+  const CoupleType(this.value);
+  final String value;
+
+  static CoupleType fromValue(String? value) =>
+      CoupleType.values.firstWhere(
+        (e) => e.value == value,
+        orElse: () => CoupleType.distance,
+      );
+}
+
 /// 거리 유형 — DB 값: 'same_city' | 'near' | 'long_distance'
 enum DistanceType {
   sameCity('same_city'),
@@ -41,6 +56,7 @@ class CoupleProfile {
   final String? nickname;
   final DateTime? coupleStartDate;
 
+  final String coupleType;   // 'together' | 'distance'
   final String distanceType; // 'same_city' | 'near' | 'long_distance'
   final String? myCity;
   final String? myStation;
@@ -61,6 +77,7 @@ class CoupleProfile {
     this.coupleId,
     this.nickname,
     this.coupleStartDate,
+    this.coupleType = 'distance',
     required this.distanceType,
     this.myCity,
     this.myStation,
@@ -106,6 +123,7 @@ class CoupleProfile {
       coupleId: map['couple_id'] as String?,
       nickname: map['nickname'] as String?,
       coupleStartDate: coupleStartDate,
+      coupleType: map['couple_type'] as String? ?? 'distance',
       distanceType: map['distance_type'] as String? ?? 'same_city',
       myCity: map['my_city'] as String?,
       myStation: map['my_station'] as String?,
@@ -121,6 +139,7 @@ class CoupleProfile {
 
   /// Supabase 저장용 직렬화 — shift_times 는 List<Map> 으로 유지 (하위 호환)
   Map<String, dynamic> toMap() => {
+    'couple_type': coupleType,
     'distance_type': distanceType,
     'my_city': myCity,
     'my_station': myStation,
@@ -139,6 +158,7 @@ class CoupleProfile {
     String? coupleId,
     String? nickname,
     DateTime? coupleStartDate,
+    String? coupleType,
     String? distanceType,
     String? myCity,
     String? myStation,
@@ -155,6 +175,7 @@ class CoupleProfile {
     coupleId: coupleId ?? this.coupleId,
     nickname: nickname ?? this.nickname,
     coupleStartDate: coupleStartDate ?? this.coupleStartDate,
+    coupleType: coupleType ?? this.coupleType,
     distanceType: distanceType ?? this.distanceType,
     myCity: myCity ?? this.myCity,
     myStation: myStation ?? this.myStation,

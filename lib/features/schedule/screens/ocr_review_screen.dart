@@ -68,6 +68,14 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
   String? _detectCategory(String? workType) {
     if (workType == null || workType.isEmpty) return '출근';
     final t = workType.toLowerCase();
+    if (t == 'x' ||
+        t == 'off' ||
+        t == '오프' ||
+        t == '휴무' ||
+        t == '쉬는날' ||
+        RegExp(r'^x+$', caseSensitive: false).hasMatch(workType.trim())) {
+      return '쉬는날';
+    }
     if (t.contains('여행') || t.contains('출장') || t.contains('trip') ||
         t.contains('travel')) {
       return '여행';

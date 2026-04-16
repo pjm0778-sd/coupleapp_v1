@@ -6,6 +6,7 @@ import '../../../core/supabase_client.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../../profile/models/shift_time.dart';
 import '../../profile/services/profile_service.dart';
+import '../../settings/screens/settings_screen.dart';
 import 'ocr_review_screen.dart';
 import 'google_calendar_screen.dart';
 import 'excel_import_screen.dart';
@@ -42,11 +43,55 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     super.dispose();
   }
 
+  void _showShiftTimeWarning() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Color(0xFFCBA258)),
+            SizedBox(width: 8),
+            Text('근무 시간 설정을 확인하세요', style: TextStyle(fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          '설정에서 근무 형태(근무 시간)를 등록하면\nOCR로 가져온 일정에 출근·퇴근 시간이\n자동으로 입력됩니다.\n\n아직 설정하지 않았다면 설정 화면에서\n먼저 근무 형태를 등록해 주세요.',
+          style: TextStyle(fontSize: 13, height: 1.6),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('나중에'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsScreen()),
+              );
+            },
+            child: const Text(
+              '설정하러 가기',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _init() async {
     // 교대 시간 설정 로드
     final profile = await ProfileService().loadMyProfile();
     if (profile != null && mounted) {
       setState(() => _shiftTimes = profile.shiftTimes);
+      if (profile.shiftTimes.isEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showShiftTimeWarning();
+        });
+      }
     }
 
     _coupleId = await ScheduleService().getCoupleId();
@@ -108,15 +153,17 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
       if (matched == null && workTypeLower.isNotEmpty) {
         final first = workTypeLower[0];
         if (first == 'd') {
-          final candidates =
-              _shiftTimes.where((sh) => sh.shiftType == 'D' || sh.shiftType == 'day');
+          final candidates = _shiftTimes.where(
+            (sh) => sh.shiftType == 'D' || sh.shiftType == 'day',
+          );
           if (candidates.isNotEmpty) matched = candidates.first;
         } else if (first == 'e') {
           final candidates = _shiftTimes.where((sh) => sh.shiftType == 'E');
           if (candidates.isNotEmpty) matched = candidates.first;
         } else if (first == 'n') {
-          final candidates =
-              _shiftTimes.where((sh) => sh.shiftType == 'N' || sh.shiftType == 'night');
+          final candidates = _shiftTimes.where(
+            (sh) => sh.shiftType == 'N' || sh.shiftType == 'night',
+          );
           if (candidates.isNotEmpty) matched = candidates.first;
         }
       }
@@ -125,7 +172,8 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
 
       String pad(int v) => v.toString().padLeft(2, '0');
       final updated = Map<String, dynamic>.from(s);
-      updated['start_time'] = '${pad(matched.startHour)}:${pad(matched.startMinute)}';
+      updated['start_time'] =
+          '${pad(matched.startHour)}:${pad(matched.startMinute)}';
       updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
       updated['category'] = '출근';
       return updated;
@@ -281,8 +329,11 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('일정 가져오기'),
+        backgroundColor: AppTheme.surface,
+        foregroundColor: AppTheme.textPrimary,
         bottom: TabBar(
           controller: _tabController,
           labelStyle: const TextStyle(
@@ -290,9 +341,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
             fontWeight: FontWeight.w600,
           ),
           unselectedLabelStyle: const TextStyle(fontSize: 12),
-          labelColor: AppTheme.accent,
+          labelColor: AppTheme.primary,
           unselectedLabelColor: AppTheme.textSecondary,
-          indicatorColor: AppTheme.accent,
+          indicatorColor: AppTheme.primary,
           tabs: const [
             Tab(text: '사진으로'),
             Tab(text: '구글에서'),
@@ -300,13 +351,16 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildCalendarOcrTab(),
-          _buildGoogleCalendarTab(),
-          _buildExcelImportTab(),
-        ],
+      body: Container(
+        decoration: AppTheme.pageGradient,
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildCalendarOcrTab(),
+            _buildGoogleCalendarTab(),
+            _buildExcelImportTab(),
+          ],
+        ),
       ),
     );
   }
@@ -360,8 +414,7 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
             icon: Icons.calendar_today_outlined,
             iconColor: const Color(0xFF4285F4),
             title: '구글에서 가져오기',
-            description:
-                '구글 계정으로 로그인하여\n구글 캘린더의 일정을 직접 가져옵니다.\n가장 정확한 방법입니다.',
+            description: '구글 계정으로 로그인하여\n구글 캘린더의 일정을 직접 가져옵니다.\n가장 정확한 방법입니다.',
           ),
           const SizedBox(height: 28),
           _buildActionCard(
@@ -612,7 +665,10 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
                 children: [
                   const Text(
                     '•  ',
-                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                   Expanded(
                     child: Text(

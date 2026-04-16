@@ -451,6 +451,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       case '데이트':
         return const Color(0xFFE91E63);
       case '휴무':
+      case '쉬는날':
         return const Color(0xFFBDBDBD);
       default:
         return AppTheme.primary;
@@ -468,6 +469,7 @@ class _ScheduleDetailScreenState extends State<ScheduleDetailScreen> {
       case '데이트':
         return Icons.favorite_outline;
       case '휴무':
+      case '쉬는날':
         return Icons.beach_access_outlined;
       default:
         return Icons.event_outlined;

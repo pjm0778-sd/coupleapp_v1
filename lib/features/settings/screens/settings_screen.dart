@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme.dart';
 import '../../../core/services/feature_flag_service.dart';
 import '../../../core/profile_change_notifier.dart';
@@ -6,8 +7,10 @@ import '../../couple/services/couple_service.dart';
 import '../../notifications/screens/notification_settings_screen.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
-import '../../profile/data/shift_defaults.dart' show getShiftDefaults, shiftLabel;
-import '../../profile/data/city_station_data.dart' show getBestStation, getProvinceOfCity, getCitiesInProvince, getProvinces;
+import '../../profile/data/shift_defaults.dart'
+    show getShiftDefaults, shiftLabel;
+import '../../profile/data/city_station_data.dart'
+    show getBestStation, getProvinceOfCity, getCitiesInProvince, getProvinces;
 import '../../../core/holiday_service.dart';
 import '../../calendar/services/schedule_service.dart';
 import '../../profile/models/shift_time.dart';
@@ -15,7 +18,6 @@ import '../../onboarding/widgets/shift_time_editor.dart';
 import '../../onboarding/widgets/region_selector_widget.dart';
 import '../../auth/services/auth_service.dart';
 import '../../couple/screens/couple_connect_screen.dart';
-
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -40,10 +42,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _officeWorkColorHex = '#4CAF50';
 
   static const _presetWorkColors = [
-    Color(0xFF4CAF50), Color(0xFF2196F3), Color(0xFFE91E63),
-    Color(0xFFFF9800), Color(0xFF9C27B0), Color(0xFFF44336),
-    Color(0xFF00BCD4), Color(0xFF795548), Color(0xFF607D8B),
-    Color(0xFFFFEB3B), Color(0xFF8BC34A), Color(0xFF3F51B5),
+    Color(0xFF4CAF50),
+    Color(0xFF2196F3),
+    Color(0xFFE91E63),
+    Color(0xFFFF9800),
+    Color(0xFF9C27B0),
+    Color(0xFFF44336),
+    Color(0xFF00BCD4),
+    Color(0xFF795548),
+    Color(0xFF607D8B),
+    Color(0xFFFFEB3B),
+    Color(0xFF8BC34A),
+    Color(0xFF3F51B5),
   ];
 
   Color _hexToColor(String hex) {
@@ -64,7 +74,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           spacing: 12,
           runSpacing: 12,
           children: _presetWorkColors.map((c) {
-            final hex = '#${c.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+            final hex =
+                '#${c.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
             final isSelected = _officeWorkColorHex.toUpperCase() == hex;
             return GestureDetector(
               onTap: () => Navigator.pop(ctx, c),
@@ -96,7 +107,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
 
     if (picked != null) {
-      final hex = '#${picked.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+      final hex =
+          '#${picked.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
       setState(() => _officeWorkColorHex = hex);
     }
   }
@@ -217,8 +229,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (coupleInfo['started_at'] != null) {
             _startedAt = DateTime.parse(coupleInfo['started_at'] as String);
           }
-          _partnerNickname =
-              await _profileService.loadPartnerNickname(_coupleId!);
+          _partnerNickname = await _profileService.loadPartnerNickname(
+            _coupleId!,
+          );
         } else {
           _partnerNickname = null;
           _startedAt = null;
@@ -236,12 +249,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveWorkPattern(String pattern) async {
-    final updated = (_profile ?? const CoupleProfile(
-      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
-    )).copyWith(
-      workPattern: pattern,
-      shiftTimes: getShiftDefaults(pattern),
-    );
+    final updated =
+        (_profile ??
+                const CoupleProfile(
+                  distanceType: 'same_city',
+                  workPattern: 'office',
+                  shiftTimes: [],
+                ))
+            .copyWith(
+              workPattern: pattern,
+              shiftTimes: getShiftDefaults(pattern),
+            );
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
@@ -297,7 +315,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final firstDay = DateTime(now.year, now.month, 1);
     final lastDay = DateTime(now.year, now.month + 1, 0);
     final holidayDates = <String>[];
-    for (var d = firstDay; !d.isAfter(lastDay); d = d.add(const Duration(days: 1))) {
+    for (
+      var d = firstDay;
+      !d.isAfter(lastDay);
+      d = d.add(const Duration(days: 1))
+    ) {
       if (HolidayService().getHolidays(d).isNotEmpty) {
         holidayDates.add(d.toIso8601String().split('T')[0]);
       }
@@ -305,7 +327,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     // 등록될 평일 수 미리 계산 (확인 다이얼로그용)
     int weekdayCount = 0;
-    for (var d = firstDay; !d.isAfter(lastDay); d = d.add(const Duration(days: 1))) {
+    for (
+      var d = firstDay;
+      !d.isAfter(lastDay);
+      d = d.add(const Duration(days: 1))
+    ) {
       if (d.weekday >= DateTime.monday && d.weekday <= DateTime.friday) {
         final dateStr = d.toIso8601String().split('T')[0];
         if (!holidayDates.contains(dateStr)) weekdayCount++;
@@ -355,17 +381,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$count일의 근무 일정이 등록되었습니다.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$count일의 근무 일정이 등록되었습니다.')));
         ProfileChangeNotifier().notify();
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('등록 실패: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('등록 실패: $e')));
       }
     }
   }
@@ -380,9 +406,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _saveWeatherCity({String? myCity, String? partnerCity}) async {
-    final current = _profile ?? const CoupleProfile(
-      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
-    );
+    final current =
+        _profile ??
+        const CoupleProfile(
+          distanceType: 'same_city',
+          workPattern: 'office',
+          shiftTimes: [],
+        );
     final updated = current.copyWith(
       myCity: myCity ?? current.myCity,
       partnerCity: partnerCity ?? current.partnerCity,
@@ -414,7 +444,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (ctx, setSheet) => SafeArea(
           child: Padding(
             padding: EdgeInsets.only(
-              left: 20, right: 20, top: 16,
+              left: 20,
+              right: 20,
+              top: 16,
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
             ),
             child: Column(
@@ -424,7 +456,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(
                   isMe ? '내 위치 도시 설정' : '파트너 위치 도시 설정',
                   style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -434,7 +467,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: InputDecoration(
                     labelText: '도/광역시',
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                   items: provinces
                       .map((p) => DropdownMenuItem(value: p, child: Text(p)))
@@ -452,11 +486,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     decoration: InputDecoration(
                       labelText: '시/군',
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     items: getCitiesInProvince(selectedProvince!)
-                        .map((c) =>
-                            DropdownMenuItem(value: c, child: Text(c)))
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (v) => setSheet(() => selectedCity = v),
                   ),
@@ -471,8 +505,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             if (isMe) {
                               await _saveWeatherCity(myCity: selectedCity);
                             } else {
-                              await _saveWeatherCity(
-                                  partnerCity: selectedCity);
+                              await _saveWeatherCity(partnerCity: selectedCity);
                             }
                           },
                     style: ElevatedButton.styleFrom(
@@ -480,7 +513,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('저장'),
                   ),
@@ -493,10 +527,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _saveCoupleType(String coupleType) async {
+    final updated =
+        (_profile ??
+                const CoupleProfile(
+                  distanceType: 'same_city',
+                  workPattern: 'office',
+                  shiftTimes: [],
+                ))
+            .copyWith(coupleType: coupleType);
+    await _profileService.saveProfile(updated);
+    FeatureFlagService().refresh(updated);
+    if (mounted) setState(() => _profile = updated);
+    ProfileChangeNotifier().notify();
+  }
+
   Future<void> _saveDistanceType(String distanceType) async {
-    final updated = (_profile ?? const CoupleProfile(
-      distanceType: 'same_city', workPattern: 'office', shiftTimes: [],
-    )).copyWith(distanceType: distanceType);
+    final updated =
+        (_profile ??
+                const CoupleProfile(
+                  distanceType: 'same_city',
+                  workPattern: 'office',
+                  shiftTimes: [],
+                ))
+            .copyWith(distanceType: distanceType);
     await _profileService.saveProfile(updated);
     FeatureFlagService().refresh(updated);
     if (mounted) setState(() => _profile = updated);
@@ -510,10 +564,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }) async {
     if (_profile == null) return;
     // 내 도시 → 최적 역 자동 선택
-    final autoMyStation =
-        myCity != null ? getBestStation(myCity) : _profile!.myStation;
+    final autoMyStation = myCity != null
+        ? getBestStation(myCity)
+        : _profile!.myStation;
     // 파트너 도시 → 역 미지정 시 자동 선택
-    final autoPartnerStation = partnerStation ??
+    final autoPartnerStation =
+        partnerStation ??
         (partnerCity != null
             ? getBestStation(partnerCity)
             : _profile!.partnerStation);
@@ -563,12 +619,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: selected ? AppTheme.accentLight : AppTheme.surface,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: selected ? AppTheme.accent : AppTheme.border,
+                        color: selected ? AppTheme.primary : AppTheme.border,
                         width: selected ? 1.5 : 1,
                       ),
                     ),
@@ -581,13 +640,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
-                            color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                            color: selected
+                                ? AppTheme.primary
+                                : AppTheme.textPrimary,
                           ),
                         ),
                         const Spacer(),
                         if (selected)
-                          const Icon(Icons.check_circle_rounded,
-                              color: AppTheme.accent, size: 20),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: AppTheme.primary,
+                            size: 20,
+                          ),
                       ],
                     ),
                   ),
@@ -649,12 +713,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 10),
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 14),
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppTheme.accentLight : AppTheme.surface,
+                        color: isSelected
+                            ? AppTheme.accentLight
+                            : AppTheme.surface,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isSelected ? AppTheme.accent : AppTheme.border,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.border,
                           width: isSelected ? 1.5 : 1,
                         ),
                       ),
@@ -674,8 +744,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           const Spacer(),
                           if (isSelected)
-                            const Icon(Icons.check_circle_rounded,
-                                color: AppTheme.accent, size: 20),
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              color: AppTheme.primary,
+                              size: 20,
+                            ),
                         ],
                       ),
                     ),
@@ -686,7 +759,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 16),
                   // 내 지역 — 역 선택 없음, 자동 선택
                   RegionSelectorWidget(
-                    label: '내 지역',
+                    label: '내 출발 도시',
                     selectedProvince: tempMyProvince,
                     selectedCity: tempMyCity,
                     onProvinceChanged: (v) =>
@@ -696,7 +769,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 16),
                   // 파트너 지역 — 역 자동 선택 (미리보기 표시)
                   RegionSelectorWidget(
-                    label: '파트너 지역',
+                    label: '애인 출발 도시',
                     selectedProvince: tempPartnerProvince,
                     selectedCity: tempPartnerCity,
                     onProvinceChanged: (v) =>
@@ -852,8 +925,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
-                    borderSide:
-                        const BorderSide(color: Colors.red, width: 1.5),
+                    borderSide: const BorderSide(color: Colors.red, width: 1.5),
                   ),
                 ),
                 onChanged: (_) => setS(() {}),
@@ -909,10 +981,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SizedBox(height: 16),
                 Text(
                   '연결이 해제되었습니다',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 SizedBox(height: 8),
                 Text(
@@ -920,7 +989,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.textSecondary,
+                    color: const Color(0x99FFFFFF),
                   ),
                 ),
               ],
@@ -945,11 +1014,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('처리 중 오류가 발생했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('처리 중 오류가 발생했습니다: $e')));
       }
     }
+  }
+
+  Widget _buildCoupleTypeOption({
+    required String value,
+    required String emoji,
+    required String label,
+    required String description,
+    required bool selected,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => _saveCoupleType(value),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: selected ? AppTheme.accentLight : AppTheme.background,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppTheme.primary : AppTheme.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 20)),
+                  const Spacer(),
+                  if (selected)
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      color: AppTheme.primary,
+                      size: 18,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? AppTheme.primary : AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _warnItem(String text) {
@@ -964,6 +1093,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  String _formatDeleteAccountError(Object error) {
+    final message = error.toString();
+
+    if (message.contains('profiles_id_fkey')) {
+      return '현재 Supabase DB의 profiles 외래키 설정이 오래돼서 탈퇴가 막히고 있어요. 최신 마이그레이션을 적용하면 해결됩니다.';
+    }
+
+    if (message.contains('remove owned storage files first')) {
+      return '이 계정이 소유한 Supabase Storage 파일이 남아 있어요. Supabase 대시보드의 Storage에서 해당 파일을 먼저 삭제한 뒤 다시 시도해주세요.';
+    }
+
+    if (message.contains('Database error deleting user')) {
+      return 'Supabase에서 계정 삭제를 막고 있어요. 보통 Storage 소유 파일이나 남아 있는 참조 데이터가 원인입니다. 대시보드의 Storage와 Authentication > Users를 확인해주세요.';
+    }
+
+    return '탈퇴 처리 중 오류가 발생했습니다: $message';
+  }
+
   Future<void> _deleteAccount() async {
     // 1단계: 경고 확인
     final goNext = await showDialog<bool>(
@@ -971,17 +1118,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(children: [
-          Text('⚠️', style: TextStyle(fontSize: 22)),
-          SizedBox(width: 8),
-          Text('회원 탈퇴', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        ]),
+        title: const Row(
+          children: [
+            Text('⚠️', style: TextStyle(fontSize: 22)),
+            SizedBox(width: 8),
+            Text(
+              '회원 탈퇴',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('탈퇴하면 아래 데이터가 모두 삭제되며\n절대 복구할 수 없어요.',
-                style: TextStyle(fontSize: 14, height: 1.5)),
+            const Text(
+              '탈퇴하면 아래 데이터가 모두 삭제되며\n절대 복구할 수 없어요.',
+              style: TextStyle(fontSize: 14, height: 1.5),
+            ),
             const SizedBox(height: 16),
             _warnItem('📅 모든 일정 및 댓글'),
             _warnItem('🎨 색상 매핑 설정'),
@@ -995,21 +1149,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
-              child: const Text('탈퇴 후 동일 이메일로 재가입해도\n데이터는 복구되지 않습니다.',
-                  style: TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.w500)),
+              child: const Text(
+                '탈퇴 후 동일 이메일로 재가입해도\n데이터는 복구되지 않습니다.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.red,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('취소', style: TextStyle(color: AppTheme.textSecondary)),
+            child: const Text(
+              '취소',
+              style: TextStyle(color: AppTheme.textSecondary),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('계속하기'),
@@ -1027,22 +1192,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setS) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('정말 탈퇴하실 건가요?',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            '정말 탈퇴하실 건가요?',
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('확인을 위해 아래에 "탈퇴하기"를 입력해주세요.',
-                  style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+              const Text(
+                '확인을 위해 아래에 "탈퇴하기"를 입력해주세요.',
+                style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: confirmController,
                 autofocus: true,
                 decoration: InputDecoration(
                   hintText: '탈퇴하기',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: Colors.red, width: 1.5),
@@ -1055,7 +1228,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('취소', style: TextStyle(color: AppTheme.textSecondary)),
+              child: const Text(
+                '취소',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -1063,7 +1239,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? Colors.red
                     : Colors.grey,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: confirmController.text.trim() == '탈퇴하기'
                   ? () => Navigator.pop(ctx, true)
@@ -1085,9 +1263,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('탈퇴 처리 중 오류가 발생했습니다: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(_formatDeleteAccountError(e))));
       }
     }
   }
@@ -1121,17 +1299,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
-    if (confirm == true) await AuthService().signOut();
+    if (confirm == true) {
+      await AuthService().signOut();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text('설정'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0,
+        title: const Text(
+          '설정',
+          style: TextStyle(
+            color: AppTheme.textPrimary,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh, color: AppTheme.textSecondary),
             onPressed: () {
               setState(() => _isLoading = true);
               _loadData();
@@ -1140,579 +1334,746 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-              children: [
-                // 커플 정보 섹션
-                _buildSectionTitle('커플 정보'),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
+      body: Stack(
+        children: [
+          Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+          _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 닉네임
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.favorite,
-                            color: AppTheme.accent,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            _myNickname ?? '-',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                            ),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '&',
-                              style: TextStyle(color: AppTheme.textSecondary),
-                            ),
-                          ),
-                          Text(
-                            _partnerNickname ?? '연결 대기 중',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 15,
-                              color: _partnerNickname != null
-                                  ? AppTheme.textPrimary
-                                  : AppTheme.textSecondary,
-                            ),
-                          ),
-                          const Spacer(),
-                          GestureDetector(
-                            onTap: _coupleId != null ? _changeStartedAt : null,
-                            child: Row(mainAxisSize: MainAxisSize.min),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // 연애 시작일
-                      GestureDetector(
-                        onTap: _coupleId != null ? _changeStartedAt : null,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today_outlined,
-                              size: 16,
-                              color: AppTheme.textSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _startedAt != null
-                                  ? '연애 시작일: ${_startedAt!.year}년 ${_startedAt!.month}월 ${_startedAt!.day}일'
-                                  : '연애 시작일 미설정 (터치하여 설정)',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.edit_outlined,
-                              size: 14,
-                              color: AppTheme.textSecondary,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (_coupleId == null) ...[
-                        const SizedBox(height: 20),
-                        const Divider(height: 1),
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const CoupleConnectScreen(),
-                              ),
-                            );
-                            _loadData();
-                          },
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.favorite_outline,
-                                size: 16,
-                                color: AppTheme.accent,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '커플 연동하기',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.accent,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: AppTheme.accent,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      if (_coupleId != null) ...[
-                        const SizedBox(height: 20),
-                        const Divider(height: 1),
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          onTap: _breakUp,
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.heart_broken_outlined,
-                                size: 16,
-                                color: Colors.red,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                '헤어지기',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Icon(
-                                Icons.chevron_right,
-                                size: 16,
-                                color: Colors.red,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // 프로필 설정
-                _buildSectionTitle('프로필 설정'),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(
-                          Icons.person_outline,
-                          color: AppTheme.textPrimary,
-                        ),
-                        title: const Text('내 이름 변경'),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onTap: () => _editProfile(true),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.favorite_border,
-                          color: AppTheme.accent,
-                        ),
-                        title: const Text('내 애인 이름 설정'),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onTap: () => _editProfile(false),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // 근무 설정
-                _buildSectionTitle('근무 설정'),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
-                  ),
-                  child: Column(children: [
-                    ListTile(
-                      leading: const Icon(Icons.work_outline, color: AppTheme.textPrimary),
-                      title: const Text('근무 유형'),
-                      trailing: Text(
-                        shiftLabel(_profile?.workPattern ?? 'office'),
-                        style: const TextStyle(
-                          fontSize: 13, color: AppTheme.textSecondary,
-                        ),
-                      ),
-                      onTap: () => _showWorkPatternPicker(),
+                )
+              : Theme(
+                  data: Theme.of(context).copyWith(
+                    listTileTheme: const ListTileThemeData(
+                      textColor: AppTheme.textPrimary,
+                      iconColor: AppTheme.textSecondary,
                     ),
-                    if (_profile != null) ...[
-                      // 일반 직장인: 근무 제목 편집
-                      if (_profile!.workPattern == 'office') ...[
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(
-                            Icons.edit_outlined,
-                            color: AppTheme.textPrimary,
-                          ),
-                          title: const Text('근무 제목'),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _profile!.shiftTimes.isNotEmpty
-                                    ? _profile!.shiftTimes.first.label
-                                    : '근무',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.chevron_right,
-                                color: AppTheme.textSecondary,
-                              ),
-                            ],
-                          ),
-                          onTap: _editWorkTitle,
+                    dividerTheme: const DividerThemeData(
+                      color: AppTheme.border,
+                      thickness: 1,
+                    ),
+                  ),
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    children: [
+                      // 커플 정보 섹션
+                      _buildSectionTitle('커플 정보'),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
                         ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: Container(
-                            width: 24,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: _hexToColor(_officeWorkColorHex),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          title: const Text('근무 색상'),
-                          trailing: const Icon(
-                            Icons.chevron_right,
-                            color: AppTheme.textSecondary,
-                          ),
-                          onTap: _pickOfficeWorkColor,
-                        ),
-                      ],
-                      const Divider(height: 1),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('근무 시간',
-                                style: TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500,
-                                  color: AppTheme.textSecondary,
-                                )),
-                            const SizedBox(height: 10),
-                            ShiftTimeEditor(
-                              shiftTimes: _profile!.shiftTimes,
-                              onChanged: _saveShiftTimes,
+                            // 닉네임
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.favorite,
+                                  color: AppTheme.primary,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 10),
+                                Flexible(
+                                  child: Text(
+                                    _myNickname ?? '-',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 8),
+                                  child: Text(
+                                    '&',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Text(
+                                    _partnerNickname ?? '연결 대기 중',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      color: _partnerNickname != null
+                                          ? AppTheme.textPrimary
+                                          : AppTheme.textSecondary,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const Spacer(),
+                                GestureDetector(
+                                  onTap: _coupleId != null
+                                      ? _changeStartedAt
+                                      : null,
+                                  child: Row(mainAxisSize: MainAxisSize.min),
+                                ),
+                              ],
                             ),
-                            // 일반 직장인: 이번달 적용 버튼
-                            if (_profile!.workPattern == 'office') ...[
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: _applyOfficeSchedulesThisMonth,
-                                  icon: const Icon(
-                                    Icons.calendar_month_outlined,
-                                    size: 18,
+                            const SizedBox(height: 16),
+                            // 연애 시작일
+                            GestureDetector(
+                              onTap: _coupleId != null
+                                  ? _changeStartedAt
+                                  : null,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.calendar_today_outlined,
+                                    size: 16,
+                                    color: AppTheme.textSecondary,
                                   ),
-                                  label: const Text('이번달에 적용하기'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.primary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _startedAt != null
+                                          ? '연애 시작일: ${_startedAt!.year}년 ${_startedAt!.month}월 ${_startedAt!.day}일'
+                                          : '연애 시작일 미설정 (터치하여 설정)',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.edit_outlined,
+                                    size: 14,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (_coupleId == null) ...[
+                              const SizedBox(height: 20),
+                              const Divider(height: 1),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: () async {
+                                  await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const CoupleConnectScreen(),
+                                    ),
+                                  );
+                                  _loadData();
+                                },
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.favorite_outline,
+                                      size: 16,
+                                      color: AppTheme.primary,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      '커플 연동하기',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: AppTheme.primary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 16,
+                                      color: AppTheme.primary,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if (_coupleId != null) ...[
+                              const SizedBox(height: 20),
+                              const Divider(height: 1),
+                              const SizedBox(height: 12),
+                              GestureDetector(
+                                onTap: _breakUp,
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.heart_broken_outlined,
+                                      size: 16,
+                                      color: Colors.red,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      '헤어지기',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    const Icon(
+                                      Icons.chevron_right,
+                                      size: 16,
+                                      color: Colors.red,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ],
                         ),
                       ),
-                    ],
-                  ]),
-                ),
 
-                const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                // 거리 설정 [GAP-FIX]
-                _buildSectionTitle('거리 설정'),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(
-                          Icons.map_outlined,
-                          color: AppTheme.textPrimary,
+                      // 연애 스타일
+                      _buildSectionTitle('연애 스타일'),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
                         ),
-                        title: const Text('거리 유형'),
-                        trailing: Text(
-                          _distanceTypeLabel(_profile?.distanceType ?? 'same_city'),
-                          style: const TextStyle(
-                            fontSize: 13, color: AppTheme.textSecondary,
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              '우리 커플의 연애 유형을 선택하세요.\n선택에 따라 홈 화면 기능이 달라져요.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.textSecondary,
+                                height: 1.5,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                _buildCoupleTypeOption(
+                                  value: 'together',
+                                  emoji: '🏠',
+                                  label: '매일 함께',
+                                  description: '같이 살거나\n매일 만나는 커플',
+                                  selected:
+                                      (_profile?.coupleType ?? 'distance') ==
+                                      'together',
+                                ),
+                                const SizedBox(width: 10),
+                                _buildCoupleTypeOption(
+                                  value: 'distance',
+                                  emoji: '💌',
+                                  label: '설레는 거리',
+                                  description: '떨어져 지내며\n만남이 더 특별한 커플',
+                                  selected:
+                                      (_profile?.coupleType ?? 'distance') ==
+                                      'distance',
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        onTap: _showDistancePicker,
                       ),
-                      if (_profile != null &&
-                          _profile!.distanceType == 'long_distance') ...[
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(
-                            Icons.location_on_outlined,
-                            color: AppTheme.textPrimary,
-                          ),
-                          title: const Text('내 도시 / 역'),
-                          trailing: Text(
-                            [_profile!.myCity, _profile!.myStation]
-                                .whereType<String>()
-                                .join(' · ')
-                                .isNotEmpty
-                                ? [_profile!.myCity, _profile!.myStation]
-                                    .whereType<String>()
-                                    .join(' · ')
-                                : '미설정',
-                            style: const TextStyle(
-                              fontSize: 13, color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          onTap: _showDistancePicker,
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(
-                            Icons.location_on_outlined,
-                            color: AppTheme.accent,
-                          ),
-                          title: const Text('파트너 도시 / 역'),
-                          trailing: Text(
-                            [_profile!.partnerCity, _profile!.partnerStation]
-                                .whereType<String>()
-                                .join(' · ')
-                                .isNotEmpty
-                                ? [_profile!.partnerCity, _profile!.partnerStation]
-                                    .whereType<String>()
-                                    .join(' · ')
-                                : '미설정',
-                            style: const TextStyle(
-                              fontSize: 13, color: AppTheme.textSecondary,
-                            ),
-                          ),
-                          onTap: _showDistancePicker,
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
 
-                const SizedBox(height: 32),
+                      const SizedBox(height: 32),
 
-                // 날씨 위치 설정
-                _buildSectionTitle('날씨 위치'),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(
-                          Icons.wb_sunny_outlined,
-                          color: Color(0xFF1976D2),
+                      // 프로필 설정
+                      _buildSectionTitle('프로필 설정'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
                         ),
-                        title: const Text('내 위치 도시'),
-                        trailing: Text(
-                          _profile?.myCity ?? '미설정',
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(
+                                Icons.person_outline,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('내 이름 변경'),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: AppTheme.textSecondary,
+                              ),
+                              onTap: () => _editProfile(true),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(
+                                Icons.favorite_border,
+                                color: AppTheme.primary,
+                              ),
+                              title: const Text('내 애인 이름 설정'),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: AppTheme.textSecondary,
+                              ),
+                              onTap: () => _editProfile(false),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 근무 설정
+                      _buildSectionTitle('근무 설정'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
+                        ),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(
+                                Icons.work_outline,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('근무 유형'),
+                              trailing: SizedBox(
+                                width: 110,
+                                child: Text(
+                                  shiftLabel(_profile?.workPattern ?? 'office'),
+                                  textAlign: TextAlign.right,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                              onTap: () => _showWorkPatternPicker(),
+                            ),
+                            if (_profile != null) ...[
+                              // 일반 직장인: 근무 제목 편집
+                              if (_profile!.workPattern == 'office') ...[
+                                const Divider(height: 1),
+                                ListTile(
+                                  leading: const Icon(
+                                    Icons.edit_outlined,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  title: const Text('근무 제목'),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 96,
+                                        child: Text(
+                                          _profile!.shiftTimes.isNotEmpty
+                                              ? _profile!.shiftTimes.first.label
+                                              : '근무',
+                                          textAlign: TextAlign.right,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.chevron_right,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: _editWorkTitle,
+                                ),
+                                const Divider(height: 1),
+                                ListTile(
+                                  leading: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: _hexToColor(_officeWorkColorHex),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  title: const Text('근무 색상'),
+                                  trailing: const Icon(
+                                    Icons.chevron_right,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                  onTap: _pickOfficeWorkColor,
+                                ),
+                              ],
+                              const Divider(height: 1),
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  12,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      '근무 시간',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    ShiftTimeEditor(
+                                      shiftTimes: _profile!.shiftTimes,
+                                      onChanged: _saveShiftTimes,
+                                    ),
+                                    // 일반 직장인: 이번달 적용 버튼
+                                    if (_profile!.workPattern == 'office') ...[
+                                      const SizedBox(height: 16),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: ElevatedButton.icon(
+                                          onPressed:
+                                              _applyOfficeSchedulesThisMonth,
+                                          icon: const Icon(
+                                            Icons.calendar_month_outlined,
+                                            size: 18,
+                                          ),
+                                          label: const Text('이번달에 적용하기'),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: AppTheme.primary,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 12,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 교통 정보
+                      _buildSectionTitle('교통 정보'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
+                        ),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(
+                                Icons.map_outlined,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('연애 거리'),
+                              trailing: SizedBox(
+                                width: 120,
+                                child: Text(
+                                  _distanceTypeLabel(
+                                    _profile?.distanceType ?? 'same_city',
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ),
+                              onTap: _showDistancePicker,
+                            ),
+                            if (_profile != null &&
+                                _profile!.distanceType == 'long_distance') ...[
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.location_on_outlined,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                title: const Text('내 출발역'),
+                                trailing: SizedBox(
+                                  width: 140,
+                                  child: Text(
+                                    [_profile!.myCity, _profile!.myStation]
+                                            .whereType<String>()
+                                            .join(' · ')
+                                            .isNotEmpty
+                                        ? [
+                                            _profile!.myCity,
+                                            _profile!.myStation,
+                                          ].whereType<String>().join(' · ')
+                                        : '미설정',
+                                    textAlign: TextAlign.right,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                onTap: _showDistancePicker,
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.location_on_outlined,
+                                  color: AppTheme.primary,
+                                ),
+                                title: const Text('애인 출발역'),
+                                trailing: SizedBox(
+                                  width: 140,
+                                  child: Text(
+                                    [
+                                              _profile!.partnerCity,
+                                              _profile!.partnerStation,
+                                            ]
+                                            .whereType<String>()
+                                            .join(' · ')
+                                            .isNotEmpty
+                                        ? [
+                                            _profile!.partnerCity,
+                                            _profile!.partnerStation,
+                                          ].whereType<String>().join(' · ')
+                                        : '미설정',
+                                    textAlign: TextAlign.right,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                                onTap: _showDistancePicker,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 날씨 지역
+                      _buildSectionTitle('날씨 지역'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
+                        ),
+                        child: Column(
+                          children: [
+                            if ((_profile?.coupleType ?? 'distance') ==
+                                'together') ...[
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.wb_sunny_outlined,
+                                  color: Color(0xFF1976D2),
+                                ),
+                                title: const Text('우리 동네'),
+                                trailing: Text(
+                                  _profile?.myCity ?? '미설정',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _profile?.myCity != null
+                                        ? AppTheme.textSecondary
+                                        : AppTheme.textTertiary,
+                                  ),
+                                ),
+                                onTap: () => _showWeatherCityPicker(isMe: true),
+                              ),
+                            ] else ...[
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.wb_sunny_outlined,
+                                  color: Color(0xFF1976D2),
+                                ),
+                                title: const Text('내 도시'),
+                                trailing: Text(
+                                  _profile?.myCity ?? '미설정',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _profile?.myCity != null
+                                        ? AppTheme.textSecondary
+                                        : AppTheme.textTertiary,
+                                  ),
+                                ),
+                                onTap: () => _showWeatherCityPicker(isMe: true),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(
+                                  Icons.favorite_border,
+                                  color: AppTheme.primary,
+                                ),
+                                title: const Text('애인 도시'),
+                                trailing: Text(
+                                  _profile?.partnerCity ?? '미설정',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: _profile?.partnerCity != null
+                                        ? AppTheme.textSecondary
+                                        : AppTheme.textTertiary,
+                                  ),
+                                ),
+                                onTap: () =>
+                                    _showWeatherCityPicker(isMe: false),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 앱 설정
+                      _buildSectionTitle('앱 설정'),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppTheme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: AppTheme.border),
+                          boxShadow: const [AppTheme.subtleShadow],
+                        ),
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(
+                                Icons.notifications_outlined,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('알림 설정'),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: AppTheme.textSecondary,
+                              ),
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const NotificationSettingsScreen(),
+                                  ),
+                                );
+                              },
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(
+                                Icons.info_outline,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('앱 버전'),
+                              trailing: const Text(
+                                'v1.0.0',
+                                style: TextStyle(color: AppTheme.textSecondary),
+                              ),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(
+                                Icons.description_outlined,
+                                color: AppTheme.textSecondary,
+                              ),
+                              title: const Text('서비스 이용약관 및 개인정보 처리방침'),
+                              trailing: const Icon(
+                                Icons.chevron_right,
+                                color: AppTheme.textSecondary,
+                              ),
+                              onTap: () async {
+                                final uri = Uri.parse(
+                                  'https://cooing-vacuum-46e.notion.site/c9f4e816cbe383ffbb5d01df0b220c98',
+                                );
+                                if (await canLaunchUrl(uri)) {
+                                  await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      // 로그아웃
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Colors.redAccent),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          foregroundColor: Colors.redAccent,
+                        ),
+                        onPressed: _signOut,
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text(
+                          '로그아웃',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // 계정 탈퇴
+                      TextButton(
+                        onPressed: _deleteAccount,
+                        child: const Text(
+                          '회원 탈퇴',
                           style: TextStyle(
-                            fontSize: 13,
-                            color: _profile?.myCity != null
-                                ? AppTheme.textSecondary
-                                : AppTheme.textTertiary,
+                            color: AppTheme.textSecondary,
+                            decoration: TextDecoration.underline,
                           ),
                         ),
-                        onTap: () => _showWeatherCityPicker(isMe: true),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.favorite_border,
-                          color: AppTheme.accent,
-                        ),
-                        title: const Text('파트너 위치 도시'),
-                        trailing: Text(
-                          _profile?.partnerCity ?? '미설정',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: _profile?.partnerCity != null
-                                ? AppTheme.textSecondary
-                                : AppTheme.textTertiary,
-                          ),
-                        ),
-                        onTap: () => _showWeatherCityPicker(isMe: false),
                       ),
                     ],
                   ),
                 ),
-
-                const SizedBox(height: 32),
-
-                // 앱 설정
-                _buildSectionTitle('앱 설정'),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: AppTheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [AppTheme.subtleShadow],
-                  ),
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(
-                          Icons.notifications_outlined,
-                          color: AppTheme.textPrimary,
-                        ),
-                        title: const Text('알림 설정'),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) =>
-                                  const NotificationSettingsScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.info_outline,
-                          color: AppTheme.textPrimary,
-                        ),
-                        title: const Text('앱 버전'),
-                        trailing: const Text(
-                          'v1.0.0',
-                          style: TextStyle(color: AppTheme.textSecondary),
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.description_outlined,
-                          color: AppTheme.textPrimary,
-                        ),
-                        title: const Text('서비스 이용약관'),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('준비 중입니다.')),
-                          );
-                        },
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.privacy_tip_outlined,
-                          color: AppTheme.textPrimary,
-                        ),
-                        title: const Text('개인정보 처리방침'),
-                        trailing: const Icon(
-                          Icons.chevron_right,
-                          color: AppTheme.textSecondary,
-                        ),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('준비 중입니다.')),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 32),
-
-                // 로그아웃
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Colors.redAccent),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    foregroundColor: Colors.redAccent,
-                  ),
-                  onPressed: _signOut,
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text(
-                    '로그아웃',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // 계정 탈퇴
-                TextButton(
-                  onPressed: _deleteAccount,
-                  child: const Text(
-                    '회원 탈퇴',
-                    style: TextStyle(
-                      color: AppTheme.textTertiary,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        ],
+      ),
     );
   }
 
@@ -1730,12 +2091,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
-        color: AppTheme.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textSecondary,
+          letterSpacing: 1.8,
+          height: 1.0,
+        ),
       ),
     );
   }

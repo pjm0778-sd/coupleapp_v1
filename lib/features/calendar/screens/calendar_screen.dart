@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme.dart';
@@ -37,6 +38,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   String? _partnerId;
   RealtimeChannel? _schedulesChannel;
   bool _partnerGrayMode = false;
+  bool _showTutorial = false;
 
   @override
   void initState() {
@@ -85,12 +87,25 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _loadHolidays(_focusedMonth);
     await _loadSchedules(_focusedMonth);
 
+    // 첫 방문 튜토리얼
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('calendar_tutorial_shown') ?? false;
+    if (!shown && mounted) {
+      setState(() => _showTutorial = true);
+    }
+
     // 홈화면에서 특정 날짜로 진입한 경우 자동으로 상세 시트 오픈
     if (widget.initialDate != null && mounted) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _openDayDetail(_selectedDay);
       });
     }
+  }
+
+  Future<void> _dismissTutorial() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('calendar_tutorial_shown', true);
+    if (mounted) setState(() => _showTutorial = false);
   }
 
   void _openDayDetail(DateTime date) {
@@ -144,13 +159,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _loadSchedules(DateTime month) async {
+    if (!mounted) return;
+
     if (_coupleId == null) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
       return;
     }
-    setState(() => _isLoading = true);
+
+    if (mounted) setState(() => _isLoading = true);
+
     try {
       final list = await _service.getMonthSchedules(_coupleId!, month);
+      if (!mounted) return;
 
       // 기념일 계산 (100일, 200일, 1주년 등)
       final anniversaries = _generateAnniversaries(month);
@@ -167,19 +187,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
           current = current.add(const Duration(days: 1));
         }
       }
+
       // 각 날짜별 ownerType 순 정렬
       for (final key in map.keys) {
         map[key] = _service.sortByOwner(map[key]!, _myUserId ?? '');
       }
 
-      if (mounted) {
-        setState(() {
-          _events = map;
-          _isLoading = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        _events = map;
+        _isLoading = false;
+      });
     } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
     }
   }
 
@@ -257,9 +278,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
       case '데이트':
         return const Color(0xFFE91E63);
       case '휴무':
+      case '쉬는날':
         return const Color(0xFFBDBDBD);
       case '기념일':
-        return AppTheme.accent;
+        return AppTheme.primary;
       default:
         return AppTheme.primary;
     }
@@ -295,15 +317,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _service.updateSchedule(schedule.id, result.toMap());
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정이 수정되었습니다')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정이 수정되었습니다')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 수정 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('일정 수정 실패: $e')));
         }
       }
     }
@@ -314,15 +336,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
       await _service.deleteSchedule(schedule.id);
       await _loadSchedules(_focusedMonth);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('일정이 삭제되었습니다')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('일정이 삭제되었습니다')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('일정 삭제 실패')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('일정 삭제 실패')));
       }
     }
   }
@@ -339,10 +361,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.delete_sweep_outlined, color: Colors.red),
+              leading: const Icon(
+                Icons.delete_sweep_outlined,
+                color: Colors.red,
+              ),
               title: const Text('전체 삭제'),
               subtitle: const Text('이달 내 모든 내 일정 삭제'),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               onTap: () => Navigator.pop(context, 'all'),
             ),
             const Divider(height: 1),
@@ -350,7 +377,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
               leading: const Icon(Icons.title_outlined, color: Colors.orange),
               title: const Text('제목으로 삭제'),
               subtitle: const Text('특정 제목의 일정만 삭제'),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
               onTap: () => Navigator.pop(context, 'title'),
             ),
           ],
@@ -407,9 +436,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       } catch (e) {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')));
         }
       }
     } else if (choice == 'title') {
@@ -418,7 +447,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       final title = await showDialog<String>(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: const Text('제목으로 삭제'),
           content: TextField(
             controller: controller,
@@ -456,9 +487,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                count > 0
-                    ? '"$title" 일정 $count개를 삭제했습니다.'
-                    : '삭제할 일정이 없습니다.',
+                count > 0 ? '"$title" 일정 $count개를 삭제했습니다.' : '삭제할 일정이 없습니다.',
               ),
             ),
           );
@@ -466,9 +495,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
       } catch (e) {
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정 삭제 중 오류가 발생했습니다.')));
         }
       }
     }
@@ -484,7 +513,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('누구의 사진 자동 등록 일정을 삭제할까요?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -670,9 +701,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   void _showAddSheet(DateTime? date) async {
     if (_coupleId == null || _myUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('커플 연결이 필요합니다.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('커플 연결이 필요합니다.')));
       return;
     }
     final result = await ScheduleAddSheet.show(
@@ -688,15 +719,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
         await _service.addSchedule(result);
         await _loadSchedules(_focusedMonth);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('일정을 추가했습니다.')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('일정을 추가했습니다.')));
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('일정 추가 실패: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('일정 추가 실패: $e')));
         }
       }
     }
@@ -737,7 +768,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
+        backgroundColor: AppTheme.background,
+        foregroundColor: AppTheme.textPrimary,
+        elevation: 0,
+        toolbarHeight: 68,
         title: GestureDetector(
           onTap: _showYearPicker,
           child: Row(
@@ -748,80 +784,129 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
                 ),
               ),
               const SizedBox(width: 2),
-              const Icon(Icons.arrow_drop_down),
+              const Icon(Icons.arrow_drop_down, color: AppTheme.textSecondary),
             ],
           ),
         ),
         centerTitle: false,
         actions: [
-          IconButton(
-            icon: Icon(
-              Icons.people_outlined,
-              color: _partnerGrayMode ? AppTheme.primary : AppTheme.textSecondary,
-            ),
+          _LabeledAppBarButton(
+            icon: Icons.people_outlined,
+            label: '색상구분',
+            color: _partnerGrayMode ? AppTheme.primary : AppTheme.textTertiary,
             tooltip: _partnerGrayMode ? '상대방 색상 구분 켜짐' : '상대방 색상 구분하기',
-            onPressed: () => setState(() {
-              _partnerGrayMode = !_partnerGrayMode;
-            }),
+            onPressed: () =>
+                setState(() => _partnerGrayMode = !_partnerGrayMode),
           ),
-          IconButton(
-            icon: const Icon(Icons.map_outlined, color: AppTheme.primary),
-            tooltip: '장소 지도',
+          _LabeledAppBarButton(
+            icon: Icons.map_outlined,
+            label: '장소지도',
+            color: AppTheme.primary,
+            tooltip: '데이트 장소를 지도로 보기',
             onPressed: () {
               if (_coupleId == null || _myUserId == null) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => DateMapScreen(
-                    coupleId: _coupleId!,
-                    myUserId: _myUserId!,
-                  ),
+                  builder: (_) =>
+                      DateMapScreen(coupleId: _coupleId!, myUserId: _myUserId!),
                 ),
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.calendar_month_outlined,
-                color: Color(0xFF4285F4)),
-            tooltip: '이달의 구글 캘린더 연동 일정 삭제',
-            onPressed: _deleteGoogleCalendarMonthSchedules,
+          PopupMenuButton<String>(
+            tooltip: '더보기',
+            color: AppTheme.surface,
+            icon: Icon(Icons.more_horiz_rounded, color: AppTheme.textSecondary),
+            onSelected: (value) {
+              switch (value) {
+                case 'delete_google':
+                  _deleteGoogleCalendarMonthSchedules();
+                  break;
+                case 'delete_ocr':
+                  _deleteOcrMonthSchedules();
+                  break;
+                case 'delete_all':
+                  _deleteMyMonthSchedules();
+                  break;
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem<String>(
+                value: 'delete_google',
+                child: _CalendarMenuItem(
+                  icon: Icons.calendar_month_outlined,
+                  label: '구글 연동 일정 삭제',
+                  color: Color(0xFF4285F4),
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete_ocr',
+                child: _CalendarMenuItem(
+                  icon: Icons.document_scanner_outlined,
+                  label: 'OCR 일정 삭제',
+                  color: AppTheme.warning,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete_all',
+                child: _CalendarMenuItem(
+                  icon: Icons.delete_sweep_outlined,
+                  label: '이달 내 일정 전체 삭제',
+                  color: AppTheme.error,
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.document_scanner_outlined,
-                color: AppTheme.warning),
-            tooltip: '이달의 사진 자동 등록 일정 삭제',
-            onPressed: _deleteOcrMonthSchedules,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined,
-                color: AppTheme.error),
-            tooltip: '이달의 내 일정 전체 삭제',
-            onPressed: _deleteMyMonthSchedules,
-          ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          if (_isLoading) const LinearProgressIndicator(minHeight: 2),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // TableCalendar 내부: 헤더 ~52px + 요일행 32px = 84px
-                const innerFixed = 52.0 + 32.0;
-                final rowH = ((constraints.maxHeight - innerFixed) / 6)
-                    .clamp(60.0, 110.0);
-                return _buildTableCalendar(rowHeight: rowH);
-              },
-            ),
+          Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+          Column(
+            children: [
+              if (_isLoading)
+                LinearProgressIndicator(
+                  minHeight: 2,
+                  color: AppTheme.primary,
+                  backgroundColor: AppTheme.primaryLight,
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppTheme.surface,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.border),
+                      boxShadow: const [AppTheme.cardShadow],
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        const innerFixed = 52.0 + 32.0;
+                        final rowH = ((constraints.maxHeight - innerFixed) / 6)
+                            .clamp(60.0, 110.0);
+                        return _buildTableCalendar(rowHeight: rowH);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
+          if (_showTutorial)
+            _CalendarTutorialOverlay(onDismiss: _dismissTutorial),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _showFabMenu,
         backgroundColor: AppTheme.primary,
+        foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
     );
@@ -867,13 +952,41 @@ class _CalendarScreenState extends State<CalendarScreen> {
         _loadHolidays(focusedDay);
         _loadSchedules(focusedDay);
       },
-      headerStyle: const HeaderStyle(
+      headerStyle: HeaderStyle(
         formatButtonVisible: false,
         titleCentered: true,
+        titleTextStyle: const TextStyle(
+          color: AppTheme.textPrimary,
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+        ),
+        leftChevronIcon: Icon(
+          Icons.chevron_left,
+          color: AppTheme.textSecondary,
+        ),
+        rightChevronIcon: Icon(
+          Icons.chevron_right,
+          color: AppTheme.textSecondary,
+        ),
+      ),
+      daysOfWeekStyle: DaysOfWeekStyle(
+        weekdayStyle: const TextStyle(
+          color: AppTheme.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+        weekendStyle: const TextStyle(
+          color: AppTheme.textSecondary,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       calendarStyle: const CalendarStyle(
         outsideDaysVisible: false,
-        weekendTextStyle: TextStyle(color: Color(0xFFE53935)),
+        weekendTextStyle: TextStyle(color: Color(0xFFFF6B6B)),
+        defaultDecoration: BoxDecoration(color: Colors.transparent),
+        todayDecoration: BoxDecoration(color: Colors.transparent),
+        selectedDecoration: BoxDecoration(color: Colors.transparent),
       ),
       calendarBuilders: CalendarBuilders<Schedule>(
         defaultBuilder: (ctx, day, _) =>
@@ -887,7 +1000,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildCell(DateTime day, {required bool isSelected, required bool isToday}) {
+  Widget _buildCell(
+    DateTime day, {
+    required bool isSelected,
+    required bool isToday,
+  }) {
     final events = _getEventsForDay(day);
     final sorted = _service.sortByOwner(events, _myUserId ?? '');
     return _CalendarCell(
@@ -934,11 +1051,13 @@ class _CalendarCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSunday = day.weekday == DateTime.sunday;
     final isSaturday = day.weekday == DateTime.saturday;
-    final isPublicHoliday = holidays.any((h) => h.type == HolidayType.publicHoliday);
+    final isPublicHoliday = holidays.any(
+      (h) => h.type == HolidayType.publicHoliday,
+    );
 
     Color numColor = AppTheme.textPrimary;
-    if (isPublicHoliday || isSunday) numColor = const Color(0xFFE53935);
-    if (isSaturday) numColor = const Color(0xFF1565C0);
+    if (isPublicHoliday || isSunday) numColor = const Color(0xFFD66B6B);
+    if (isSaturday) numColor = AppTheme.accent;
     if (isSelected) numColor = Colors.white;
 
     BoxDecoration numDecoration;
@@ -949,8 +1068,9 @@ class _CalendarCell extends StatelessWidget {
       );
     } else if (isToday) {
       numDecoration = BoxDecoration(
-        color: AppTheme.primary.withValues(alpha: 0.2),
+        color: AppTheme.primaryLight,
         shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.24)),
       );
     } else {
       numDecoration = const BoxDecoration();
@@ -982,8 +1102,8 @@ class _CalendarCell extends StatelessWidget {
       padding: const EdgeInsets.only(top: 2),
       decoration: const BoxDecoration(
         border: Border(
-          top: BorderSide(color: Color(0xFFE8E8E8), width: 0.5),
-          right: BorderSide(color: Color(0xFFE8E8E8), width: 0.5),
+          top: BorderSide(color: AppTheme.border, width: 0.7),
+          right: BorderSide(color: AppTheme.border, width: 0.7),
         ),
       ),
       child: Column(
@@ -1008,8 +1128,9 @@ class _CalendarCell extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           color: numColor,
-                          fontWeight:
-                              isSelected ? FontWeight.w700 : FontWeight.normal,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.normal,
                         ),
                       ),
                     ),
@@ -1022,7 +1143,7 @@ class _CalendarCell extends StatelessWidget {
                           size: 8,
                           color: isSelected
                               ? Colors.white.withValues(alpha: 0.9)
-                              : AppTheme.accent,
+                              : AppTheme.primary,
                         ),
                       ),
                   ],
@@ -1048,19 +1169,21 @@ class _CalendarCell extends StatelessWidget {
               Duration(days: normDay.weekday - 1), // 이번 주 월요일
             );
             final weekRowEnd = weekRowStart.add(const Duration(days: 6));
-            final visStart =
-                normStart.isAfter(weekRowStart) ? normStart : weekRowStart;
-            final visEnd =
-                normEnd.isBefore(weekRowEnd) ? normEnd : weekRowEnd;
+            final visStart = normStart.isAfter(weekRowStart)
+                ? normStart
+                : weekRowStart;
+            final visEnd = normEnd.isBefore(weekRowEnd) ? normEnd : weekRowEnd;
             final spanDays = visEnd.difference(visStart).inDays + 1;
             final titleDay = visStart.add(Duration(days: spanDays ~/ 2));
             final showTitle = normDay == titleDay;
 
             final barColor = s.isAnniversary
-                ? AppTheme.accent
-                : (partnerGrayMode && s.ownerType != 'couple' && s.userId != myUserId
-                    ? Colors.grey.shade400
-                    : getColor(s));
+                ? AppTheme.primary
+                : (partnerGrayMode &&
+                          s.ownerType != 'couple' &&
+                          s.userId != myUserId
+                      ? Colors.grey.shade400
+                      : getColor(s));
             return _EventBar(
               schedule: s,
               color: barColor,
@@ -1079,7 +1202,7 @@ class _CalendarCell extends StatelessWidget {
                 '+$overflowCount',
                 style: const TextStyle(
                   fontSize: 9,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.textTertiary,
                 ),
                 textAlign: TextAlign.right,
               ),
@@ -1087,22 +1210,25 @@ class _CalendarCell extends StatelessWidget {
 
           // 공휴일명 — 셀 하단에 표시 (바 연속성 유지)
           if (holidays.any((h) => h.type == HolidayType.publicHoliday))
-            Builder(builder: (context) {
-              final h = holidays
-                  .firstWhere((h) => h.type == HolidayType.publicHoliday);
-              return Padding(
-                padding: const EdgeInsets.only(top: 1, left: 2, right: 2),
-                child: Text(
-                  h.name.length > 4 ? h.name.substring(0, 4) : h.name,
-                  style: TextStyle(
-                    fontSize: 7,
-                    color: isSelected ? Colors.white70 : h.color,
+            Builder(
+              builder: (context) {
+                final h = holidays.firstWhere(
+                  (h) => h.type == HolidayType.publicHoliday,
+                );
+                return Padding(
+                  padding: const EdgeInsets.only(top: 1, left: 2, right: 2),
+                  child: Text(
+                    h.name.length > 4 ? h.name.substring(0, 4) : h.name,
+                    style: TextStyle(
+                      fontSize: 7,
+                      color: isSelected ? Colors.white70 : h.color,
+                    ),
+                    overflow: TextOverflow.clip,
+                    textAlign: TextAlign.center,
                   ),
-                  overflow: TextOverflow.clip,
-                  textAlign: TextAlign.center,
-                ),
-              );
-            }),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -1128,12 +1254,7 @@ class _EventBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final margin = EdgeInsets.fromLTRB(
-      isStart ? 2 : 0,
-      1,
-      isEnd ? 2 : 0,
-      0,
-    );
+    final margin = EdgeInsets.fromLTRB(isStart ? 2 : 0, 1, isEnd ? 2 : 0, 0);
     final borderRadius = BorderRadius.only(
       topLeft: isStart ? const Radius.circular(3) : Radius.zero,
       bottomLeft: isStart ? const Radius.circular(3) : Radius.zero,
@@ -1147,10 +1268,7 @@ class _EventBar extends StatelessWidget {
         height: 15,
         margin: margin,
         padding: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: borderRadius,
-        ),
+        decoration: BoxDecoration(color: color, borderRadius: borderRadius),
         alignment: Alignment.center,
         child: showTitle
             ? Text(
@@ -1166,6 +1284,251 @@ class _EventBar extends StatelessWidget {
                 maxLines: 1,
               )
             : const SizedBox.shrink(),
+      ),
+    );
+  }
+}
+
+class _CalendarMenuItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _CalendarMenuItem({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Text(
+          label,
+          style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13),
+        ),
+      ],
+    );
+  }
+}
+
+// ── AppBar 아이콘 + 라벨 버튼 ─────────────────────────────
+class _LabeledAppBarButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  const _LabeledAppBarButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  color: color,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── 앱 기능 첫 방문 튜토리얼 오버레이 ─────────────────────────
+class _CalendarTutorialOverlay extends StatefulWidget {
+  final VoidCallback onDismiss;
+  const _CalendarTutorialOverlay({required this.onDismiss});
+
+  @override
+  State<_CalendarTutorialOverlay> createState() =>
+      _CalendarTutorialOverlayState();
+}
+
+class _CalendarTutorialOverlayState extends State<_CalendarTutorialOverlay> {
+  int _page = 0;
+
+  static const _features = [
+    (
+      '📅',
+      '일정 공유',
+      '+ 버튼으로 내 일정을 등록하면\n파트너와 실시간으로 공유돼요.\n서로의 D·E·N 근무도 한눈에 볼 수 있어요.',
+    ),
+    (
+      '📸',
+      '사진 자동 등록',
+      '근무표 사진을 찍으면 OCR로\n한 달치 일정이 자동 등록돼요.\n설정에서 근무 시간을 미리 설정해 두세요.',
+    ),
+    ('📍', '장소 지도', '지도 버튼을 누르면 함께 갔던\n데이트 장소들을 지도에서 볼 수 있어요.'),
+    (
+      '🗑️',
+      '일정 삭제 버튼',
+      '상단 버튼으로 이달의 구글 캘린더\n연동 일정·OCR 일정·내 일정을\n한 번에 삭제할 수 있어요.',
+    ),
+    (
+      '🌤️',
+      '홈 화면 기능',
+      '홈에서는 날씨·교통·기념일·\n다음 데이트 D-day를 확인할 수 있어요.\n설정에서 도시와 연애 스타일을 설정해 보세요.',
+    ),
+    ('🎉', '기념일 자동 표시', '사귄 날짜를 등록하면 100일·1주년 등\n특별한 기념일이 달력에 자동으로 표시돼요.'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final feature = _features[_page];
+    final isLast = _page == _features.length - 1;
+
+    return GestureDetector(
+      onTap: () {},
+      child: Container(
+        color: Colors.black.withValues(alpha: 0.42),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Page dots
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(_features.length, (i) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          width: i == _page ? 16 : 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: i == _page
+                                ? AppTheme.primary
+                                : AppTheme.border,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        );
+                      }),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(feature.$1, style: const TextStyle(fontSize: 52)),
+                    const SizedBox(height: 12),
+                    Text(
+                      feature.$2,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      feature.$3,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondary,
+                        height: 1.6,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    Row(
+                      children: [
+                        if (_page > 0)
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => setState(() => _page--),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text('이전'),
+                            ),
+                          ),
+                        if (_page > 0) const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: ElevatedButton(
+                            onPressed: isLast
+                                ? widget.onDismiss
+                                : () => setState(() => _page++),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 0,
+                            ),
+                            child: Text(
+                              isLast ? '시작하기 🎉' : '다음',
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: widget.onDismiss,
+                      child: const Text(
+                        '건너뛰기',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textTertiary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

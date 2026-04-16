@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'notification_manager.dart';
@@ -17,6 +19,8 @@ class FcmService {
 
   final _fcm = FirebaseMessaging.instance;
 
+  bool get _isIOS => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
   Future<void> initialize() async {
     if (kIsWeb) return;
 
@@ -24,11 +28,18 @@ class FcmService {
     FirebaseMessaging.onBackgroundMessage(_firebaseBackgroundHandler);
 
     // 권한 요청 (iOS)
-    await _fcm.requestPermission(
+    final permission = await _fcm.requestPermission(
       alert: true,
       badge: true,
       sound: true,
     );
+    debugPrint('[FCM] notification permission: ${permission.authorizationStatus}');
+
+    await _fcm.setAutoInitEnabled(true);
+
+    if (_isIOS) {
+      await _waitForApnsToken();
+    }
 
     // FCM 토큰 저장 — 로그인 상태일 때만, 로그인 후에도 재시도
     await _saveToken();
@@ -48,12 +59,29 @@ class FcmService {
 
   Future<void> _saveToken() async {
     try {
+      if (_isIOS) {
+        final apnsToken = await _fcm.getAPNSToken();
+        debugPrint('[FCM] APNS token: $apnsToken');
+      }
+
       final token = await _fcm.getToken();
       debugPrint('[FCM] getToken result: $token');
       if (token != null) await _updateToken(token);
     } catch (e) {
       debugPrint('[FCM] getToken error: $e');
     }
+  }
+
+  Future<void> _waitForApnsToken() async {
+    for (var i = 0; i < 12; i++) {
+      final apnsToken = await _fcm.getAPNSToken();
+      if (apnsToken != null && apnsToken.isNotEmpty) {
+        debugPrint('[FCM] APNS token ready');
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+    debugPrint('[FCM] APNS token not ready in time');
   }
 
   Future<void> _updateToken(String token) async {

@@ -98,7 +98,7 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
     '#212121': Color(0xFF212121),
   };
 
-  static const _categories = ['출근', '외출', '여행', '데이트', '기타'];
+  static const _categories = ['출근', '외출', '여행', '데이트', '쉬는날', '기타'];
 
   @override
   void initState() {
@@ -175,6 +175,19 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
         const SnackBar(content: Text('제목을 입력해주세요')),
       );
       return;
+    }
+
+    // Auto-set category to '쉬는날' for common off-day notations.
+    final normalizedTitle = title.toLowerCase();
+    final isOffTitle =
+        normalizedTitle == 'x' ||
+        normalizedTitle == 'off' ||
+        normalizedTitle == '오프' ||
+        normalizedTitle == '휴무' ||
+        normalizedTitle == '쉬는날' ||
+        RegExp(r'^x+$', caseSensitive: false).hasMatch(title);
+    if (isOffTitle) {
+      _category = '쉬는날';
     }
 
     // Phase 1: show saving spinner

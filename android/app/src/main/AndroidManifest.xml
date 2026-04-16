@@ -30,6 +30,14 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="com.coupleduty.app"
+                    android:host="login-callback" />
+            </intent-filter>
         </activity>
 
         <!-- flutter_local_notifications: 예약 알림 수신자 -->

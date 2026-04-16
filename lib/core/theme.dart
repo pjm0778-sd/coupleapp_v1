@@ -5,44 +5,108 @@ class AppTheme {
   AppTheme._();
 
   // ── Core Colors ──────────────────────────────────────────
-  static const Color primary         = Color(0xFF00704A); // 스타벅스 그린
-  static const Color primaryLight    = Color(0xFFD4E9E2); // 연 스타벅스 그린 (내비 인디케이터)
-  static const Color accent          = Color(0xFFCBA258); // 스타벅스 골드
-  static const Color accentLight     = Color(0xFFF5EDD8); // 연 골드 크림
-  static const Color coral           = Color(0xFFE8A87A); // 소프트 웜 골드
-  static const Color background      = Color(0xFFF2F0EB); // 스타벅스 크림
-  static const Color surface         = Color(0xFFFFFFFF);
-  static const Color border          = Color(0xFFE0D8CC); // 웜 크림 보더
+  static const Color primary = Color(0xFFE07A84);
+  static const Color primaryLight = Color(0xFFF8E1E4);
+  static const Color accent = Color(0xFF7A98BD);
+  static const Color accentLight = Color(0xFFEFF4FA);
+  static const Color coral = Color(0xFFE89C7D);
+  static const Color background = Color(0xFFFCFBF8);
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color border = Color(0xFFE8E1D9);
 
   // ── Text Colors ───────────────────────────────────────────
-  static const Color textPrimary     = Color(0xFF3D3535); // 웜 다크 그레이
-  static const Color textSecondary   = Color(0xFF5A5050); // 대비율 4.8:1 확보 ↑
-  static const Color textTertiary    = Color(0xFFC0B0AC); // 웜 라이트
+  static const Color textPrimary = Color(0xFF2F2B28);
+  static const Color textSecondary = Color(0xFF6D6760);
+  static const Color textTertiary = Color(0xFFA49B92);
 
   // ── Semantic Colors ───────────────────────────────────────
-  static const Color success         = Color(0xFF57A882);
-  static const Color error           = Color(0xFFE05C5C);
-  static const Color warning         = Color(0xFFE8935A);
+  static const Color success = Color(0xFF6F9E7A);
+  static const Color error = Color(0xFFD76C6C);
+  static const Color warning = Color(0xFFE2A266);
+
+  // ── Shared Surface Helpers ──────────────────────────────
+  static const pageGradient = BoxDecoration(
+    gradient: LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        Color(0xFFFFFCF8),
+        Color(0xFFF8F4EE),
+        Color(0xFFF4F0EA),
+        Color(0xFFF8FAFD),
+      ],
+      stops: [0.0, 0.28, 0.72, 1.0],
+    ),
+  );
+
+  static BoxDecoration get surfaceCard => BoxDecoration(
+    color: surface,
+    borderRadius: BorderRadius.circular(16),
+    border: Border.all(color: border, width: 1),
+    boxShadow: const [subtleShadow],
+  );
+
+  static BoxDecoration cardRadius(double r) => BoxDecoration(
+    color: surface,
+    borderRadius: BorderRadius.circular(r),
+    border: Border.all(color: border, width: 1),
+    boxShadow: const [subtleShadow],
+  );
+
+  static InputDecoration textFieldDecoration({
+    required String hint,
+    Widget? suffixIcon,
+    String? counterText,
+    TextStyle? hintStyle,
+  }) => InputDecoration(
+    hintText: hint,
+    hintStyle: hintStyle ?? const TextStyle(color: textTertiary, fontSize: 14),
+    suffixIcon: suffixIcon,
+    counterText: counterText,
+    filled: true,
+    fillColor: surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: primary, width: 1.5),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFE05C5C)),
+    ),
+    focusedErrorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: Color(0xFFE05C5C), width: 1.5),
+    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  );
 
   // ── Calendar ─────────────────────────────────────────────
-  static const Color dateBorderColor = Color(0xFF00704A); // = primary
+  static const Color dateBorderColor = primary;
 
   // ── Shadows ───────────────────────────────────────────────
   static const BoxShadow cardShadow = BoxShadow(
-    color: Color(0x1800704A), // starbucks green-tinted 10%
+    color: Color(0x14000000),
     blurRadius: 24,
+    spreadRadius: 0,
+    offset: Offset(0, 10),
+  );
+  static const BoxShadow subtleShadow = BoxShadow(
+    color: Color(0x0F000000),
+    blurRadius: 14,
     spreadRadius: 0,
     offset: Offset(0, 4),
   );
-  static const BoxShadow subtleShadow = BoxShadow(
-    color: Color(0x1200704A), // starbucks green-tinted 7%
-    blurRadius: 12,
-    spreadRadius: 0,
-    offset: Offset(0, 2),
-  );
   static const BoxShadow navShadow = BoxShadow(
-    color: Color(0x1600704A), // starbucks green-tinted nav
-    blurRadius: 20,
+    color: Color(0x12000000),
+    blurRadius: 18,
     offset: Offset(0, -4),
   );
 
@@ -75,46 +139,55 @@ class AppTheme {
 
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        brightness: Brightness.light,
-      ).copyWith(
-        primary: primary,
-        secondary: accent,
-        surface: surface,
-        error: error,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: primary,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: primary,
+            secondary: accent,
+            surface: surface,
+            error: error,
+          ),
       scaffoldBackgroundColor: background,
 
       // ── Typography ──────────────────────────────────────
       textTheme: baseTextTheme.copyWith(
-        displayLarge:  baseTextTheme.displayLarge?.copyWith(color: textPrimary),
-        displayMedium: baseTextTheme.displayMedium?.copyWith(color: textPrimary),
-        displaySmall:  baseTextTheme.displaySmall?.copyWith(color: textPrimary),
+        displayLarge: baseTextTheme.displayLarge?.copyWith(color: textPrimary),
+        displayMedium: baseTextTheme.displayMedium?.copyWith(
+          color: textPrimary,
+        ),
+        displaySmall: baseTextTheme.displaySmall?.copyWith(color: textPrimary),
         headlineLarge: baseTextTheme.headlineLarge?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w700,
+          color: textPrimary,
+          fontWeight: FontWeight.w700,
         ),
         headlineMedium: baseTextTheme.headlineMedium?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w700,
+          color: textPrimary,
+          fontWeight: FontWeight.w700,
         ),
         headlineSmall: baseTextTheme.headlineSmall?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w600,
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
         ),
         titleLarge: baseTextTheme.titleLarge?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w600,
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
         ),
         titleMedium: baseTextTheme.titleMedium?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w600,
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
         ),
         titleSmall: baseTextTheme.titleSmall?.copyWith(color: textPrimary),
-        bodyLarge:  baseTextTheme.bodyLarge?.copyWith(color: textPrimary),
+        bodyLarge: baseTextTheme.bodyLarge?.copyWith(color: textPrimary),
         bodyMedium: baseTextTheme.bodyMedium?.copyWith(color: textPrimary),
-        bodySmall:  baseTextTheme.bodySmall?.copyWith(color: textSecondary),
+        bodySmall: baseTextTheme.bodySmall?.copyWith(color: textSecondary),
         labelLarge: baseTextTheme.labelLarge?.copyWith(
-          color: textPrimary, fontWeight: FontWeight.w600,
+          color: textPrimary,
+          fontWeight: FontWeight.w600,
         ),
         labelMedium: baseTextTheme.labelMedium?.copyWith(color: textSecondary),
-        labelSmall:  baseTextTheme.labelSmall?.copyWith(color: textTertiary),
+        labelSmall: baseTextTheme.labelSmall?.copyWith(color: textTertiary),
       ),
 
       // ── AppBar ──────────────────────────────────────────
@@ -140,7 +213,8 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         elevation: 0,
         selectedLabelStyle: GoogleFonts.notoSansKr(
-          fontSize: 11, fontWeight: FontWeight.w600,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: GoogleFonts.notoSansKr(fontSize: 11),
       ),
@@ -150,9 +224,7 @@ class AppTheme {
         color: surface,
         elevation: 0,
         shadowColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         margin: EdgeInsets.zero,
       ),
 
@@ -174,7 +246,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           textStyle: GoogleFonts.notoSansKr(
-            fontSize: 15, fontWeight: FontWeight.w600,
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -189,7 +262,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(14),
           ),
           textStyle: GoogleFonts.notoSansKr(
-            fontSize: 14, fontWeight: FontWeight.w500,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),
@@ -199,7 +273,8 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: accent,
           textStyle: GoogleFonts.notoSansKr(
-            fontSize: 14, fontWeight: FontWeight.w600,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
@@ -210,7 +285,8 @@ class AppTheme {
         fillColor: surface,
         hintStyle: GoogleFonts.notoSansKr(color: textTertiary, fontSize: 14),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16, vertical: 14,
+          horizontal: 16,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -242,7 +318,8 @@ class AppTheme {
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: border,
         labelStyle: GoogleFonts.notoSansKr(
-          fontSize: 13, fontWeight: FontWeight.w600,
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
         ),
         unselectedLabelStyle: GoogleFonts.notoSansKr(fontSize: 13),
       ),
@@ -280,14 +357,16 @@ class AppTheme {
       // ── Dialog ───────────────────────────────────────────
       dialogTheme: DialogThemeData(
         backgroundColor: surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         titleTextStyle: GoogleFonts.notoSansKr(
-          color: textPrimary, fontSize: 17, fontWeight: FontWeight.w700,
+          color: textPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
         ),
         contentTextStyle: GoogleFonts.notoSansKr(
-          color: textSecondary, fontSize: 14, height: 1.5,
+          color: textSecondary,
+          fontSize: 14,
+          height: 1.5,
         ),
       ),
 
@@ -301,7 +380,9 @@ class AppTheme {
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return GoogleFonts.notoSansKr(
-              fontSize: 11, fontWeight: FontWeight.w600, color: primary,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: primary,
             );
           }
           return GoogleFonts.notoSansKr(fontSize: 11, color: textTertiary);

@@ -101,7 +101,10 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
   }
 
   Future<void> _search() async {
-    setState(() { _isLoading = true; _isDirty = false; });
+    setState(() {
+      _isLoading = true;
+      _isDirty = false;
+    });
     try {
       final result = await _service.search(
         fromStation: _from,
@@ -120,7 +123,10 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
         setState(() {
           _isLoading = false;
           _hasSearched = true;
-          _result = TransportSearchResult(results: [], trainError: e.toString());
+          _result = TransportSearchResult(
+            results: [],
+            trainError: e.toString(),
+          );
         });
       }
     }
@@ -132,157 +138,190 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
       backgroundColor: AppTheme.background,
       appBar: AppBar(
         title: const Text('교통편 검색'),
+        backgroundColor: AppTheme.surface,
+        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // ── 검색 헤더 ──
-          Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              children: [
-                // 출발 ↔ 도착
-                Row(
+          Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+          Column(
+            children: [
+              // ── 검색 헤더 ──
+              Container(
+                color: Colors.transparent,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: Column(
                   children: [
-                    Expanded(
-                      child: _RouteBox(
-                        label: '출발',
-                        station: _from,
-                        onTap: () => _showStationPicker(isDeparture: true),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: _swapRoute,
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: const BoxDecoration(
-                          color: AppTheme.accentLight,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.swap_horiz_rounded,
-                          color: AppTheme.accent,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _RouteBox(
-                        label: '도착',
-                        station: _to,
-                        onTap: () => _showStationPicker(isDeparture: false),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                // 날짜 + 검색 버튼 행
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _pickDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surface,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: const [AppTheme.subtleShadow],
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.calendar_month_outlined,
-                                  size: 18, color: AppTheme.primary),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatDate(_date),
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const Spacer(),
-                              const Icon(Icons.chevron_right,
-                                  size: 18, color: AppTheme.textSecondary),
-                            ],
+                    // 출발 ↔ 도착
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _RouteBox(
+                            label: '출발',
+                            station: _from,
+                            onTap: () => _showStationPicker(isDeparture: true),
                           ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // 검색 버튼 (_isDirty 시 강조)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: _isDirty
-                            ? AppTheme.primary
-                            : AppTheme.primary.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: _isDirty
-                            ? [
-                                BoxShadow(
-                                  color:
-                                      AppTheme.primary.withValues(alpha: 0.4),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                )
-                              ]
-                            : null,
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: _isLoading ? null : _search,
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 12),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(Icons.search_rounded,
-                                    size: 18, color: Colors.white),
-                                const SizedBox(width: 4),
-                                const Text('검색',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    )),
-                              ],
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: _swapRoute,
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surface,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.border),
+                              boxShadow: const [AppTheme.subtleShadow],
+                            ),
+                            child: const Icon(
+                              Icons.swap_horiz_rounded,
+                              color: AppTheme.primary,
+                              size: 22,
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _RouteBox(
+                            label: '도착',
+                            station: _to,
+                            onTap: () => _showStationPicker(isDeparture: false),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // 날짜 + 검색 버튼 행
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _pickDate,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.border),
+                                boxShadow: const [AppTheme.subtleShadow],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.calendar_month_outlined,
+                                    size: 18,
+                                    color: AppTheme.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _formatDate(_date),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppTheme.textPrimary,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    size: 18,
+                                    color: AppTheme.textSecondary,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        // 검색 버튼 (_isDirty 시 강조)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(
+                            color: _isDirty
+                                ? AppTheme.primary
+                                : AppTheme.primary.withValues(alpha: 0.6),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: _isDirty
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.primary.withValues(
+                                        alpha: 0.4,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: _isLoading ? null : _search,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.search_rounded,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    const Text(
+                                      '검색',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
+              ),
 
-          // ── 탭 ──
-          Container(
-            color: Theme.of(context).scaffoldBackgroundColor,
-            child: TabBar(
-              controller: _tabController,
-              tabs: const [Tab(text: '전체'), Tab(text: '기차'), Tab(text: '버스')],
-              labelColor: AppTheme.primary,
-              unselectedLabelColor: AppTheme.textSecondary,
-              indicatorColor: AppTheme.primary,
-              indicatorWeight: 2.5,
-            ),
-          ),
+              // ── 탭 ──
+              Container(
+                color: Colors.transparent,
+                child: TabBar(
+                  controller: _tabController,
+                  tabs: const [
+                    Tab(text: '전체'),
+                    Tab(text: '기차'),
+                    Tab(text: '버스'),
+                  ],
+                  labelColor: AppTheme.primary,
+                  unselectedLabelColor: AppTheme.textSecondary,
+                  indicatorColor: AppTheme.primary,
+                  indicatorWeight: 2.5,
+                ),
+              ),
 
-          // ── 결과 ──
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : !_hasSearched
+              // ── 결과 ──
+              Expanded(
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.primary,
+                        ),
+                      )
+                    : !_hasSearched
                     ? const _InfoCard(
                         icon: Icons.train_outlined,
                         title: '검색 버튼을 눌러주세요',
@@ -292,28 +331,33 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
                         controller: _tabController,
                         children: [
                           _ResultList(
-                              results: _result?.results ?? [],
-                              searchResult: _result,
-                              filterType: null,
-                              fromStation: _from,
-                              toStation: _to,
-                              date: _date),
+                            results: _result?.results ?? [],
+                            searchResult: _result,
+                            filterType: null,
+                            fromStation: _from,
+                            toStation: _to,
+                            date: _date,
+                          ),
                           _ResultList(
-                              results: _result?.trainResults ?? [],
-                              searchResult: _result,
-                              filterType: 'train',
-                              fromStation: _from,
-                              toStation: _to,
-                              date: _date),
+                            results: _result?.trainResults ?? [],
+                            searchResult: _result,
+                            filterType: 'train',
+                            fromStation: _from,
+                            toStation: _to,
+                            date: _date,
+                          ),
                           _ResultList(
-                              results: _result?.busResults ?? [],
-                              searchResult: _result,
-                              filterType: 'bus',
-                              fromStation: _from,
-                              toStation: _to,
-                              date: _date),
+                            results: _result?.busResults ?? [],
+                            searchResult: _result,
+                            filterType: 'bus',
+                            fromStation: _from,
+                            toStation: _to,
+                            date: _date,
+                          ),
                         ],
                       ),
+              ),
+            ],
           ),
         ],
       ),
@@ -327,10 +371,15 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
     final isToday =
         d.year == today.year && d.month == today.month && d.day == today.day;
     final tomorrow = today.add(const Duration(days: 1));
-    final isTomorrow = d.year == tomorrow.year &&
+    final isTomorrow =
+        d.year == tomorrow.year &&
         d.month == tomorrow.month &&
         d.day == tomorrow.day;
-    final suffix = isToday ? ' (오늘)' : isTomorrow ? ' (내일)' : '';
+    final suffix = isToday
+        ? ' (오늘)'
+        : isTomorrow
+        ? ' (내일)'
+        : '';
     return '${d.month}월 ${d.day}일 ($wd)$suffix';
   }
 }
@@ -368,24 +417,39 @@ class _RouteBox extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppTheme.textSecondary)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 2),
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 15, fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (badge != null)
-                    Text(badge,
-                        style: const TextStyle(
-                            fontSize: 11, color: AppTheme.textSecondary)),
+                    Text(
+                      badge,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                 ],
               ),
             ),
-            const Icon(Icons.edit_outlined,
-                size: 14, color: AppTheme.textSecondary),
+            const Icon(
+              Icons.edit_outlined,
+              size: 14,
+              color: AppTheme.textSecondary,
+            ),
           ],
         ),
       ),
@@ -428,10 +492,12 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
     if (_query.isEmpty) return _allStations;
     final q = _query.toLowerCase();
     return _allStations
-        .where((e) =>
-            e.city.contains(q) ||
-            e.station.toLowerCase().contains(q) ||
-            e.stationShort.toLowerCase().contains(q))
+        .where(
+          (e) =>
+              e.city.contains(q) ||
+              e.station.toLowerCase().contains(q) ||
+              e.stationShort.toLowerCase().contains(q),
+        )
         .toList();
   }
 
@@ -467,7 +533,8 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
           const SizedBox(height: 12),
           Center(
             child: Container(
-              width: 40, height: 4,
+              width: 40,
+              height: 4,
               decoration: BoxDecoration(
                 color: AppTheme.border,
                 borderRadius: BorderRadius.circular(2),
@@ -480,12 +547,21 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
               children: [
-                Text(widget.title,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const Spacer(),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, size: 22, color: AppTheme.textSecondary),
+                  child: const Icon(
+                    Icons.close,
+                    size: 22,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -494,7 +570,10 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
           // 탭바
           TabBar(
             controller: _tabController,
-            tabs: const [Tab(text: '검색'), Tab(text: '지역 선택')],
+            tabs: const [
+              Tab(text: '검색'),
+              Tab(text: '지역 선택'),
+            ],
             labelColor: AppTheme.primary,
             unselectedLabelColor: AppTheme.textSecondary,
             indicatorColor: AppTheme.primary,
@@ -526,14 +605,22 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
             autofocus: false,
             decoration: InputDecoration(
               hintText: '역명, 터미널, 도시명으로 검색',
-              prefixIcon: const Icon(Icons.search, size: 20, color: AppTheme.textSecondary),
+              prefixIcon: const Icon(
+                Icons.search,
+                size: 20,
+                color: AppTheme.textSecondary,
+              ),
               suffixIcon: _query.isNotEmpty
                   ? GestureDetector(
                       onTap: () {
                         _searchCtrl.clear();
                         setState(() => _query = '');
                       },
-                      child: const Icon(Icons.clear, size: 18, color: AppTheme.textSecondary),
+                      child: const Icon(
+                        Icons.clear,
+                        size: 18,
+                        color: AppTheme.textSecondary,
+                      ),
                     )
                   : null,
               filled: true,
@@ -552,8 +639,13 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
           child: Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              _query.isEmpty ? '전체 ${filtered.length}개' : '검색결과 ${filtered.length}개',
-              style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+              _query.isEmpty
+                  ? '전체 ${filtered.length}개'
+                  : '검색결과 ${filtered.length}개',
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
             ),
           ),
         ),
@@ -561,8 +653,10 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
         Expanded(
           child: filtered.isEmpty
               ? const Center(
-                  child: Text('검색 결과가 없습니다',
-                      style: TextStyle(color: AppTheme.textSecondary)),
+                  child: Text(
+                    '검색 결과가 없습니다',
+                    style: TextStyle(color: AppTheme.textSecondary),
+                  ),
                 )
               : ListView.builder(
                   itemCount: filtered.length,
@@ -598,8 +692,8 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
           child: _province == null
               ? _buildProvinceHint()
               : _city == null
-                  ? _buildCityList(_province!)
-                  : _buildStationList(_city!),
+              ? _buildCityList(_province!)
+              : _buildStationList(_city!),
         ),
       ],
     );
@@ -610,11 +704,16 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.map_outlined, size: 52,
-              color: AppTheme.textSecondary.withValues(alpha: 0.3)),
+          Icon(
+            Icons.map_outlined,
+            size: 52,
+            color: AppTheme.textSecondary.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 16),
-          const Text('위에서 도/광역시를 선택하세요',
-              style: TextStyle(fontSize: 14, color: AppTheme.textSecondary)),
+          const Text(
+            '위에서 도/광역시를 선택하세요',
+            style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
+          ),
         ],
       ),
     );
@@ -622,14 +721,16 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
 
   // 시/군 목록 (cityStations에 등록된 곳만)
   Widget _buildCityList(String province) {
-    final cities = getCitiesInProvince(province)
-        .where((c) => cityStations.containsKey(c))
-        .toList();
+    final cities = getCitiesInProvince(
+      province,
+    ).where((c) => cityStations.containsKey(c)).toList();
 
     if (cities.isEmpty) {
       return const Center(
-        child: Text('등록된 역/터미널이 없습니다',
-            style: TextStyle(color: AppTheme.textSecondary)),
+        child: Text(
+          '등록된 역/터미널이 없습니다',
+          style: TextStyle(color: AppTheme.textSecondary),
+        ),
       );
     }
 
@@ -657,7 +758,8 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
             child: Row(
               children: [
                 Container(
-                  width: 38, height: 38,
+                  width: 38,
+                  height: 38,
                   decoration: const BoxDecoration(
                     color: AppTheme.accentLight,
                     shape: BoxShape.circle,
@@ -666,7 +768,8 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
                     child: Text(
                       city.substring(0, 1),
                       style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
                         color: AppTheme.accent,
                       ),
                     ),
@@ -677,15 +780,23 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(city,
-                          style: const TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.w600)),
+                      Text(
+                        city,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const SizedBox(height: 2),
-                      Text(subtitle,
-                          style: const TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ],
                   ),
                 ),
@@ -716,18 +827,25 @@ class _StationSearchSheetState extends State<_StationSearchSheet>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.arrow_back_ios_new_rounded,
-                    size: 14, color: AppTheme.primary),
+                const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 14,
+                  color: AppTheme.primary,
+                ),
                 const SizedBox(width: 6),
-                Text(city,
-                    style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.primary)),
+                Text(
+                  city,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
+                  ),
+                ),
                 const SizedBox(width: 6),
-                const Text('역/터미널 선택',
-                    style: TextStyle(
-                        fontSize: 13, color: AppTheme.textSecondary)),
+                const Text(
+                  '역/터미널 선택',
+                  style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                ),
               ],
             ),
           ),
@@ -807,8 +925,7 @@ class _StationItem extends StatelessWidget {
             children: [
               // 타입 뱃지
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: entry.badgeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(6),
@@ -828,13 +945,14 @@ class _StationItem extends StatelessWidget {
                 child: Text(
                   entry.stationShort,
                   style: const TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w500),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
               // 도시
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppTheme.surface,
                   borderRadius: BorderRadius.circular(6),
@@ -842,7 +960,9 @@ class _StationItem extends StatelessWidget {
                 child: Text(
                   entry.city,
                   style: const TextStyle(
-                      fontSize: 12, color: AppTheme.textSecondary),
+                    fontSize: 12,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
               ),
             ],
@@ -947,12 +1067,14 @@ class _ResultList extends StatelessWidget {
             body: '해당 날짜에 운행 편이 없거나\n노선이 없을 수 있습니다.',
           )
         else
-          ...results.map((r) => _TransitCard(
-                result: r,
-                fromStation: fromStation,
-                toStation: toStation,
-                date: date,
-              )),
+          ...results.map(
+            (r) => _TransitCard(
+              result: r,
+              fromStation: fromStation,
+              toStation: toStation,
+              date: date,
+            ),
+          ),
       ],
     );
   }
@@ -966,8 +1088,9 @@ class _SrtBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF003580).withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
-        border:
-            Border.all(color: const Color(0xFF003580).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF003580).withValues(alpha: 0.2),
+        ),
       ),
       child: Row(
         children: [
@@ -982,14 +1105,17 @@ class _SrtBanner extends StatelessWidget {
           TextButton(
             onPressed: () => _launchUrl(srtBookingUrl),
             style: TextButton.styleFrom(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero),
-            child: const Text('예매',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF003580),
-                    fontWeight: FontWeight.w600)),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+            ),
+            child: const Text(
+              '예매',
+              style: TextStyle(
+                fontSize: 12,
+                color: Color(0xFF003580),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -1012,13 +1138,20 @@ class _ErrorBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.warning_amber_rounded,
-              size: 16, color: Colors.orange),
+          const Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: Colors.orange,
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(message,
-                style: const TextStyle(
-                    fontSize: 12, color: AppTheme.textSecondary)),
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
           ),
         ],
       ),
@@ -1031,8 +1164,11 @@ class _InfoCard extends StatelessWidget {
   final String title;
   final String body;
 
-  const _InfoCard(
-      {required this.icon, required this.title, required this.body});
+  const _InfoCard({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1040,20 +1176,26 @@ class _InfoCard extends StatelessWidget {
       padding: const EdgeInsets.only(top: 40),
       child: Column(
         children: [
-          Icon(icon,
-              size: 48,
-              color: AppTheme.textSecondary.withValues(alpha: 0.4)),
+          Icon(icon, size: 48, color: Colors.white54),
           const SizedBox(height: 16),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(body,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.textSecondary,
-                  height: 1.5)),
+          Text(
+            body,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: Color(0xCCFFFFFF),
+              height: 1.5,
+            ),
+          ),
         ],
       ),
     );
@@ -1091,11 +1233,14 @@ class _TransitCard extends StatelessWidget {
               color: _typeColor(result.type).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text(result.typeLabel,
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: _typeColor(result.type))),
+            child: Text(
+              result.typeLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: _typeColor(result.type),
+              ),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1104,36 +1249,57 @@ class _TransitCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(result.departureTime,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(
+                      result.departureTime,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.arrow_forward,
-                        size: 14, color: AppTheme.textSecondary),
+                    const Icon(
+                      Icons.arrow_forward,
+                      size: 14,
+                      color: AppTheme.textSecondary,
+                    ),
                     const SizedBox(width: 8),
-                    Text(result.arrivalTime,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w700)),
+                    Text(
+                      result.arrivalTime,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Row(
                   children: [
                     Text(
-                        result.durationMinutes > 0
-                            ? result.durationLabel
-                            : '소요시간 미제공',
-                        style: const TextStyle(
-                            fontSize: 12, color: AppTheme.textSecondary)),
+                      result.durationMinutes > 0
+                          ? result.durationLabel
+                          : '소요시간 미제공',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
                     if (result.fareLabel.isNotEmpty) ...[
-                      const Text(' · ',
-                          style: TextStyle(
-                              fontSize: 12, color: AppTheme.textSecondary)),
-                      Text(result.fareLabel,
-                          style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.textSecondary,
-                              fontWeight: FontWeight.w500)),
+                      const Text(
+                        ' · ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        result.fareLabel,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -1143,17 +1309,19 @@ class _TransitCard extends StatelessWidget {
           GestureDetector(
             onTap: () => _openBooking(),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
               decoration: BoxDecoration(
                 color: AppTheme.accent,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text('예매',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.primary)),
+              child: const Text(
+                '예매',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.primary,
+                ),
+              ),
             ),
           ),
         ],
@@ -1190,16 +1358,18 @@ class _TransitCard extends StatelessWidget {
     final appScheme = result.type == TransitType.srt
         ? 'srail' // SRT 앱 scheme (패키지 com.srail.www)
         : result.type == TransitType.ktx || result.isRailway
-            ? 'korailapp'
-            : null;
+        ? 'korailapp'
+        : null;
 
     if (appScheme != null) {
       final appUri = Uri.parse('$appScheme://');
       try {
         if (await canLaunchUrl(appUri)) {
           // 앱이 설치돼 있음 — 앱 실행 후 웹 URL도 함께 열기
-          await launchUrl(Uri.parse(webUrl),
-              mode: LaunchMode.externalApplication);
+          await launchUrl(
+            Uri.parse(webUrl),
+            mode: LaunchMode.externalApplication,
+          );
           return;
         }
       } catch (_) {}

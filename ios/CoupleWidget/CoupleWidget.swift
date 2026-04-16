@@ -100,8 +100,6 @@ struct SmallWidgetView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
                 Spacer()
-                Text("💑")
-                    .font(.system(size: 14))
             }
 
             Rectangle()
@@ -158,8 +156,6 @@ struct MediumWidgetView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 4) {
-                Text("💑")
-                    .font(.system(size: 13))
                 Text(headerText)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(Color(hex: "3D3535"))

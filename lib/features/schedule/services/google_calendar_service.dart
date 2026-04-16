@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/calendar/v3.dart' as gcal;
 import 'package:http/http.dart' as http;
+import '../../../core/google_sign_in_config.dart';
 
 /// google_sign_in의 액세스 토큰을 googleapis에 전달하기 위한 HTTP 클라이언트
 class _AuthClient extends http.BaseClient {
@@ -19,7 +21,10 @@ class _AuthClient extends http.BaseClient {
 class GoogleCalendarService {
   static final _googleSignIn = GoogleSignIn(
     scopes: [gcal.CalendarApi.calendarReadonlyScope],
-    clientId: '495666365155-kfkkbjjvh6hgee5aj9oc2aukk62bemsr.apps.googleusercontent.com',
+    clientId: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS
+        ? googleIosClientId
+        : null,
+    serverClientId: googleWebClientId,
   );
 
   Future<GoogleSignInAccount?> signIn() => _googleSignIn.signIn();
