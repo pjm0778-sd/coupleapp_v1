@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
+import '../../../shared/widgets/wheel_time_picker.dart';
 import '../../calendar/services/schedule_service.dart';
 
 class OcrReviewScreen extends StatefulWidget {
@@ -55,14 +56,111 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
     setState(() => _schedules.removeWhere((s) => s['_key'] == key));
   }
 
-  Future<void> _editItem(int index) async {
-    final result = await showDialog<Map<String, dynamic>>(
+  DateTime? _tryParseDate(String? value) {
+    if (value == null || value.trim().isEmpty) return null;
+    return DateTime.tryParse(value.trim());
+  }
+
+  String _fmtDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
+  }
+
+  String _fmtTimeOfDay(TimeOfDay time) {
+    final h = time.hour.toString().padLeft(2, '0');
+    final m = time.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Future<void> _editWorkType(int index) async {
+    final current = (_schedules[index]['work_type'] as String? ?? '').trim();
+    final controller = TextEditingController(text: current);
+    final result = await showDialog<String>(
       context: context,
-      builder: (ctx) => _OcrItemEditDialog(item: _schedules[index]),
+      builder: (ctx) => AlertDialog(
+        title: const Text('일정명 수정'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: '일정명을 입력하세요',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('저장'),
+          ),
+        ],
+      ),
     );
-    if (result != null) {
-      setState(() => _schedules[index] = result);
+    controller.dispose();
+    if (result == null || result.isEmpty) return;
+
+    setState(() {
+      _schedules[index]['work_type'] = result;
+      _schedules[index]['category'] =
+          _schedules[index]['category'] as String? ?? _detectCategory(result);
+    });
+  }
+
+  Future<void> _editDateRange(int index) async {
+    final start = _tryParseDate(_schedules[index]['start_date'] as String?) ??
+        DateTime(widget.ocrYear, widget.ocrMonth, 1);
+    final end = _tryParseDate(_schedules[index]['end_date'] as String?) ?? start;
+
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      initialDateRange: DateTimeRange(start: start, end: end),
+      helpText: '일정 날짜 수정',
+      saveText: '저장',
+      locale: const Locale('ko', 'KR'),
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _schedules[index]['start_date'] = _fmtDate(picked.start);
+      _schedules[index]['end_date'] = _fmtDate(picked.end);
+    });
+  }
+
+  Future<void> _editTime(int index, {required bool isStart}) async {
+    final field = isStart ? 'start_time' : 'end_time';
+    final raw = _schedules[index][field] as String?;
+    TimeOfDay initial = const TimeOfDay(hour: 9, minute: 0);
+    if (raw != null && raw.contains(':')) {
+      final parts = raw.split(':');
+      final h = int.tryParse(parts[0]);
+      final m = int.tryParse(parts[1]);
+      if (h != null && m != null) {
+        initial = TimeOfDay(hour: h, minute: m);
+      }
     }
+
+    final picked = await showWheelTimePicker(
+      context: context,
+      initialTime: initial,
+      title: isStart ? '시작 시간 선택' : '종료 시간 선택',
+    );
+    if (picked == null) return;
+
+    setState(() {
+      _schedules[index][field] = _fmtTimeOfDay(picked);
+    });
   }
 
   String? _detectCategory(String? workType) {
@@ -199,7 +297,7 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                       ),
                       const Spacer(),
                       const Text(
-                        '탭: 수정  |  좌로 스와이프: 삭제',
+                        '항목 탭: 바로 수정  |  좌로 스와이프: 삭제',
                         style: TextStyle(
                           fontSize: 11,
                           color: AppTheme.textSecondary,
@@ -233,71 +331,130 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
                         onDismissed: (_) => _deleteItem(key),
-                        child: GestureDetector(
-                          onTap: () => _editItem(index),
-                          child: Container(
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.07),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: color.withValues(alpha: 0.3),
-                              ),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.07),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.3),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 12,
-                                  height: 12,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    shape: BoxShape.circle,
-                                  ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                margin: const EdgeInsets.only(top: 5),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
                                 ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        s['work_type'] as String? ?? '일정',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.textPrimary,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    InkWell(
+                                      onTap: () => _editWorkType(index),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 2,
+                                          horizontal: 2,
+                                        ),
+                                        child: Text(
+                                          s['work_type'] as String? ?? '일정',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.textPrimary,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        s['start_date'] == s['end_date']
-                                            ? s['start_date'] as String? ?? ''
-                                            : '${s['start_date']} ~ ${s['end_date']}',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppTheme.textSecondary,
-                                        ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '종류: ${s['category'] as String? ?? _detectCategory(s['work_type'] as String?)}',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.textSecondary,
                                       ),
-                                      if (s['start_time'] != null)
-                                        Text(
-                                          s['end_time'] != null
-                                              ? '${s['start_time']} ~ ${s['end_time']}'
-                                              : s['start_time'] as String,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    InkWell(
+                                      onTap: () => _editDateRange(index),
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 2,
+                                          horizontal: 2,
+                                        ),
+                                        child: Text(
+                                          s['start_date'] == s['end_date']
+                                              ? s['start_date'] as String? ?? ''
+                                              : '${s['start_date']} ~ ${s['end_date']}',
                                           style: const TextStyle(
                                             fontSize: 12,
                                             color: AppTheme.textSecondary,
                                           ),
                                         ),
-                                    ],
-                                  ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        InkWell(
+                                          onTap: () => _editTime(index, isStart: true),
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 2,
+                                              horizontal: 2,
+                                            ),
+                                            child: Text(
+                                              s['start_time'] as String? ?? '시작시간 미설정',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Text(
+                                          '~',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        InkWell(
+                                          onTap: () => _editTime(index, isStart: false),
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 2,
+                                              horizontal: 2,
+                                            ),
+                                            child: Text(
+                                              s['end_time'] as String? ?? '종료시간 미설정',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.textSecondary,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                                const Icon(
-                                  Icons.edit_outlined,
-                                  size: 16,
-                                  color: AppTheme.textSecondary,
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -342,132 +499,6 @@ class _OcrReviewScreenState extends State<OcrReviewScreen> {
                 ),
               ],
             ),
-    );
-  }
-}
-
-class _OcrItemEditDialog extends StatefulWidget {
-  final Map<String, dynamic> item;
-  const _OcrItemEditDialog({required this.item});
-
-  @override
-  State<_OcrItemEditDialog> createState() => _OcrItemEditDialogState();
-}
-
-class _OcrItemEditDialogState extends State<_OcrItemEditDialog> {
-  late TextEditingController _titleCtrl;
-  late TextEditingController _startDateCtrl;
-  late TextEditingController _endDateCtrl;
-  late TextEditingController _startTimeCtrl;
-  late TextEditingController _endTimeCtrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleCtrl = TextEditingController(
-      text: widget.item['work_type'] as String? ?? '',
-    );
-    _startDateCtrl = TextEditingController(
-      text: widget.item['start_date'] as String? ?? '',
-    );
-    _endDateCtrl = TextEditingController(
-      text: widget.item['end_date'] as String? ?? '',
-    );
-    _startTimeCtrl = TextEditingController(
-      text: widget.item['start_time'] as String? ?? '',
-    );
-    _endTimeCtrl = TextEditingController(
-      text: widget.item['end_time'] as String? ?? '',
-    );
-  }
-
-  @override
-  void dispose() {
-    _titleCtrl.dispose();
-    _startDateCtrl.dispose();
-    _endDateCtrl.dispose();
-    _startTimeCtrl.dispose();
-    _endTimeCtrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('일정 수정'),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(
-                labelText: '일정명',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _startDateCtrl,
-              decoration: const InputDecoration(
-                labelText: '시작일 (YYYY-MM-DD)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _endDateCtrl,
-              decoration: const InputDecoration(
-                labelText: '종료일 (YYYY-MM-DD)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _startTimeCtrl,
-              decoration: const InputDecoration(
-                labelText: '시작시간 (HH:mm, 선택)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _endTimeCtrl,
-              decoration: const InputDecoration(
-                labelText: '종료시간 (HH:mm, 선택)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('취소'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            final updated = Map<String, dynamic>.from(widget.item);
-            updated['work_type'] = _titleCtrl.text.trim();
-            updated['start_date'] = _startDateCtrl.text.trim();
-            final endDate = _endDateCtrl.text.trim();
-            updated['end_date'] =
-                endDate.isEmpty ? _startDateCtrl.text.trim() : endDate;
-            final st = _startTimeCtrl.text.trim();
-            final et = _endTimeCtrl.text.trim();
-            if (st.isNotEmpty) updated['start_time'] = st;
-            if (et.isNotEmpty) updated['end_time'] = et;
-            Navigator.pop(context, updated);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.white,
-          ),
-          child: const Text('저장'),
-        ),
-      ],
     );
   }
 }

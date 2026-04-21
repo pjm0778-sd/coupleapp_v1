@@ -1,0 +1,2 @@
+[functions.schedule-table-ocr]
+verify_jwt = false

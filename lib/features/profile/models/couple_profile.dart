@@ -1,20 +1,5 @@
 import 'shift_time.dart';
 
-/// 커플 유형 — DB 값: 'together' | 'distance'
-enum CoupleType {
-  together('together'), // 매일 함께
-  distance('distance'); // 설레는 거리
-
-  const CoupleType(this.value);
-  final String value;
-
-  static CoupleType fromValue(String? value) =>
-      CoupleType.values.firstWhere(
-        (e) => e.value == value,
-        orElse: () => CoupleType.distance,
-      );
-}
-
 /// 거리 유형 — DB 값: 'same_city' | 'near' | 'long_distance'
 enum DistanceType {
   sameCity('same_city'),
@@ -56,7 +41,7 @@ class CoupleProfile {
   final String? nickname;
   final DateTime? coupleStartDate;
 
-  final String coupleType;   // 'together' | 'distance'
+  final String coupleType; // 'together' | 'distance'
   final String distanceType; // 'same_city' | 'near' | 'long_distance'
   final String? myCity;
   final String? myStation;

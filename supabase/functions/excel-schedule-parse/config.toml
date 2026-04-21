@@ -1,0 +1,2 @@
+[functions.excel-schedule-parse]
+verify_jwt = false

@@ -32,7 +32,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
   bool _saving = false;
 
   static const _patterns = [
-    ('shift_3', '👩‍⚕️', '간호사 / 의료직 3교대'),
+    ('shift_3', '👩‍⚕️', '교대근무 3교대'),
     ('shift_2', '🔄', '교대 근무 2교대'),
     ('office', '💼', '일반 직장인 (주5일)'),
     ('other', '🎨', '기타 / 프리랜서'),
@@ -162,7 +162,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
 
   // ── Step 1: 연애 스타일 ─────────────────────────────────
   Widget _buildStep1() {
-    final isTogether = _draft.coupleType == 'together';
+    final isSameCity = _draft.distanceType == 'same_city';
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Column(
@@ -186,19 +186,19 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
           ),
           const SizedBox(height: 32),
           _buildTypeOption(
-            value: 'together',
+            value: 'same_city',
             emoji: '🏠',
-            title: '매일 함께',
-            subtitle: '같이 살거나 매일 만나는 사이',
-            selected: isTogether,
+            title: '같은 도시',
+            subtitle: '근거리에서 자주 만나는 사이',
+            selected: isSameCity,
           ),
           const SizedBox(height: 12),
           _buildTypeOption(
-            value: 'distance',
+            value: 'long_distance',
             emoji: '💌',
-            title: '설레는 거리',
-            subtitle: '따로 살거나 장거리 연애 중',
-            selected: !isTogether,
+            title: '장거리',
+            subtitle: '다른 도시에서 지내는 사이',
+            selected: !isSameCity,
           ),
           const SizedBox(height: 40),
           SizedBox(
@@ -244,7 +244,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
   }) {
     return GestureDetector(
       onTap: () => setState(
-          () => _draft = _draft.copyWith(coupleType: value)),
+          () => _draft = _draft.copyWith(distanceType: value)),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.all(18),
@@ -297,7 +297,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
 
   // ── Step 2: 도시 설정 ───────────────────────────────────
   Widget _buildStep2() {
-    final isTogether = _draft.coupleType == 'together';
+    final isSameCity = _draft.distanceType == 'same_city';
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
       child: Column(
@@ -313,7 +313,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            isTogether
+            isSameCity
                 ? '날씨 정보와 교통 안내에 사용돼요'
                 : '두 분의 날씨와 교통 안내에 사용돼요',
             style:
@@ -330,7 +330,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
             child: Column(
               children: [
                 RegionSelectorWidget(
-                  label: isTogether ? '우리 동네' : '내 도시',
+                  label: isSameCity ? '우리 동네' : '내 도시',
                   selectedProvince:
                       getProvinceOfCity(_draft.myCity ?? ''),
                   selectedCity: _draft.myCity,
@@ -342,15 +342,15 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
                         myCity: v,
                         myStation: station,
                         partnerCity:
-                            isTogether ? v : _draft.partnerCity,
-                        partnerStation: isTogether
+                            isSameCity ? v : _draft.partnerCity,
+                        partnerStation: isSameCity
                             ? station
                             : _draft.partnerStation,
                       );
                     });
                   },
                 ),
-                if (!isTogether) ...[
+                if (!isSameCity) ...[
                   const SizedBox(height: 20),
                   const Divider(height: 1),
                   const SizedBox(height: 20),
@@ -425,7 +425,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
           ),
           const SizedBox(height: 6),
           const Text(
-            '근무 형태에 맞는 일정 관리를 도와드려요',
+            '템플릿 기반 일정 관리를 도와드려요',
             style: TextStyle(fontSize: 14, color: AppTheme.textSecondary),
           ),
           const SizedBox(height: 28),
@@ -479,7 +479,7 @@ class _CoupleSetupGuideScreenState extends State<CoupleSetupGuideScreen> {
 
           const SizedBox(height: 20),
           const Text(
-            '근무 시간 설정',
+            '템플릿 설정',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 /// Supabase JSONB 직렬화 시 snake_case key 유지 (호환성)
 class ShiftTime {
   final String shiftType; // 'D' | 'E' | 'N' | 'day' | 'night' | 'office'
-  final String label;     // '낮번', '저녁번', '밤번', '주간', '야간', '근무'
+  final String label;     // 하위 호환용 저장 필드, 현재는 shiftType과 동일하게 관리
+  final String? colorHex; // 코드별 사용자 지정 색상
+  final bool isAllDay;    // 종일 근무 여부
   final int startHour;
   final int startMinute;
   final int endHour;
@@ -13,7 +15,9 @@ class ShiftTime {
 
   const ShiftTime({
     required this.shiftType,
-    required this.label,
+    this.label = '',
+    this.colorHex,
+    this.isAllDay = false,
     required this.startHour,
     required this.startMinute,
     required this.endHour,
@@ -39,7 +43,9 @@ class ShiftTime {
   /// Supabase JSONB 호환 직렬화 (shift_defaults.dart 와 동일한 key 사용)
   Map<String, dynamic> toMap() => {
     'shift_type': shiftType,
-    'label': label,
+    'label': label.isNotEmpty ? label : shiftType,
+    'color_hex': colorHex,
+    'is_all_day': isAllDay,
     'start_h': startHour,
     'start_m': startMinute,
     'end_h': endHour,
@@ -49,9 +55,14 @@ class ShiftTime {
 
   /// Map (shift_defaults / Supabase) 에서 생성
   factory ShiftTime.fromMap(Map<String, dynamic> map) {
+    final shiftType = map['shift_type'] as String;
     return ShiftTime(
-      shiftType: map['shift_type'] as String,
-      label: map['label'] as String,
+      shiftType: shiftType,
+      label: (map['label'] as String?)?.trim().isNotEmpty == true
+          ? map['label'] as String
+          : shiftType,
+      colorHex: map['color_hex'] as String?,
+        isAllDay: map['is_all_day'] as bool? ?? false,
       startHour: map['start_h'] as int,
       startMinute: map['start_m'] as int,
       endHour: map['end_h'] as int,
@@ -63,6 +74,8 @@ class ShiftTime {
   ShiftTime copyWith({
     String? shiftType,
     String? label,
+    String? colorHex,
+    bool? isAllDay,
     int? startHour,
     int? startMinute,
     int? endHour,
@@ -71,6 +84,8 @@ class ShiftTime {
   }) => ShiftTime(
     shiftType: shiftType ?? this.shiftType,
     label: label ?? this.label,
+    colorHex: colorHex ?? this.colorHex,
+    isAllDay: isAllDay ?? this.isAllDay,
     startHour: startHour ?? this.startHour,
     startMinute: startMinute ?? this.startMinute,
     endHour: endHour ?? this.endHour,
@@ -84,6 +99,8 @@ class ShiftTime {
       other is ShiftTime &&
           shiftType == other.shiftType &&
           label == other.label &&
+          colorHex == other.colorHex &&
+          isAllDay == other.isAllDay &&
           startHour == other.startHour &&
           startMinute == other.startMinute &&
           endHour == other.endHour &&
@@ -92,5 +109,14 @@ class ShiftTime {
 
   @override
   int get hashCode => Object.hash(
-      shiftType, label, startHour, startMinute, endHour, endMinute, isNextDay);
+      shiftType,
+      label,
+      colorHex,
+      isAllDay,
+      startHour,
+      startMinute,
+      endHour,
+      endMinute,
+      isNextDay,
+    );
 }

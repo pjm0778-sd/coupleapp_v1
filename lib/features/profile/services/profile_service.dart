@@ -11,7 +11,7 @@ class ProfileService {
     final data = await supabase
         .from('profiles')
         .select(
-          'couple_type, distance_type, my_city, my_station, partner_city, partner_station, '
+          'distance_type, my_city, my_station, partner_city, partner_station, '
           'work_pattern, shift_times, notify_minutes_before, has_car, onboarding_completed',
         )
         .eq('id', userId)
@@ -51,6 +51,16 @@ class ProfileService {
         .from('profiles')
         .update({'nickname': nickname})
         .eq('id', userId);
+
+    final profile = await supabase
+        .from('profiles')
+        .select('couple_id')
+        .eq('id', userId)
+        .maybeSingle();
+    final coupleId = profile?['couple_id'] as String?;
+    if (coupleId != null && coupleId.isNotEmpty) {
+      await syncCoupleDisplayName(coupleId);
+    }
   }
 
   /// 파트너 프로필 로드 [GAP-FIX]
@@ -59,7 +69,7 @@ class ProfileService {
         .from('profiles')
         .select(
           'id, user_id, couple_id, nickname, '
-          'couple_type, distance_type, my_city, my_station, partner_city, partner_station, '
+          'distance_type, my_city, my_station, partner_city, partner_station, '
           'work_pattern, shift_times, notify_minutes_before, has_car, onboarding_completed',
         )
         .eq('id', partnerId)
@@ -128,7 +138,59 @@ class ProfileService {
         .from('profiles')
         .update({'nickname': nickname})
         .eq('id', partnerId as String);
+
+    await syncCoupleDisplayName(coupleId);
   }
+
+    /// 커플 공용 닉네임 로드 (couples.couple_display_name)
+    Future<String?> loadCoupleDisplayName(String coupleId) async {
+    final couple = await supabase
+      .from('couples')
+      .select('couple_display_name')
+      .eq('id', coupleId)
+      .maybeSingle();
+    return couple?['couple_display_name'] as String?;
+    }
+
+    /// 커플 양쪽 닉네임을 조합해 공용 표시명을 최신화
+    Future<void> syncCoupleDisplayName(String coupleId) async {
+    final couple = await supabase
+      .from('couples')
+      .select('user1_id, user2_id')
+      .eq('id', coupleId)
+      .maybeSingle();
+    if (couple == null) return;
+
+    final user1Id = couple['user1_id'] as String?;
+    final user2Id = couple['user2_id'] as String?;
+    if (user1Id == null || user2Id == null) return;
+
+    final user1Profile = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('id', user1Id)
+      .maybeSingle();
+    final user2Profile = await supabase
+      .from('profiles')
+      .select('nickname')
+      .eq('id', user2Id)
+      .maybeSingle();
+
+    final user1Name = (user1Profile?['nickname'] as String?)?.trim();
+    final user2Name = (user2Profile?['nickname'] as String?)?.trim();
+
+    final parts = [user1Name, user2Name]
+      .where((e) => e != null && e.isNotEmpty)
+      .cast<String>()
+      .toList();
+
+    final displayName = parts.isEmpty ? null : parts.join('&');
+
+    await supabase
+      .from('couples')
+      .update({'couple_display_name': displayName})
+      .eq('id', coupleId);
+    }
 
   /// 파트너 닉네임 로드 (couples + profiles 조인)
   Future<String?> loadPartnerNickname(String coupleId) async {

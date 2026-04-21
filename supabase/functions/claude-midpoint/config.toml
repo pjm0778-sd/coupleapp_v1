@@ -1,0 +1,2 @@
+[functions.claude-midpoint]
+verify_jwt = false

@@ -19,26 +19,34 @@ class HomeService {
       return {'mine': <Schedule>[], 'partner': <Schedule>[]};
     }
 
-    final myData = await supabase
+    final rows = await supabase
         .from('schedules')
         .select()
-        .eq('user_id', currentUserId)
         .eq('couple_id', coupleId)
         .or('date.eq.$dateStr,and(start_date.lte.$dateStr,end_date.gte.$dateStr)')
         .order('start_time', ascending: true);
 
-    final partnerData = await supabase
-        .from('schedules')
-        .select()
-        .neq('user_id', currentUserId)
-        .eq('couple_id', coupleId)
-        .or('date.eq.$dateStr,and(start_date.lte.$dateStr,end_date.gte.$dateStr)')
-        .order('start_time', ascending: true);
+    final mine = <Schedule>[];
+    final partner = <Schedule>[];
 
-    return {
-      'mine': (myData as List).map((e) => Schedule.fromMap(e)).toList(),
-      'partner': (partnerData as List).map((e) => Schedule.fromMap(e)).toList(),
-    };
+    for (final row in (rows as List)) {
+      final schedule = Schedule.fromMap(row as Map<String, dynamic>);
+
+      // Couple-owned schedules should appear in both columns on home cards.
+      if (schedule.ownerType == 'couple') {
+        mine.add(schedule);
+        partner.add(schedule);
+        continue;
+      }
+
+      if (schedule.userId == currentUserId) {
+        mine.add(schedule);
+      } else {
+        partner.add(schedule);
+      }
+    }
+
+    return {'mine': mine, 'partner': partner};
   }
 
   /// D-day 정보 + 내 애인 닉네임 조회

@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme.dart';
 import '../../profile/data/city_station_data.dart';
+import '../../profile/services/profile_service.dart';
+import '../../profile/models/couple_profile.dart';
 import '../models/transit_result.dart';
 import '../services/transport_service.dart';
 import '../data/station_codes.dart';
 
 class TransportSearchScreen extends StatefulWidget {
-  final String fromStation;
-  final String toStation;
+  final String? fromStation;
+  final String? toStation;
   final DateTime? initialDate;
 
   const TransportSearchScreen({
     super.key,
-    required this.fromStation,
-    required this.toStation,
+    this.fromStation,
+    this.toStation,
     this.initialDate,
   });
 
@@ -34,15 +36,64 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
 
   late TabController _tabController;
   final _service = TransportService();
+  final _profileService = ProfileService();
+
+  // 기본 역이 미설정인 경우 초기 설정 모드
+  bool _isSetupMode = false;
+  String _setupMyStation = '';
+  String _setupPartnerStation = '';
+  bool _isSavingSetup = false;
+  CoupleProfile? _profile;
 
   @override
   void initState() {
     super.initState();
-    _from = widget.fromStation;
-    _to = widget.toStation;
+    _from = widget.fromStation ?? '';
+    _to = widget.toStation ?? '';
     _date = widget.initialDate ?? DateTime.now();
     _tabController = TabController(length: 3, vsync: this);
-    // 자동 검색 제거 — 유저가 검색 버튼을 눌러야 조회됨
+    if (_from.isEmpty || _to.isEmpty) {
+      _isSetupMode = true;
+      _loadProfile();
+    }
+  }
+
+  Future<void> _loadProfile() async {
+    final profile = await _profileService.loadMyProfile();
+    if (!mounted) return;
+    setState(() {
+      _profile = profile;
+      _setupMyStation = profile?.myStation ?? '';
+      _setupPartnerStation = profile?.partnerStation ?? '';
+    });
+  }
+
+  Future<void> _saveSetup() async {
+    if (_setupMyStation.isEmpty || _setupPartnerStation.isEmpty) return;
+    setState(() => _isSavingSetup = true);
+    try {
+      final base = _profile;
+      if (base != null) {
+        final updated = base.copyWith(
+          myStation: _setupMyStation,
+          partnerStation: _setupPartnerStation,
+        );
+        await _profileService.saveProfile(updated);
+      }
+      if (!mounted) return;
+      setState(() {
+        _from = _setupMyStation;
+        _to = _setupPartnerStation;
+        _isSetupMode = false;
+        _isSavingSetup = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSavingSetup = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('저장에 실패했습니다. 다시 시도해 주세요.')),
+      );
+    }
   }
 
   @override
@@ -141,12 +192,129 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
         backgroundColor: AppTheme.surface,
         foregroundColor: AppTheme.textPrimary,
         elevation: 0,
+        actions: _isSetupMode
+            ? null
+            : [
+                TextButton(
+                  onPressed: () => setState(() => _isSetupMode = true),
+                  child: const Text(
+                    '역 변경',
+                    style: TextStyle(
+                        color: AppTheme.primary, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
-          Column(
+      body: _isSetupMode ? _buildSetupBody() : _buildSearchBody(),
+    );
+  }
+
+  Widget _buildSetupBody() {
+    final canSave =
+        _setupMyStation.isNotEmpty && _setupPartnerStation.isNotEmpty;
+    return Stack(
+      children: [
+        Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text(
+                '기본 출발역 설정',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                '각자의 출발역을 설정하면 교통편 검색 시 자동으로 불러옵니다.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 28),
+              _SetupStationCard(
+                icon: Icons.person_outline,
+                label: '내 출발역',
+                station: _setupMyStation,
+                onTap: () => _showSetupStationPicker(isMine: true),
+              ),
+              const SizedBox(height: 12),
+              _SetupStationCard(
+                icon: Icons.favorite_border,
+                label: '파트너 출발역',
+                station: _setupPartnerStation,
+                onTap: () => _showSetupStationPicker(isMine: false),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: canSave && !_isSavingSetup ? _saveSetup : null,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: _isSavingSetup
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          '저장하고 검색하기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showSetupStationPicker({required bool isMine}) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _StationSearchSheet(
+        title: isMine ? '내 출발역 선택' : '파트너 출발역 선택',
+        excludeStation: isMine ? _setupPartnerStation : _setupMyStation,
+        onSelected: (station) {
+          setState(() {
+            if (isMine) {
+              _setupMyStation = station;
+            } else {
+              _setupPartnerStation = station;
+            }
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildSearchBody() {
+    return Stack(
+      children: [
+        Positioned.fill(child: Container(decoration: AppTheme.pageGradient)),
+        Column(
+          children: [
               // ── 검색 헤더 ──
               Container(
                 color: Colors.transparent,
@@ -360,8 +528,7 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
             ],
           ),
         ],
-      ),
-    );
+      );
   }
 
   String _formatDate(DateTime d) {
@@ -381,6 +548,84 @@ class _TransportSearchScreenState extends State<TransportSearchScreen>
         ? ' (내일)'
         : '';
     return '${d.month}월 ${d.day}일 ($wd)$suffix';
+  }
+}
+
+// ── 설정 모드 카드 ──
+class _SetupStationCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String station;
+  final VoidCallback onTap;
+
+  const _SetupStationCard({
+    required this.icon,
+    required this.label,
+    required this.station,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hasStation = station.isNotEmpty;
+    final shortName = hasStation
+        ? station.replaceAll(RegExp(r'\s*\(.*?\)'), '').trim()
+        : null;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: hasStation ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.border,
+          ),
+          boxShadow: const [AppTheme.subtleShadow],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.accentLight,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 20, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    shortName ?? '역 선택',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: hasStation ? AppTheme.textPrimary : AppTheme.textTertiary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              hasStation ? Icons.check_circle_rounded : Icons.chevron_right,
+              size: 20,
+              color: hasStation ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

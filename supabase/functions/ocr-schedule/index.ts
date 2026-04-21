@@ -3,6 +3,153 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function parseClaudeJson(
+  raw: string,
+  targetYear: number,
+  targetMonth: number,
+): Record<string, unknown> {
+  const attempts: string[] = []
+  const trimmed = raw.trim()
+  attempts.push(trimmed)
+
+  const matched = trimmed.match(/\{[\s\S]*\}/)
+  if (matched) attempts.push(matched[0])
+
+  for (const attempt of attempts) {
+    if (!attempt) continue
+    try {
+      return JSON.parse(attempt)
+    } catch {
+      // continue to repair path
+    }
+
+    // Common OCR JSON breakage repair: truncated quote in string field / trailing comma
+    const repaired = attempt
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(
+        /"(start_date|end_date|start_time|end_time|work_type|color_hex)"\s*:\s*"([^"\n\r}]*)}/g,
+        '"$1": "$2"}',
+      )
+      .replace(
+        /"(start_date|end_date|start_time|end_time|work_type|color_hex)"\s*:\s*"([^"\n\r,]*),/g,
+        '"$1": "$2",',
+      )
+
+    try {
+      return JSON.parse(repaired)
+    } catch {
+      // fall through to next attempt
+    }
+  }
+
+  const objectChunks = trimmed.match(/\{[^{}]*\}/g) ?? []
+  const schedules: Record<string, unknown>[] = []
+
+  for (const chunk of objectChunks) {
+    if (!chunk.includes('"start_date"')) continue
+    const start = chunk.match(/"start_date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/)?.[1]
+    const end = chunk.match(/"end_date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/)?.[1]
+    const workType = chunk.match(/"work_type"\s*:\s*"([^"]*)"/)?.[1]
+    const color = chunk.match(/"color_hex"\s*:\s*"(#[0-9A-Fa-f]{6})"/)?.[1]
+    if (!start || !end || !workType || !color) continue
+
+    const schedule: Record<string, unknown> = {
+      start_date: start,
+      end_date: end,
+      work_type: workType,
+      color_hex: color,
+    }
+
+    const startTime = chunk.match(/"start_time"\s*:\s*"([0-2]\d:[0-5]\d)"/)?.[1]
+    const endTime = chunk.match(/"end_time"\s*:\s*"([0-2]\d:[0-5]\d)"/)?.[1]
+    if (startTime) schedule.start_time = startTime
+    if (endTime) schedule.end_time = endTime
+
+    schedules.push(schedule)
+  }
+
+  if (schedules.length > 0) {
+    const year = Number(trimmed.match(/"year"\s*:\s*(\d{4})/)?.[1] ?? targetYear)
+    const month = Number(trimmed.match(/"month"\s*:\s*(\d{1,2})/)?.[1] ?? targetMonth)
+    return { year, month, schedules, _partial_recovered: true }
+  }
+
+  throw new Error(`Claude JSON 파싱 실패: ${trimmed.slice(0, 240)}`)
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate()
+}
+
+function normalizeWorkType(input: unknown): string {
+  const raw = String(input ?? '').trim()
+  if (!raw) return ''
+  const compact = raw.toUpperCase().replace(/\s+/g, '')
+
+  const aliases: Record<string, string> = {
+    OFF: 'X',
+    O: 'X',
+    휴무: 'X',
+    비번: 'X',
+    DAY: 'D',
+    MORNING: 'M',
+    EVENING: 'E',
+    NIGHT: 'N',
+  }
+  return aliases[compact] ?? raw
+}
+
+function normalizeResultJson(
+  input: Record<string, unknown>,
+  fallbackYear: number,
+  fallbackMonth: number,
+): Record<string, unknown> {
+  const year = Number(input['year'] ?? fallbackYear)
+  const month = Number(input['month'] ?? fallbackMonth)
+  const maxDay = daysInMonth(year, month)
+
+  const schedulesRaw =
+    (input['schedules'] as Record<string, unknown>[] | undefined) ?? []
+
+  const schedules = schedulesRaw
+    .map((s) => {
+      const startDate = String(s['start_date'] ?? '').trim()
+      const endDate = String(s['end_date'] ?? startDate).trim()
+      const workType = normalizeWorkType(s['work_type'])
+      const colorHex = String(s['color_hex'] ?? '#607D8B').trim()
+
+      const startMatch = startDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      const endMatch = endDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+      if (!startMatch || !endMatch || !workType) return null
+
+      const sy = Number(startMatch[1])
+      const sm = Number(startMatch[2])
+      const sd = Number(startMatch[3])
+      const ey = Number(endMatch[1])
+      const em = Number(endMatch[2])
+      const ed = Number(endMatch[3])
+
+      if (sy != year || sm != month || ey != year || em != month) return null
+      if (sd < 1 || sd > maxDay || ed < 1 || ed > maxDay) return null
+
+      const normalized: Record<string, unknown> = {
+        start_date: startDate,
+        end_date: endDate,
+        work_type: workType,
+        color_hex: /^#[0-9A-Fa-f]{6}$/.test(colorHex) ? colorHex : '#607D8B',
+      }
+
+      const startTime = String(s['start_time'] ?? '').trim()
+      const endTime = String(s['end_time'] ?? '').trim()
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(startTime)) normalized.start_time = startTime
+      if (/^([01]\d|2[0-3]):[0-5]\d$/.test(endTime)) normalized.end_time = endTime
+      return normalized
+    })
+    .filter((v): v is Record<string, unknown> => v !== null)
+
+  return { year, month, schedules }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -54,7 +201,6 @@ JSON만 출력하세요. 설명이나 분석 텍스트는 일절 출력하지 �
     if (!apiKey) {
       throw new Error('ANTHROPIC_API_KEY secret이 설정되지 않았습니다')
     }
-
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -64,16 +210,13 @@ JSON만 출력하세요. 설명이나 분석 텍스트는 일절 출력하지 �
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 1500,
+        max_tokens: 3000,
         system: systemMessage,
         messages: [
           {
             role: 'user',
             content: [
-              {
-                type: 'text',
-                text: userPrompt,
-              },
+              { type: 'text', text: userPrompt },
               {
                 type: 'image',
                 source: {
@@ -96,24 +239,22 @@ JSON만 출력하세요. 설명이나 분석 텍스트는 일절 출력하지 �
     }
 
     const data = await response.json()
-    const content = data.content?.[0]?.text ?? '{}'
-    console.log('Claude raw response:', content)
+    const content = data.content?.[0]?.text ?? ''
+    if (!content.trim()) {
+      throw new Error('Claude 응답 본문이 비어 있습니다')
+    }
 
     const cleaned = content
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
       .trim()
-    const match = cleaned.match(/\{[\s\S]*\}/)
-    const resultJson = match ? JSON.parse(match[0]) : { year: targetYear, month: targetMonth, schedules: [] }
+    console.log('Claude raw response:', cleaned)
 
-    resultJson.year = resultJson.year ?? targetYear
-    resultJson.month = resultJson.month ?? targetMonth
+    const parsed = parseClaudeJson(cleaned, targetYear, targetMonth)
+    const resultJson = normalizeResultJson(parsed, targetYear, targetMonth)
 
-    if (resultJson.schedules) {
-      resultJson.schedules = (resultJson.schedules as Record<string, unknown>[]).filter(
-        (s) => s['start_date'] != null
-      )
-    }
+    resultJson['year'] = resultJson['year'] ?? targetYear
+    resultJson['month'] = resultJson['month'] ?? targetMonth
 
     return new Response(JSON.stringify(resultJson), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

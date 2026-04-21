@@ -1,0 +1,7 @@
+-- Fix schedules_category_check constraint
+-- 1. '출 근' (space typo) → '출근'
+-- 2. '쉬는날' 추가 (X/OFF 근무유형이 이 카테고리로 저장됨)
+ALTER TABLE schedules DROP CONSTRAINT IF EXISTS schedules_category_check;
+ALTER TABLE schedules
+  ADD CONSTRAINT schedules_category_check
+  CHECK (category IN ('근무', '출근', '외출', '약속', '여행', '데이트', '기타', '휴무', '기념일', '쉬는날'));

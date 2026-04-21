@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/theme.dart';
 import '../../../shared/models/schedule.dart';
+import '../../../shared/widgets/wheel_time_picker.dart';
 import '../services/place_search_service.dart';
 
 class ScheduleAddSheet extends StatefulWidget {
@@ -279,9 +280,10 @@ class _ScheduleAddSheetState extends State<ScheduleAddSheet> {
     final initial = isStart
         ? (_startTime ?? const TimeOfDay(hour: 9, minute: 0))
         : (_endTime ?? const TimeOfDay(hour: 10, minute: 0));
-    final picked = await showTimePicker(
+    final picked = await showWheelTimePicker(
       context: context,
       initialTime: initial,
+      title: isStart ? '시작 시간 선택' : '종료 시간 선택',
     );
     if (picked == null || !mounted) return;
     setState(() {

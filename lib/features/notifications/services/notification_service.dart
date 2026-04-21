@@ -101,14 +101,6 @@ class NotificationService {
                 body: body,
                 type: NotificationType.scheduleAdded,
               );
-              _manager.addToHistory(
-                AppNotification.fromRealtime(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: title,
-                  body: body,
-                  type: NotificationType.scheduleAdded,
-                ),
-              );
               if (hasCommute) _schedulePartnerCommuteAlerts();
             });
           },
@@ -157,14 +149,6 @@ class NotificationService {
                 body: body,
                 type: NotificationType.scheduleDeleted,
               );
-              _manager.addToHistory(
-                AppNotification.fromRealtime(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: title,
-                  body: body,
-                  type: NotificationType.scheduleDeleted,
-                ),
-              );
               if (hasCommute) _schedulePartnerCommuteAlerts();
             });
           },
@@ -190,14 +174,6 @@ class NotificationService {
                 title: '📝 파트너가 일정을 수정했어요',
                 body: '${date.month}월 ${date.day}일 일정이 수정되었어요',
                 type: NotificationType.scheduleUpdated,
-              );
-              _manager.addToHistory(
-                AppNotification.fromRealtime(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: '📝 파트너가 일정을 수정했어요',
-                  body: '${date.month}월 ${date.day}일 일정이 수정되었어요',
-                  type: NotificationType.scheduleUpdated,
-                ),
               );
             }
             if (newRecord['category'] == '출근' ||
@@ -319,14 +295,6 @@ class NotificationService {
                 title: '💬 파트너가 댓글을 남겼어요',
                 body: '"$scheduleTitle" 일정에 댓글이 달렸습니다',
                 type: NotificationType.commentAdded,
-              );
-              _manager.addToHistory(
-                AppNotification.fromRealtime(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  title: '💬 파트너가 댓글을 남겼어요',
-                  body: '"$scheduleTitle" 일정에 댓글이 달렸습니다',
-                  type: NotificationType.commentAdded,
-                ),
               );
             }
           },

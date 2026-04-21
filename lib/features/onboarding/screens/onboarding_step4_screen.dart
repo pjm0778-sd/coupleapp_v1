@@ -30,7 +30,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
   bool _isSaving = false;
 
   static const _patterns = [
-    ('shift_3', '👩‍⚕️', '간호사 / 의료직 3교대'),
+    ('shift_3', '👩‍⚕️', '교대근무 3교대'),
     ('shift_2', '🔄', '교대 근무 2교대'),
     ('office', '💼', '일반 직장인 (주5일)'),
     ('other', '🎨', '기타 / 프리랜서'),
@@ -112,7 +112,7 @@ class _OnboardingStep4ScreenState extends State<OnboardingStep4Screen> {
           // 교대 근무 시간 편집기
           if (showShiftEditor) ...[
             const SizedBox(height: 20),
-            const Text('근무 시간 설정',
+            const Text('템플릿 설정',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             const Text('시간을 탭해서 수정할 수 있어요',
@@ -425,7 +425,7 @@ class _WorkPatternIllustration extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: const Text(
-              '근무표',
+              '일정표',
               style: TextStyle(
                 fontSize: 9,
                 color: Colors.white,

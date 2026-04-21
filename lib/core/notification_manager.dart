@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/timezone.dart' as tz;
@@ -29,9 +30,26 @@ class NotificationManager {
   final bool _webPermissionGranted = false;
   bool get webPermissionGranted => _webPermissionGranted;
 
+  static const String _kBothOffSentPrefix = 'notif_both_off_sent_';
+  static const String _kDateBeforeSentPrefix = 'notif_date_before_sent_';
+  static const String _kDateTodaySentPrefix = 'notif_date_today_sent_';
+  static const String _kNotificationDiagLogKey = 'notification_diagnostics';
+
   Stream<List<AppNotification>> get historyStream {
     _historyController ??= StreamController<List<AppNotification>>.broadcast();
     return _historyController!.stream;
+  }
+
+  static const int _kAndroidMaxNotificationId = 0x7fffffff;
+
+  int _normalizeNotificationId(int id) {
+    if (id >= 0 && id <= _kAndroidMaxNotificationId) return id;
+
+    var normalized = id % _kAndroidMaxNotificationId;
+    if (normalized < 0) normalized += _kAndroidMaxNotificationId;
+
+    // Android Int32 범위 강제: 호출부가 timestamp(ms) 등을 넘겨도 안전하게 변환
+    return normalized;
   }
 
   // ---------------------------------------------------------------------------
@@ -39,6 +57,7 @@ class NotificationManager {
   // ---------------------------------------------------------------------------
   Future<void> initialize() async {
     await _loadSettings();
+    await _cleanupNotificationGateKeys();
 
     if (kIsWeb) return; // Web은 시스템 알림 미지원
     tz_data.initializeTimeZones();
@@ -60,6 +79,117 @@ class NotificationManager {
         // 알림 클릭 핸들링(필요 시 확장)
       },
     );
+
+    await _ensureExactAlarmPermissionIfPossible();
+  }
+
+  Future<void> _ensureExactAlarmPermissionIfPossible() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) return;
+
+    try {
+      final dynamic platform = androidPlugin;
+      final canScheduleExact =
+          await platform.canScheduleExactNotifications() as bool?;
+      if (canScheduleExact == false) {
+        await platform.requestExactAlarmsPermission();
+      }
+    } catch (_) {
+      // 플러그인/OS 버전에 따라 exact alarm API가 없을 수 있으므로 무시
+    }
+  }
+
+  Future<bool?> canScheduleExactAlarms() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) return null;
+
+    try {
+      final dynamic platform = androidPlugin;
+      return await platform.canScheduleExactNotifications() as bool?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool?> requestExactAlarmsPermissionIfNeeded() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return null;
+    }
+
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin == null) return null;
+
+    try {
+      final dynamic platform = androidPlugin;
+      final canSchedule =
+          await platform.canScheduleExactNotifications() as bool?;
+      if (canSchedule == false) {
+        await platform.requestExactAlarmsPermission();
+      }
+      return await platform.canScheduleExactNotifications() as bool?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _zonedScheduleWithBestEffort({
+    required int id,
+    required String title,
+    required String body,
+    required tz.TZDateTime scheduled,
+    required NotificationDetails details,
+    DateTimeComponents? matchDateTimeComponents,
+  }) async {
+    final safeId = _normalizeNotificationId(id);
+
+    try {
+      await _plugin.zonedSchedule(
+        safeId,
+        title,
+        body,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      await _appendDiagnosticLog(
+        event: 'zoned_schedule_exact',
+        details: 'id=$safeId title=$title at=${scheduled.toIso8601String()}',
+      );
+    } on PlatformException catch (_) {
+      await _plugin.zonedSchedule(
+        safeId,
+        title,
+        body,
+        scheduled,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: matchDateTimeComponents,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+      await _appendDiagnosticLog(
+        event: 'zoned_schedule_fallback_inexact',
+        details: 'id=$safeId title=$title at=${scheduled.toIso8601String()}',
+      );
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -114,11 +244,13 @@ class NotificationManager {
     String? body,
     NotificationType? type,
   }) async {
+    final safeId = _normalizeNotificationId(id);
+
     // 내부 히스토리 추가
     if (type != null) {
       addToHistory(
         AppNotification.fromRealtime(
-          id: '${id}_${DateTime.now().millisecondsSinceEpoch}',
+          id: '${safeId}_${DateTime.now().millisecondsSinceEpoch}',
           title: title,
           body: body,
           type: type,
@@ -145,7 +277,11 @@ class NotificationManager {
       iOS: darwinDetails,
     );
 
-    await _plugin.show(id, title, body, details);
+    await _plugin.show(safeId, title, body, details);
+    await _appendDiagnosticLog(
+      event: 'show_local',
+      details: 'id=$safeId title=$title body=${body ?? ''}',
+    );
   }
 
   Future<void> clearAllNotifications() async {
@@ -221,12 +357,21 @@ class NotificationManager {
         d.year == todayDateOnly.year &&
         d.month == todayDateOnly.month &&
         d.day == todayDateOnly.day)) {
+      final todayKey = _formatDateKey(todayDateOnly);
+      final shouldSend = await _shouldSendForDate(
+        prefix: _kBothOffSentPrefix,
+        dateKey: todayKey,
+      );
+      if (!shouldSend) return;
+
       await showLocalNotification(
         id: 1001,
         title: '둘 다 쉬는 날',
         body: '오늘 둘 다 휴무예요. 데이트 하시겠어요?',
         type: NotificationType.bothOff,
       );
+
+      await _markSentForDate(prefix: _kBothOffSentPrefix, dateKey: todayKey);
     }
   }
 
@@ -245,13 +390,128 @@ class NotificationManager {
         .toList();
 
     if (datePlan.isNotEmpty) {
+      final tomorrowKey = _formatDateKey(tomorrow);
+      final shouldSend = await _shouldSendDateBeforeFor(tomorrowKey);
+      if (!shouldSend) return;
+
       await showLocalNotification(
         id: 2000 + tomorrow.day,
         title: '내일 데이트',
         body: '내일 ${tomorrow.month}월 ${tomorrow.day}일 데이트 예정이에요.',
         type: NotificationType.dateBefore,
       );
+
+      await _markDateBeforeSent(tomorrowKey);
     }
+  }
+
+  Future<bool> _shouldSendDateBeforeFor(String dateKey) async {
+    return _shouldSendForDate(prefix: _kDateBeforeSentPrefix, dateKey: dateKey);
+  }
+
+  Future<void> _markDateBeforeSent(String dateKey) async {
+    await _markSentForDate(prefix: _kDateBeforeSentPrefix, dateKey: dateKey);
+  }
+
+  String _formatDateKey(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<bool> _shouldSendForDate({
+    required String prefix,
+    required String dateKey,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('$prefix$dateKey') != true;
+    } catch (_) {
+      // 저장소 오류 시에는 알림 기능이 막히지 않도록 발송 허용
+      return true;
+    }
+  }
+
+  Future<void> _markSentForDate({
+    required String prefix,
+    required String dateKey,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('$prefix$dateKey', true);
+    } catch (_) {}
+  }
+
+  Future<void> _cleanupNotificationGateKeys({int keepDays = 30}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now();
+      final cutoff = DateTime(now.year, now.month, now.day)
+          .subtract(Duration(days: keepDays));
+      final prefixes = [
+        _kBothOffSentPrefix,
+        _kDateBeforeSentPrefix,
+        _kDateTodaySentPrefix,
+      ];
+
+      final keys = prefs.getKeys();
+      for (final key in keys) {
+        final prefix = prefixes.firstWhere(
+          (p) => key.startsWith(p),
+          orElse: () => '',
+        );
+        if (prefix.isEmpty) continue;
+
+        final datePart = key.substring(prefix.length);
+        DateTime? d;
+        try {
+          d = DateTime.parse(datePart);
+        } catch (_) {
+          d = null;
+        }
+        if (d == null) continue;
+
+        final day = DateTime(d.year, d.month, d.day);
+        if (day.isBefore(cutoff)) {
+          await prefs.remove(key);
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _appendDiagnosticLog({
+    required String event,
+    String? details,
+  }) async {
+    if (!_settings.diagnosticLogs) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final logs = prefs.getStringList(_kNotificationDiagLogKey) ?? <String>[];
+      final now = DateTime.now().toIso8601String();
+      final line = details == null || details.isEmpty
+          ? '$now | $event'
+          : '$now | $event | $details';
+      logs.insert(0, line);
+      if (logs.length > 120) {
+        logs.removeRange(120, logs.length);
+      }
+      await prefs.setStringList(_kNotificationDiagLogKey, logs);
+    } catch (_) {}
+  }
+
+  Future<List<String>> getRecentDiagnosticLogs({int limit = 40}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final logs = prefs.getStringList(_kNotificationDiagLogKey) ?? <String>[];
+      if (limit <= 0 || logs.length <= limit) return logs;
+      return logs.sublist(0, limit);
+    } catch (_) {
+      return const <String>[];
+    }
+  }
+
+  Future<void> clearDiagnosticLogs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_kNotificationDiagLogKey);
+    } catch (_) {}
   }
 
   Future<void> checkDateToday({
@@ -269,12 +529,21 @@ class NotificationManager {
         .toList();
 
     if (datePlan.isNotEmpty) {
+      final todayKey = _formatDateKey(today);
+      final shouldSend = await _shouldSendForDate(
+        prefix: _kDateTodaySentPrefix,
+        dateKey: todayKey,
+      );
+      if (!shouldSend) return;
+
       await showLocalNotification(
         id: 3000 + today.day,
         title: '오늘 데이트',
         body: '오늘 ${today.month}월 ${today.day}일 데이트 날이에요!',
         type: NotificationType.dateToday,
       );
+
+      await _markSentForDate(prefix: _kDateTodaySentPrefix, dateKey: todayKey);
     }
   }
 
@@ -317,7 +586,10 @@ class NotificationManager {
 
     int idCounter = 9000;
     for (final shift in shiftTimes) {
-      final label = shift.label.isNotEmpty ? shift.label : '근무';
+      if (shift.isAllDay) {
+        continue;
+      }
+      final label = shift.shiftType.isNotEmpty ? shift.shiftType : '근무';
 
       // 출근 알림
       await _scheduleDaily(
@@ -362,16 +634,13 @@ class NotificationManager {
       scheduled = scheduled.add(const Duration(days: 1));
     }
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduled,
-      details,
-      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    await _zonedScheduleWithBestEffort(
+      id: id,
+      title: title,
+      body: body,
+      scheduled: scheduled,
+      details: details,
       matchDateTimeComponents: DateTimeComponents.time,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
@@ -436,15 +705,12 @@ class NotificationManager {
         final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0) : 0;
         final scheduled = tz.TZDateTime(tz.local, date.year, date.month, date.day, h, m);
         if (scheduled.isAfter(now)) {
-          await _plugin.zonedSchedule(
-            idCounter,
-            '☀️ $partnerName 출근했어요',
-            '${_fmt(h, m)} 출근 시작',
-            scheduled,
-            details,
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
+          await _zonedScheduleWithBestEffort(
+            id: idCounter,
+            title: '☀️ $partnerName 출근했어요',
+            body: '${_fmt(h, m)} 출근 시작',
+            scheduled: scheduled,
+            details: details,
           );
         }
         idCounter++;
@@ -465,15 +731,12 @@ class NotificationManager {
         final scheduled = tz.TZDateTime(
             tz.local, endDate.year, endDate.month, endDate.day, h, m);
         if (scheduled.isAfter(now)) {
-          await _plugin.zonedSchedule(
-            idCounter,
-            '🏠 $partnerName 퇴근했어요',
-            '${_fmt(h, m)} 퇴근',
-            scheduled,
-            details,
-            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-            uiLocalNotificationDateInterpretation:
-                UILocalNotificationDateInterpretation.absoluteTime,
+          await _zonedScheduleWithBestEffort(
+            id: idCounter,
+            title: '🏠 $partnerName 퇴근했어요',
+            body: '${_fmt(h, m)} 퇴근',
+            scheduled: scheduled,
+            details: details,
           );
         }
         idCounter++;

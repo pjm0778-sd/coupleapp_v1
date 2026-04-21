@@ -22,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _isLoading = false;
   bool _obscurePassword = true;
-  bool _showEmailForm = false;
 
   bool get _showAppleLogin {
     if (kIsWeb) return true;
@@ -144,23 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 56),
-
-                    // 아이콘 뱃지
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryLight,
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: const Icon(
-                        Icons.favorite_rounded,
-                        size: 28,
-                        color: AppTheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 32),
 
                     // 앱 이름
                     Text(
@@ -172,60 +155,112 @@ class _LoginScreenState extends State<LoginScreen> {
                         letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Couple Duty',
-                      style: GoogleFonts.playfairDisplay(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w400,
-                        fontStyle: FontStyle.italic,
-                        color: AppTheme.primary,
-                        letterSpacing: 1.8,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     const Text(
-                      '둘의 오늘과 내일을 우리의 일정으로',
+                      '커플 스케줄을 함께 관리하세요',
                       style: TextStyle(
                         fontSize: 15,
                         color: AppTheme.textSecondary,
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 32),
 
-                    // 구분선
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            color: AppTheme.border,
-                            thickness: 1,
-                          ),
+                    // 이메일
+                    _buildLabel('이메일'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _emailController,
+                      hint: 'example@email.com',
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return '이메일을 입력해주세요';
+                        if (!v.contains('@')) return '올바른 이메일 형식이 아닙니다';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 비밀번호
+                    _buildLabel('비밀번호'),
+                    const SizedBox(height: 8),
+                    _buildTextField(
+                      controller: _passwordController,
+                      hint: '6자 이상',
+                      obscureText: _obscurePassword,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                          color: AppTheme.textSecondary,
+                          size: 20,
                         ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Text(
-                            '시작하기',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: AppTheme.textTertiary,
-                              letterSpacing: 1.2,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return '비밀번호를 입력해주세요';
+                        if (v.length < 6) return '6자 이상 입력해주세요';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    // 로그인 버튼
+                    SizedBox(
+                      width: double.infinity,
+                      height: 56,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
+                          elevation: 0,
                         ),
-                        Expanded(
-                          child: Divider(
-                            color: AppTheme.border,
-                            thickness: 1,
-                          ),
-                        ),
-                      ],
+                        onPressed: _isLoading ? null : _login,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                '로그인',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
                     ),
                     const SizedBox(height: 20),
 
-                    // ── 소셜 로그인 버튼 ──
+                    // 또는 구분선
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: AppTheme.border, thickness: 1)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            '또는',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.textTertiary,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: AppTheme.border, thickness: 1)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // 소셜 로그인 버튼
                     _buildSocialButton(
                       provider: _SocialLoginProvider.google,
                       label: 'Google로 계속하기',
@@ -233,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       foregroundColor: AppTheme.textPrimary,
                       borderColor: AppTheme.border,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     if (_showAppleLogin) ...[
                       _buildSocialButton(
@@ -243,7 +278,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         foregroundColor: Colors.white,
                         borderColor: AppTheme.textPrimary,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                     ],
 
                     _buildSocialButton(
@@ -253,177 +288,40 @@ class _LoginScreenState extends State<LoginScreen> {
                       foregroundColor: const Color(0xFF191919),
                       borderColor: Colors.transparent,
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    // ── 이메일 로그인 버튼 ──
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(
-                            color: _showEmailForm
-                                ? AppTheme.primary
-                                : AppTheme.border,
+                    // 회원가입 링크
+                    Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            '아직 계정이 없으신가요?',
+                            style: TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 14,
+                            ),
                           ),
-                          foregroundColor: _showEmailForm
-                              ? AppTheme.primary
-                              : AppTheme.textSecondary,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SignupScreen(),
+                              ),
+                            ),
+                            child: const Text(
+                              '회원가입',
+                              style: TextStyle(
+                                color: AppTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                           ),
-                          backgroundColor: _showEmailForm
-                              ? AppTheme.primaryLight
-                              : AppTheme.surface,
-                        ),
-                        onPressed: _isLoading
-                            ? null
-                            : () => setState(
-                                () => _showEmailForm = !_showEmailForm),
-                        icon: const Icon(Icons.email_outlined, size: 18),
-                        label: const Text(
-                          '이메일로 로그인',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                        ],
                       ),
-                    ),
-
-                    // ── 이메일 폼 (펼침) ──
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeInOut,
-                      child: _showEmailForm
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 24),
-                                _buildLabel('이메일'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _emailController,
-                                  hint: 'example@email.com',
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty)
-                                      return '이메일을 입력해주세요';
-                                    if (!v.contains('@'))
-                                      return '올바른 이메일 형식이 아닙니다';
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                                _buildLabel('비밀번호'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _passwordController,
-                                  hint: '6자 이상',
-                                  obscureText: _obscurePassword,
-                                  suffixIcon: IconButton(
-                                    icon: Icon(
-                                      _obscurePassword
-                                          ? Icons.visibility_outlined
-                                          : Icons.visibility_off_outlined,
-                                      color: AppTheme.textSecondary,
-                                      size: 20,
-                                    ),
-                                    onPressed: () => setState(
-                                      () => _obscurePassword =
-                                          !_obscurePassword,
-                                    ),
-                                  ),
-                                  validator: (v) {
-                                    if (v == null || v.isEmpty)
-                                      return '비밀번호를 입력해주세요';
-                                    if (v.length < 6)
-                                      return '6자 이상 입력해주세요';
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 24),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 52,
-                                  child: ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppTheme.primary,
-                                      foregroundColor: Colors.white,
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(14),
-                                      ),
-                                      elevation: 0,
-                                    ),
-                                    onPressed: _isLoading ? null : _login,
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              color: Colors.white,
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Text(
-                                            '로그인',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Text(
-                                      '아직 계정이 없으신가요?',
-                                      style: TextStyle(
-                                        color: AppTheme.textSecondary,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              const SignupScreen(),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        '회원가입',
-                                        style: TextStyle(
-                                          color: AppTheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            )
-                          : const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 32),
-
-                    // 약관 안내
-                    Center(
-                      child: Text(
-                        '계속하면 이용약관 및 개인정보처리방침에\n동의하는 것으로 간주됩니다.',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textTertiary,
-                          height: 1.6,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
                   ],
                 ),
               ),
@@ -436,12 +334,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildLabel(String text) {
     return Text(
-      text.toUpperCase(),
-      style: TextStyle(
-        fontSize: 11,
+      text,
+      style: const TextStyle(
+        fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: AppTheme.textSecondary,
-        letterSpacing: 1.8,
+        color: AppTheme.textPrimary,
         height: 1.0,
       ),
     );
@@ -456,7 +353,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return SizedBox(
       width: double.infinity,
-      height: 52,
+      height: 56,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: backgroundColor,

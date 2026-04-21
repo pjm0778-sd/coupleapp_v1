@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -6,11 +8,14 @@ import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/holiday_service.dart';
 import '../../../shared/models/schedule.dart';
+import '../../profile/models/shift_time.dart';
 import '../services/schedule_service.dart';
 import '../widgets/schedule_add_sheet.dart';
 import '../widgets/day_detail_sheet.dart';
 import 'date_map_screen.dart';
 import '../../../features/schedule/screens/auto_registration_screen.dart';
+import '../../settings/screens/settings_screen.dart';
+import 'calendar_settings_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   final DateTime? initialDate;
@@ -39,6 +44,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
   RealtimeChannel? _schedulesChannel;
   bool _partnerGrayMode = false;
   bool _showTutorial = false;
+  List<ShiftTime> _quickShiftTimes = [];
+  ShiftTime? _selectedQuickShift;
+  // 달력설정에서 만든 사용자 템플릿 목록
+  List<({String id, String name, List<ShiftTime> shiftTimes})> _userTemplates = [];
+  String? _activeTemplateName;  // 현재 선택된 템플릿 이름
+  bool _easyAddMode = false;
+  final Map<DateTime, ShiftTime> _pendingQuickAdds = {};
 
   @override
   void initState() {
@@ -85,6 +97,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       _setupRealtime();
     }
     _loadHolidays(_focusedMonth);
+    await _loadQuickShiftTimes();
     await _loadSchedules(_focusedMonth);
 
     // 첫 방문 튜토리얼
@@ -106,6 +119,337 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('calendar_tutorial_shown', true);
     if (mounted) setState(() => _showTutorial = false);
+  }
+
+  static const _userTemplatePrefsKey = 'calendar_user_template_types_v1';
+
+  Future<void> _loadQuickShiftTimes() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_userTemplatePrefsKey);
+
+    List<({String id, String name, List<ShiftTime> shiftTimes})> templates = [];
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is! Map<String, dynamic>) continue;
+            final rawTimes = item['shift_times'];
+            final times = rawTimes is List
+                ? rawTimes
+                    .whereType<Map<String, dynamic>>()
+                    .map(ShiftTime.fromMap)
+                    .toList()
+                : <ShiftTime>[];
+            templates.add((
+              id: item['id'] as String? ?? '',
+              name: item['name'] as String? ?? '템플릿',
+              shiftTimes: times,
+            ));
+          }
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
+
+    // 첫 번째 템플릿을 기본 선택
+    final firstTemplate = templates.isNotEmpty ? templates.first : null;
+    final times = firstTemplate?.shiftTimes ?? <ShiftTime>[];
+
+    setState(() {
+      _userTemplates = templates;
+      _activeTemplateName = firstTemplate?.name;
+      _quickShiftTimes = times;
+      if (times.isEmpty) {
+        _selectedQuickShift = null;
+      } else if (_selectedQuickShift == null ||
+          !times.any((t) => t.shiftType == _selectedQuickShift!.shiftType)) {
+        _selectedQuickShift = times.first;
+      }
+    });
+  }
+
+  String _quickCategory(ShiftTime shift) {
+    final code = shift.shiftType.trim().toLowerCase();
+    if (code == 'x' || code == 'off') {
+      return '쉬는날';
+    }
+    return '근무';
+  }
+
+  String _quickColorHex(ShiftTime shift) {
+    final custom = shift.colorHex?.trim();
+    if (custom != null && custom.isNotEmpty) {
+      return custom.startsWith('#') ? custom : '#$custom';
+    }
+
+    final code = shift.shiftType.trim().toLowerCase();
+
+    if (code == 'x' || code == 'off') {
+      return '#BDBDBD';
+    }
+
+    if (code == 'd' || code == 'day') return '#4CAF50';
+    if (code == 'e') return '#2196F3';
+    if (code == 'm') return '#FF9800';
+    if (code == 'n' || code == 'night') return '#7E57C2';
+
+    // 사용자 정의 코드(F 등)는 기본 근무색으로 저장
+    return '#4CAF50';
+  }
+
+  Schedule? _findEditableQuickSchedule(DateTime day) {
+    return _getEventsForDay(day).cast<Schedule?>().firstWhere(
+      (event) =>
+          event != null &&
+          event.userId == _myUserId &&
+          !event.isAnniversary &&
+          !event.isDate &&
+          ((event.workType?.trim().isNotEmpty ?? false) ||
+              event.category == '근무' ||
+              event.category == '쉬는날'),
+      orElse: () => null,
+    );
+  }
+
+  Schedule _buildQuickScheduleFromShift({
+    required DateTime date,
+    required ShiftTime shift,
+    Schedule? base,
+  }) {
+    return (base ??
+            Schedule(
+              id: 'pending_${date.toIso8601String()}_${shift.shiftType}',
+              userId: _myUserId ?? '',
+              coupleId: _coupleId,
+              date: date,
+              startDate: date,
+              endDate: date,
+            ))
+        .copyWith(
+      title: shift.shiftType,
+      workType: shift.shiftType,
+      category: _quickCategory(shift),
+      colorHex: _quickColorHex(shift),
+      startTime: shift.isAllDay
+          ? null
+          : TimeOfDay(hour: shift.startHour, minute: shift.startMinute),
+      endTime: shift.isAllDay
+          ? null
+          : TimeOfDay(hour: shift.endHour, minute: shift.endMinute),
+    );
+  }
+
+  bool _isSameTiming(Schedule schedule, ShiftTime shift) {
+    if (shift.isAllDay) {
+      return schedule.startTime == null && schedule.endTime == null;
+    }
+    return schedule.startTime?.hour == shift.startHour &&
+        schedule.startTime?.minute == shift.startMinute &&
+        schedule.endTime?.hour == shift.endHour &&
+        schedule.endTime?.minute == shift.endMinute;
+  }
+
+  void _toggleQuickAddOnDate(DateTime day) {
+    if (_selectedQuickShift == null) return;
+    final date = DateTime(day.year, day.month, day.day);
+    final shift = _selectedQuickShift!;
+    final existing = _pendingQuickAdds[date];
+    final savedSchedule = _findEditableQuickSchedule(date);
+    var message = '';
+
+    setState(() {
+      if (existing == null) {
+        if (savedSchedule != null && savedSchedule.workType == shift.shiftType) {
+          message = '${date.month}/${date.day} 이미 ${shift.shiftType}로 저장되어 있습니다';
+          return;
+        }
+        _pendingQuickAdds[date] = shift;
+        message = savedSchedule == null
+            ? '${date.month}/${date.day} ${shift.shiftType} 임시 추가'
+            : '${date.month}/${date.day} ${shift.shiftType}로 변경 예정';
+      } else if (existing.shiftType == shift.shiftType) {
+        _pendingQuickAdds.remove(date);
+        message = savedSchedule == null
+            ? '${date.month}/${date.day} 임시 추가 해제'
+            : '${date.month}/${date.day} 변경 취소';
+      } else {
+        _pendingQuickAdds[date] = shift;
+        message = '${date.month}/${date.day} ${shift.shiftType}로 변경';
+      }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(milliseconds: 900)),
+    );
+  }
+
+  Schedule _buildPendingQuickSchedule(DateTime date, ShiftTime shift) {
+    return _buildQuickScheduleFromShift(
+      date: date,
+      shift: shift,
+      base: _findEditableQuickSchedule(date),
+    );
+  }
+
+  List<Schedule> _getDisplayEventsForDay(DateTime day) {
+    final events = List<Schedule>.from(_getEventsForDay(day));
+    final key = DateTime(day.year, day.month, day.day);
+    final pendingShift = _pendingQuickAdds[key];
+    if (pendingShift != null) {
+      final editable = _findEditableQuickSchedule(key);
+      if (editable != null) {
+        final index = events.indexWhere((event) => event.id == editable.id);
+        final replacement = _buildPendingQuickSchedule(key, pendingShift);
+        if (index >= 0) {
+          events[index] = replacement;
+        } else {
+          events.add(replacement);
+        }
+      } else {
+        events.add(_buildPendingQuickSchedule(key, pendingShift));
+      }
+    }
+    return events;
+  }
+
+  Future<void> _savePendingQuickAdds() async {
+    if (_coupleId == null || _myUserId == null) return;
+    if (_pendingQuickAdds.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('저장할 템플릿 추가 항목이 없습니다.')));
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    int saved = 0;
+    int updated = 0;
+    int skipped = 0;
+
+    final entries = _pendingQuickAdds.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    for (final entry in entries) {
+      final date = entry.key;
+      final shift = entry.value;
+      final existingSchedule = _findEditableQuickSchedule(date);
+
+      if (existingSchedule != null) {
+        final sameAsExisting =
+            existingSchedule.workType == shift.shiftType &&
+            _isSameTiming(existingSchedule, shift);
+        if (sameAsExisting) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          final updatedSchedule = _buildQuickScheduleFromShift(
+            date: date,
+            shift: shift,
+            base: existingSchedule,
+          );
+          await _service.updateSchedule(existingSchedule.id, updatedSchedule.toMap());
+          updated++;
+        } catch (_) {
+          // 개별 항목 실패는 건너뛰고 나머지 계속 저장
+        }
+        continue;
+      }
+
+      final dayEvents = _getEventsForDay(date);
+      final duplicate = dayEvents.any(
+        (e) =>
+            e.userId == _myUserId &&
+            e.workType == shift.shiftType &&
+        _isSameTiming(e, shift),
+      );
+      if (duplicate) {
+        skipped++;
+        continue;
+      }
+
+      final schedule = Schedule(
+        id: '',
+        userId: _myUserId!,
+        coupleId: _coupleId,
+        date: date,
+        startDate: date,
+        endDate: date,
+        title: shift.shiftType,
+        workType: shift.shiftType,
+        category: _quickCategory(shift),
+        colorHex: _quickColorHex(shift),
+        startTime: TimeOfDay(hour: shift.startHour, minute: shift.startMinute),
+        endTime: TimeOfDay(hour: shift.endHour, minute: shift.endMinute),
+      );
+
+      try {
+        await _service.addSchedule(schedule);
+        saved++;
+      } catch (_) {
+        // 개별 항목 실패는 건너뛰고 나머지 계속 저장
+      }
+    }
+
+    await _loadSchedules(_focusedMonth);
+    if (!mounted) return;
+    setState(() {
+      _pendingQuickAdds.clear();
+      _easyAddMode = false;
+      _isLoading = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          skipped > 0
+              ? '템플릿 추가 $saved개, 변경 $updated개, 중복 $skipped개 제외'
+              : '템플릿 추가 $saved개, 변경 $updated개 완료',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _exitEasyAddMode() async {
+    if (_pendingQuickAdds.isEmpty) {
+      if (!mounted) return;
+      setState(() => _easyAddMode = false);
+      return;
+    }
+
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('저장하지 않고 종료할까요?'),
+        content: Text(
+          '임시로 추가한 일정 ${_pendingQuickAdds.length}건이 저장되지 않습니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('계속 편집'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('저장 안 하고 종료'),
+          ),
+        ],
+      ),
+    );
+
+    if (discard != true || !mounted) return;
+    setState(() {
+      _pendingQuickAdds.clear();
+      _easyAddMode = false;
+    });
   }
 
   void _openDayDetail(DateTime date) {
@@ -169,10 +513,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
     if (mounted) setState(() => _isLoading = true);
 
     try {
-      final list = await _service.getMonthSchedules(_coupleId!, month);
+      final prevMonth = DateTime(month.year, month.month - 1);
+      final nextMonth = DateTime(month.year, month.month + 1);
+      final results = await Future.wait([
+        _service.getMonthSchedules(_coupleId!, prevMonth),
+        _service.getMonthSchedules(_coupleId!, month),
+        _service.getMonthSchedules(_coupleId!, nextMonth),
+      ]);
+      final list = [...results[0], ...results[1], ...results[2]];
+      // 중복 제거 (id 기준)
+      final seen = <String>{};
+      list.retainWhere((s) => seen.add(s.id));
       if (!mounted) return;
 
-      // 기념일 계산 (100일, 200일, 1주년 등)
+      // 기념일 계산 (100일, 200일, 1주년 등) — 현재 달 기준
       final anniversaries = _generateAnniversaries(month);
       list.addAll(anniversaries);
 
@@ -680,6 +1034,40 @@ class _CalendarScreenState extends State<CalendarScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.auto_fix_high_outlined),
+              title: const Text('템플릿으로 추가'),
+              onTap: () {
+                Navigator.pop(ctx);
+                if (_userTemplates.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('달력 설정에서 내 템플릿을 먼저 만들어 주세요.'),
+                    ),
+                  );
+                  return;
+                }
+                setState(() {
+                  _easyAddMode = true;
+                  _pendingQuickAdds.clear();
+                  // 기본 선택: 첫 번째 템플릿
+                  if (_activeTemplateName == null && _userTemplates.isNotEmpty) {
+                    final first = _userTemplates.first;
+                    _activeTemplateName = first.name;
+                    _quickShiftTimes = first.shiftTimes;
+                    _selectedQuickShift =
+                        first.shiftTimes.isNotEmpty ? first.shiftTimes.first : null;
+                  } else if (_quickShiftTimes.isNotEmpty) {
+                    _selectedQuickShift ??= _quickShiftTimes.first;
+                  }
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('일정 코드를 선택하고 날짜를 눌러 추가하세요.'),
+                  ),
+                );
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.document_scanner_outlined),
               title: const Text('자동 등록'),
               onTap: () {
@@ -694,6 +1082,98 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
             const SizedBox(height: 8),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 내 템플릿 선택 바텀시트
+  void _showTemplatePicker() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '템플릿 선택',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              ..._userTemplates.map((template) {
+                final isActive = template.name == _activeTemplateName;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _activeTemplateName = template.name;
+                      _quickShiftTimes = template.shiftTimes;
+                      _selectedQuickShift = template.shiftTimes.isNotEmpty
+                          ? template.shiftTimes.first
+                          : null;
+                      _pendingQuickAdds.clear(); // 템플릿 바꾸면 대기 초기화
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isActive ? AppTheme.accentLight : AppTheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isActive ? AppTheme.primary : AppTheme.border,
+                        width: isActive ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                template.name,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: isActive
+                                      ? AppTheme.primary
+                                      : AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '항목 ${template.shiftTimes.length}개',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isActive)
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: AppTheme.primary,
+                            size: 20,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 4),
+            ],
+          ),
         ),
       ),
     );
@@ -795,8 +1275,33 @@ class _CalendarScreenState extends State<CalendarScreen> {
         centerTitle: false,
         actions: [
           _LabeledAppBarButton(
+            icon: Icons.tune_outlined,
+            label: '달력설정',
+            color: AppTheme.textTertiary,
+            tooltip: '달력 설정',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CalendarSettingsScreen(),
+                ),
+              );
+              await _loadQuickShiftTimes();
+            },
+          ),
+          _LabeledAppBarButton(
+            icon: Icons.settings_outlined,
+            label: '설정',
+            color: AppTheme.textTertiary,
+            tooltip: '설정',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+          _LabeledAppBarButton(
             icon: Icons.people_outlined,
-            label: '색상구분',
+            label: '내 일정',
             color: _partnerGrayMode ? AppTheme.primary : AppTheme.textTertiary,
             tooltip: _partnerGrayMode ? '상대방 색상 구분 켜짐' : '상대방 색상 구분하기',
             onPressed: () =>
@@ -848,7 +1353,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 value: 'delete_ocr',
                 child: _CalendarMenuItem(
                   icon: Icons.document_scanner_outlined,
-                  label: 'OCR 일정 삭제',
+                  label: '자동등록 일정 삭제',
                   color: AppTheme.warning,
                 ),
               ),
@@ -878,7 +1383,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    4,
+                    12,
+                    _easyAddMode ? 28 : 12,
+                  ),
                   child: Container(
                     decoration: BoxDecoration(
                       color: AppTheme.surface,
@@ -889,8 +1399,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         const innerFixed = 52.0 + 32.0;
-                        final rowH = ((constraints.maxHeight - innerFixed) / 6)
-                            .clamp(60.0, 110.0);
+                        final textScale = MediaQuery.textScalerOf(context)
+                            .scale(1.0);
+
+                        // 하단 쉬운추가 바/큰 글꼴/작은 화면에서 월별 overflow를 줄이기 위한 보정
+                        double adaptiveFixed = innerFixed;
+                        if (_easyAddMode) adaptiveFixed += 8;
+                        if (textScale > 1.05) {
+                          adaptiveFixed += (textScale - 1.05) * 18;
+                        }
+                        if (constraints.maxHeight < 620) {
+                          adaptiveFixed += 10;
+                        }
+
+                        final rowH = ((constraints.maxHeight - adaptiveFixed) / 6)
+                            .clamp(52.0, 110.0);
                         return _buildTableCalendar(rowHeight: rowH);
                       },
                     ),
@@ -909,6 +1432,154 @@ class _CalendarScreenState extends State<CalendarScreen> {
         foregroundColor: Colors.white,
         child: const Icon(Icons.add),
       ),
+      bottomNavigationBar: _easyAddMode
+          ? SafeArea(
+              top: false,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  border: Border(top: BorderSide(color: AppTheme.border)),
+                  boxShadow: const [AppTheme.subtleShadow],
+                ),
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.auto_fix_high_outlined,
+                          size: 16,
+                          color: AppTheme.primary,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _selectedQuickShift != null
+                                ? '선택: ${_selectedQuickShift!.shiftType} · 대기 ${_pendingQuickAdds.length}건'
+                                : '템플릿으로 추가',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: _exitEasyAddMode,
+                          child: const Text('종료'),
+                        ),
+                        const SizedBox(width: 4),
+                        ElevatedButton(
+                          onPressed:
+                              _pendingQuickAdds.isEmpty ? null : _savePendingQuickAdds,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('최종 저장'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    // 템플릿 선택 행 (템플릿이 여러 개일 때)
+                    if (_userTemplates.length > 1)
+                      GestureDetector(
+                        onTap: _showTemplatePicker,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.accentLight,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: AppTheme.primary),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.folder_outlined,
+                                size: 14,
+                                color: AppTheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _activeTemplateName ?? '템플릿 선택',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.primary,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.expand_more,
+                                size: 14,
+                                color: AppTheme.primary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    SizedBox(
+                      height: 44,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _quickShiftTimes.length,
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final shift = _quickShiftTimes[i];
+                          final selected =
+                              _selectedQuickShift?.shiftType == shift.shiftType;
+                          return ChoiceChip(
+                            label: Text(shift.shiftType),
+                            selected: selected,
+                            onSelected: (_) {
+                              setState(() => _selectedQuickShift = shift);
+                            },
+                            materialTapTargetSize:
+                                MaterialTapTargetSize.shrinkWrap,
+                            visualDensity: VisualDensity.compact,
+                            selectedColor: AppTheme.primaryLight,
+                            labelStyle: TextStyle(
+                              color: selected
+                                  ? AppTheme.primary
+                                  : AppTheme.textSecondary,
+                              fontWeight: selected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                            side: BorderSide(
+                              color: selected
+                                  ? AppTheme.primary
+                                  : AppTheme.border,
+                            ),
+                            backgroundColor: AppTheme.surface,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -920,15 +1591,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
       lastDay: DateTime(2030, 12, 31),
       focusedDay: _focusedMonth,
       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-      eventLoader: _getEventsForDay,
+      eventLoader: _getDisplayEventsForDay,
       rowHeight: rowHeight,
       daysOfWeekHeight: 32,
-      onDaySelected: (selectedDay, focusedDay) {
+      onDaySelected: (selectedDay, focusedDay) async {
         final alreadySelected = isSameDay(_selectedDay, selectedDay);
         setState(() {
           _selectedDay = selectedDay;
           _focusedMonth = focusedDay;
         });
+
+        if (_easyAddMode) {
+          _toggleQuickAddOnDate(selectedDay);
+          return;
+        }
+
         // 두 번째 탭일 때만 세부 시트 표시
         if (alreadySelected) {
           final events = _getEventsForDay(selectedDay);
@@ -982,7 +1659,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         ),
       ),
       calendarStyle: const CalendarStyle(
-        outsideDaysVisible: false,
+        outsideDaysVisible: true,
         weekendTextStyle: TextStyle(color: Color(0xFFFF6B6B)),
         defaultDecoration: BoxDecoration(color: Colors.transparent),
         todayDecoration: BoxDecoration(color: Colors.transparent),
@@ -995,6 +1672,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
             _buildCell(day, isSelected: true, isToday: false),
         todayBuilder: (ctx, day, _) =>
             _buildCell(day, isSelected: false, isToday: true),
+        outsideBuilder: (ctx, day, _) =>
+            _buildCell(day, isSelected: false, isToday: false, isOutside: true),
         markerBuilder: (_, _, _) => const SizedBox.shrink(),
       ),
     );
@@ -1004,13 +1683,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     DateTime day, {
     required bool isSelected,
     required bool isToday,
+    bool isOutside = false,
   }) {
-    final events = _getEventsForDay(day);
+    final events = _getDisplayEventsForDay(day);
     final sorted = _service.sortByOwner(events, _myUserId ?? '');
     return _CalendarCell(
       day: day,
       isSelected: isSelected,
       isToday: isToday,
+      isOutside: isOutside,
       events: sorted,
       holidays: _getHolidaysForDay(day),
       getColor: _getScheduleColor,
@@ -1028,6 +1709,7 @@ class _CalendarCell extends StatelessWidget {
   final DateTime day;
   final bool isSelected;
   final bool isToday;
+  final bool isOutside;
   final List<Schedule> events;
   final List<Holiday> holidays;
   final Color Function(Schedule) getColor;
@@ -1044,6 +1726,7 @@ class _CalendarCell extends StatelessWidget {
     required this.getColor,
     required this.onEventTap,
     required this.myUserId,
+    this.isOutside = false,
     this.partnerGrayMode = false,
   });
 
@@ -1095,10 +1778,8 @@ class _CalendarCell extends StatelessWidget {
       return 0;
     });
     final displayEvents = [...anniv, ...nonAnniv]; // 기념일을 맨 위에
-    final visibleEvents = displayEvents.take(3).toList();
-    final overflowCount = displayEvents.length - 3;
 
-    return Container(
+    final cell = Container(
       padding: const EdgeInsets.only(top: 2),
       decoration: const BoxDecoration(
         border: Border(
@@ -1106,9 +1787,34 @@ class _CalendarCell extends StatelessWidget {
           right: BorderSide(color: AppTheme.border, width: 0.7),
         ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // 셀 실측 높이에 따라 표시 요소를 줄여 overflow 방지
+          int dynamicMaxBars;
+          if (constraints.maxHeight < 72) {
+            dynamicMaxBars = 0;
+          } else if (constraints.maxHeight < 90) {
+            dynamicMaxBars = 1;
+          } else if (constraints.maxHeight < 104) {
+            dynamicMaxBars = 2;
+          } else {
+            dynamicMaxBars = 3;
+          }
+          if (isPublicHoliday) dynamicMaxBars -= 1;
+          if (dynamicMaxBars < 0) dynamicMaxBars = 0;
+
+          final visibleEvents = displayEvents.take(dynamicMaxBars).toList();
+          final overflowCount = displayEvents.length - dynamicMaxBars;
+          final showOverflow =
+              overflowCount > 0 &&
+              !isPublicHoliday &&
+              constraints.maxHeight >= 98;
+          final showHolidayLabel =
+              isPublicHoliday && constraints.maxHeight >= 94;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           // 날짜 숫자 (우리 일정 있으면 하트 뱃지 오버레이)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -1195,7 +1901,7 @@ class _CalendarCell extends StatelessWidget {
           }),
 
           // +N 더보기
-          if (overflowCount > 0)
+          if (showOverflow)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 3),
               child: Text(
@@ -1209,7 +1915,7 @@ class _CalendarCell extends StatelessWidget {
             ),
 
           // 공휴일명 — 셀 하단에 표시 (바 연속성 유지)
-          if (holidays.any((h) => h.type == HolidayType.publicHoliday))
+          if (showHolidayLabel)
             Builder(
               builder: (context) {
                 final h = holidays.firstWhere(
@@ -1229,9 +1935,14 @@ class _CalendarCell extends StatelessWidget {
                 );
               },
             ),
-        ],
+            ],
+          );
+        },
       ),
     );
+    return isOutside
+        ? Opacity(opacity: 0.35, child: cell)
+        : cell;
   }
 }
 
@@ -1265,7 +1976,7 @@ class _EventBar extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 15,
+        height: 13,
         margin: margin,
         padding: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(color: color, borderRadius: borderRadius),
@@ -1383,7 +2094,7 @@ class _CalendarTutorialOverlayState extends State<_CalendarTutorialOverlay> {
     (
       '📸',
       '사진 자동 등록',
-      '근무표 사진을 찍으면 OCR로\n한 달치 일정이 자동 등록돼요.\n설정에서 근무 시간을 미리 설정해 두세요.',
+      '일정표 사진을 찍으면 OCR로\n한 달치 일정이 자동 등록돼요.\n설정에서 템플릿 항목을 미리 설정해 두세요.',
     ),
     ('📍', '장소 지도', '지도 버튼을 누르면 함께 갔던\n데이트 장소들을 지도에서 볼 수 있어요.'),
     (

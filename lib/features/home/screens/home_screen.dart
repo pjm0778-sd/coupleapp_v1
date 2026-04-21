@@ -17,6 +17,8 @@ import '../../../core/profile_change_notifier.dart';
 import '../../../shared/models/schedule.dart';
 import '../../profile/models/couple_profile.dart';
 import '../../profile/services/profile_service.dart';
+import '../models/weather_data.dart';
+import '../data/city_coordinates.dart';
 import '../services/home_service.dart';
 import '../services/weather_service.dart';
 import '../../../core/home_widget_service.dart';
@@ -28,6 +30,7 @@ import '../../transport/screens/transport_search_screen.dart';
 import '../../midpoint/screens/midpoint_search_screen.dart';
 import 'date_recommendation_screen.dart';
 import 'relationship_timeline_screen.dart';
+import 'weather_detail_screen.dart';
 
 // ─── Home Feature Card Model ─────────────────────────────────────────────────
 
@@ -95,12 +98,21 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _couplePhotoSourcePath; // 원본 이미지
   double _heroPhotoScale = 1.0;
   Offset _heroPhotoOffset = Offset.zero;
+  bool _useHeroPhotoAsMainBackground = false;
+  int? _defaultHeroPreset;
+  bool _hasDefaultHeroPreset = false;
 
   static const _kPhotoKey = 'couple_bg_photo_path';
   static const _kPhotoSourceKey = 'couple_bg_photo_source_path';
   static const _kPhotoScaleKey = 'couple_bg_photo_scale';
   static const _kPhotoOffsetXKey = 'couple_bg_photo_offset_x';
   static const _kPhotoOffsetYKey = 'couple_bg_photo_offset_y';
+  static const _kPhotoUseAsMainBgKey = 'couple_bg_use_main_glass';
+  static const _kDefaultHeroPresetKey = 'couple_default_hero_preset';
+  static const _kDefaultHeroPresetAssets = <String>[
+    'assets/images/main background.png',
+    'assets/images/main background2.png',
+  ];
   static const double _kHeroAspectRatio = 1.52;
   static const int _kHeroExportWidth = 1520;
   static const int _kHeroExportHeight = 1000;
@@ -110,11 +122,26 @@ class _HomeScreenState extends State<HomeScreen> {
     initialPage: _kScheduleBasePage,
     viewportFraction: 0.9,
   );
-  static const double _kDateInsightCardWidth = 172;
+  static const double _kDateInsightCardWidth = 156;
 
   final Map<String, Map<String, List<Schedule>>> _scheduleByDate = {};
   final Set<String> _scheduleLoadingDates = <String>{};
   int _schedulePage = _kScheduleBasePage;
+  final WeatherService _weatherService = WeatherService();
+  WeatherData? _myWeatherData;
+  WeatherData? _partnerWeatherData;
+  WeatherData? _schedulePlaceWeatherData;
+  String? _myWeatherStatusText;
+  String? _partnerWeatherStatusText;
+  String? _schedulePlaceStatusText;
+  String? _schedulePlaceLabel;
+  String? _schedulePlaceCityForDetail;
+  bool _isScheduleWeatherLoading = false;
+  int _weatherRequestSeq = 0;
+  final Set<String> _weatherRequestedDateKeys = <String>{};
+  final List<String> _cityKeysByLength =
+      (cityCoordinates.keys.toList()..sort((a, b) => b.length.compareTo(a.length)));
+  String? _activeWeatherDateKey;
 
   @override
   void initState() {
@@ -142,11 +169,19 @@ class _HomeScreenState extends State<HomeScreen> {
     final scale = prefs.getDouble(_kPhotoScaleKey) ?? 1.0;
     final offsetX = prefs.getDouble(_kPhotoOffsetXKey) ?? 0.0;
     final offsetY = prefs.getDouble(_kPhotoOffsetYKey) ?? 0.0;
+    final useAsMainBg = prefs.getBool(_kPhotoUseAsMainBgKey) ?? false;
+    final hasDefaultHeroPreset = prefs.containsKey(_kDefaultHeroPresetKey);
+    final defaultHeroPreset = prefs.getInt(_kDefaultHeroPresetKey);
 
     if (!mounted) return;
     setState(() {
       _heroPhotoScale = scale.clamp(0.5, 4.0);
       _heroPhotoOffset = Offset(offsetX, offsetY);
+      _useHeroPhotoAsMainBackground = useAsMainBg;
+      _hasDefaultHeroPreset = hasDefaultHeroPreset && defaultHeroPreset != null;
+      _defaultHeroPreset = _hasDefaultHeroPreset
+          ? defaultHeroPreset!.clamp(0, _kDefaultHeroPresetAssets.length - 1)
+          : null;
       if (sourcePath != null && File(sourcePath).existsSync()) {
         _couplePhotoSourcePath = sourcePath;
       }
@@ -195,6 +230,204 @@ class _HomeScreenState extends State<HomeScreen> {
     await _openHeroPhotoEditor(sourcePath: pathToEdit, sourceIsTemp: false);
   }
 
+  Future<void> _saveDefaultHeroPreset(int preset, bool useAsMainBg) async {
+    final normalized = preset.clamp(0, _kDefaultHeroPresetAssets.length - 1);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kDefaultHeroPresetKey, normalized);
+    await prefs.setBool(_kPhotoUseAsMainBgKey, useAsMainBg);
+    if (!mounted) return;
+    setState(() {
+      _defaultHeroPreset = normalized;
+      _hasDefaultHeroPreset = true;
+      _useHeroPhotoAsMainBackground = useAsMainBg;
+    });
+  }
+
+  Future<void> _clearDefaultHeroPreset(bool useAsMainBg) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kDefaultHeroPresetKey);
+    await prefs.setBool(_kPhotoUseAsMainBgKey, useAsMainBg);
+    if (!mounted) return;
+    setState(() {
+      _defaultHeroPreset = null;
+      _hasDefaultHeroPreset = false;
+      _useHeroPhotoAsMainBackground = useAsMainBg;
+    });
+  }
+
+  Future<void> _showHeroBackgroundOptionsSheet() async {
+    bool useAsMainBg = _useHeroPhotoAsMainBackground;
+    int? selectedPreset = _hasDefaultHeroPreset ? _defaultHeroPreset : null;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setStateSheet) {
+            return SafeArea(
+              top: false,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxSheetHeight = constraints.maxHeight * 0.86;
+                  return ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: maxSheetHeight),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                Row(
+                  children: [
+                    const Text(
+                      '기본 배경 선택',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '원하는 기본 배경을 고른 뒤 하단 적용 버튼으로 반영해요.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.border),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '메인 배경에 글래스모피즘 적용',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              '기본 배경 선택 시 홈 전체 배경에도 반영',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: useAsMainBg,
+                        activeColor: AppTheme.primary,
+                        onChanged: (value) {
+                          setStateSheet(() {
+                            useAsMainBg = value;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _DefaultBgOptionTile(
+                  title: '배경 없음',
+                  subtitle: '기본 배경 이미지를 사용하지 않음',
+                  selected: selectedPreset == null,
+                  onTap: () {
+                    setStateSheet(() {
+                      selectedPreset = null;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                _DefaultBgOptionTile(
+                  title: '초원 피크닉',
+                  subtitle: '따뜻한 들판과 강, 마을 풍경',
+                  selected: selectedPreset == 0,
+                  onTap: () {
+                    setStateSheet(() {
+                      selectedPreset = 0;
+                    });
+                  },
+                ),
+                const SizedBox(height: 8),
+                _DefaultBgOptionTile(
+                  title: '산길 들판',
+                  subtitle: '푸른 능선과 꽃길 산책 분위기',
+                  selected: selectedPreset == 1,
+                  onTap: () {
+                    setStateSheet(() {
+                      selectedPreset = 1;
+                    });
+                  },
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await _pickCouplePhoto();
+                    },
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('내 사진으로 설정'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      if (selectedPreset == null) {
+                        await _clearDefaultHeroPreset(useAsMainBg);
+                      } else {
+                        await _saveDefaultHeroPreset(
+                          selectedPreset!,
+                          useAsMainBg,
+                        );
+                      }
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    child: const Text('적용'),
+                  ),
+                ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+                ),
+              );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _openHeroPhotoEditor({
     required String sourcePath,
     required bool sourceIsTemp,
@@ -217,6 +450,7 @@ class _HomeScreenState extends State<HomeScreen> {
         sourcePath,
         initialScale: scale,
         initialOffset: offset,
+        initialUseAsMainBackground: _useHeroPhotoAsMainBackground,
       );
       if (preview == null) {
         if (sourceIsTemp) {
@@ -282,6 +516,10 @@ class _HomeScreenState extends State<HomeScreen> {
       await prefs.setDouble(_kPhotoScaleKey, finalScale);
       await prefs.setDouble(_kPhotoOffsetXKey, finalOffset.dx);
       await prefs.setDouble(_kPhotoOffsetYKey, finalOffset.dy);
+      await prefs.setBool(
+        _kPhotoUseAsMainBgKey,
+        preview.useAsMainBackground,
+      );
 
       if (!mounted) return;
       setState(() {
@@ -289,6 +527,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _couplePhotoPath = finalPath;
         _heroPhotoScale = finalScale;
         _heroPhotoOffset = finalOffset;
+        _useHeroPhotoAsMainBackground = preview.useAsMainBackground;
       });
     } catch (e, st) {
       debugPrint('open photo editor failed: $e');
@@ -304,6 +543,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String imagePath, {
     double initialScale = 1.0,
     Offset initialOffset = const Offset(0, 0),
+    bool initialUseAsMainBackground = false,
   }) async {
     double scale = initialScale;
     Offset offset = initialOffset;
@@ -318,6 +558,7 @@ class _HomeScreenState extends State<HomeScreen> {
     double viewportHeight = 1;
     double sourceImageWidth = 1;
     double sourceImageHeight = 1;
+    bool useAsMainBackground = initialUseAsMainBackground;
 
     try {
       final bytes = await File(imagePath).readAsBytes();
@@ -403,9 +644,37 @@ class _HomeScreenState extends State<HomeScreen> {
       final minOffsetY = cropBottom - viewportH / 2 - drawH / 2;
       final maxOffsetY = cropTop - viewportH / 2 + drawH / 2;
 
+      // Floating-point rounding can invert min/max by a tiny epsilon.
+      // Normalize bounds to avoid clamp() ArgumentError.
+      final lowerX = math.min(minOffsetX, maxOffsetX);
+      final upperX = math.max(minOffsetX, maxOffsetX);
+      final lowerY = math.min(minOffsetY, maxOffsetY);
+      final upperY = math.max(minOffsetY, maxOffsetY);
+
       return Offset(
-        targetOffset.dx.clamp(minOffsetX, maxOffsetX),
-        targetOffset.dy.clamp(minOffsetY, maxOffsetY),
+        targetOffset.dx.clamp(lowerX, upperX),
+        targetOffset.dy.clamp(lowerY, upperY),
+      );
+    }
+
+    Offset clampFreeOffset(
+      Offset targetOffset,
+      double targetScale,
+      double viewportW,
+      double viewportH,
+      double srcW,
+      double srcH,
+    ) {
+      final containScale = math.min(viewportW / srcW, viewportH / srcH);
+      final drawW = srcW * containScale * targetScale;
+      final drawH = srcH * containScale * targetScale;
+
+      final halfX = math.max(0.0, (drawW - viewportW) / 2);
+      final halfY = math.max(0.0, (drawH - viewportH) / 2);
+
+      return Offset(
+        targetOffset.dx.clamp(-halfX, halfX),
+        targetOffset.dy.clamp(-halfY, halfY),
       );
     }
 
@@ -472,6 +741,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                   fillToCard = false;
                                   scaleBeforeFill = null;
                                   offsetBeforeFill = null;
+                                  offset = clampFreeOffset(
+                                    offset,
+                                    scale,
+                                    viewportWidth,
+                                    viewportHeight,
+                                    sourceImageWidth,
+                                    sourceImageHeight,
+                                  );
                                 }),
                               ),
                               ChoiceChip(
@@ -561,6 +838,58 @@ class _HomeScreenState extends State<HomeScreen> {
                               color: Colors.white70,
                             ),
                           ),
+                          const SizedBox(height: 10),
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: const [
+                                      Text(
+                                        '메인 배경에 적용',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      SizedBox(height: 2),
+                                      Text(
+                                        'D+DAY 사진을 홈 전체 배경으로 글래스모피즘 처리',
+                                        style: TextStyle(
+                                          color: Colors.white70,
+                                          fontSize: 11,
+                                          height: 1.25,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch.adaptive(
+                                  value: useAsMainBackground,
+                                  activeColor: AppTheme.primary,
+                                  onChanged: (value) {
+                                    setStateDialog(() {
+                                      useAsMainBackground = value;
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -603,61 +932,57 @@ class _HomeScreenState extends State<HomeScreen> {
                                         sourceImageWidth,
                                         sourceImageHeight,
                                       )
-                                    : targetOffset;
+                                    : clampFreeOffset(
+                                        targetOffset,
+                                        scale,
+                                        viewportWidth,
+                                        viewportHeight,
+                                        sourceImageWidth,
+                                        sourceImageHeight,
+                                      );
                               });
                             },
                             child: Stack(
                               children: [
-                                if (!cropToCard)
-                                  Positioned.fill(
-                                    child: Transform(
-                                      transform: Matrix4.identity()
-                                        ..translate(offset.dx, offset.dy)
-                                        ..translate(width / 2, height / 2)
-                                        ..scale(scale)
-                                        ..translate(-width / 2, -height / 2),
-                                      child: ImageFiltered(
-                                        imageFilter: ui.ImageFilter.blur(
-                                          sigmaX: 28,
-                                          sigmaY: 28,
-                                        ),
-                                        child: Image.file(
-                                          File(imagePath),
-                                          fit: BoxFit.cover,
-                                          filterQuality: FilterQuality.low,
-                                        ),
+                                Positioned.fill(
+                                  child: Transform(
+                                    transform: Matrix4.identity()
+                                      ..translate(offset.dx, offset.dy)
+                                      ..translate(width / 2, height / 2)
+                                      ..scale(scale)
+                                      ..translate(-width / 2, -height / 2),
+                                    child: ImageFiltered(
+                                      imageFilter: ui.ImageFilter.blur(
+                                        sigmaX: 28,
+                                        sigmaY: 28,
+                                      ),
+                                      child: Image.file(
+                                        File(imagePath),
+                                        fit: BoxFit.cover,
+                                        filterQuality: FilterQuality.low,
                                       ),
                                     ),
                                   ),
-                                if (!cropToCard)
-                                  Positioned.fill(
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                          colors: [
-                                            AppTheme.primary
-                                                .withValues(alpha: 0.38),
-                                            const Color(0xFFF2A88D)
-                                                .withValues(alpha: 0.28),
-                                            AppTheme.accent
-                                                .withValues(alpha: 0.22),
-                                          ],
-                                          stops: const [0.0, 0.55, 1.0],
-                                        ),
+                                ),
+                                Positioned.fill(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          AppTheme.primary
+                                              .withValues(alpha: 0.38),
+                                          const Color(0xFFF2A88D)
+                                              .withValues(alpha: 0.28),
+                                          AppTheme.accent
+                                              .withValues(alpha: 0.22),
+                                        ],
+                                        stops: const [0.0, 0.55, 1.0],
                                       ),
                                     ),
                                   ),
-                                if (cropToCard)
-                                  Positioned.fill(
-                                    child: DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        color: Colors.black
-                                            .withValues(alpha: 0.40),
-                                      ),
-                                    ),
-                                  ),
+                                ),
                                 if (cropToCard && fillToCard)
                                   Positioned.fromRect(
                                     rect: cropRectForViewport(width, height),
@@ -769,6 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   viewportHeight: viewportHeight,
                                   cropToCard: cropToCard,
                                   fillToCard: fillToCard,
+                                  useAsMainBackground: useAsMainBackground,
                                 ),
                               );
                             },
@@ -862,10 +1188,34 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, outW, outH),
-      Paint()..color = const Color(0xFF000000),
+    final blurRect = Rect.fromCenter(
+      center: mappedDstRect.center,
+      width: math.max(mappedDstRect.width, outW),
+      height: math.max(mappedDstRect.height, outH),
     );
+
+    canvas.clipRect(Rect.fromLTWH(0, 0, outW, outH));
+    canvas.drawImageRect(
+      srcImage,
+      Rect.fromLTWH(0, 0, srcW, srcH),
+      blurRect,
+      Paint()
+        ..filterQuality = FilterQuality.low
+        ..imageFilter = ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+    );
+
+    final glowPaint = Paint()
+      ..shader = ui.Gradient.linear(
+        const Offset(0, 0),
+        Offset(outW, outH),
+        [
+          const Color(0x61E07A84),
+          const Color(0x47F2A88D),
+          const Color(0x387A98BD),
+        ],
+        const [0.0, 0.55, 1.0],
+      );
+    canvas.drawRect(Rect.fromLTWH(0, 0, outW, outH), glowPaint);
     if (preview.fillToCard) {
       // Stretch full source into card output so the whole image is included.
       canvas.drawImageRect(
@@ -1060,9 +1410,10 @@ class _HomeScreenState extends State<HomeScreen> {
       ]);
       if (mounted) {
         final homeData = results[0] as Map<String, dynamic>;
+        final loadedProfile = results[1] as CoupleProfile?;
         setState(() {
           _data = homeData;
-          _profile = results[1] as CoupleProfile?;
+          _profile = loadedProfile;
           _scheduleByDate.clear();
           final todayKey = _dateKey(DateTime.now());
           final tomorrowKey = _dateKey(
@@ -1083,11 +1434,461 @@ class _HomeScreenState extends State<HomeScreen> {
         _ensureSchedulesLoadedFor(_dateForPage(_schedulePage + 1));
         _setupRealtime();
         _checkNotifications(_data);
+        await _syncScheduleWeatherForDate(_dateForPage(_schedulePage));
         _updateHomeWidget();
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _syncScheduleWeatherForDate(DateTime date) async {
+    final dateKey = _dateKey(date);
+    final todayKey = _dateKey(DateTime.now());
+    final isToday = dateKey == todayKey;
+
+    if (isToday || _weatherRequestedDateKeys.contains(dateKey)) {
+      if (isToday) {
+        _weatherRequestedDateKeys.add(dateKey);
+      }
+      await _loadScheduleWeatherForDate(_profile, date);
+      return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _myWeatherData = null;
+      _partnerWeatherData = null;
+      _schedulePlaceWeatherData = null;
+      _myWeatherStatusText = null;
+      _partnerWeatherStatusText = null;
+      _schedulePlaceStatusText = null;
+      _schedulePlaceLabel = null;
+      _schedulePlaceCityForDetail = null;
+      _isScheduleWeatherLoading = false;
+      _activeWeatherDateKey = null;
+    });
+  }
+
+  Future<void> _onTapScheduleWeatherFetch(DateTime date) async {
+    final key = _dateKey(date);
+    _weatherRequestedDateKeys.add(key);
+    await _loadScheduleWeatherForDate(_profile, date);
+  }
+
+  String? _extractCityFromLocation(String? location) {
+    if (location == null) return null;
+    final text = location.trim();
+    if (text.isEmpty) return null;
+    for (final city in _cityKeysByLength) {
+      if (text.contains(city)) return city;
+    }
+    return null;
+  }
+
+  ({String label, String? city, double? lat, double? lng})? _pickScheduleWeatherSource(
+    DateTime date,
+  ) {
+    final daySchedules = _scheduleByDate[_dateKey(date)];
+    if (daySchedules == null) return null;
+
+    final all = <Schedule>[
+      ...(daySchedules['mine'] ?? const []),
+      ...(daySchedules['partner'] ?? const []),
+    ];
+
+    int score(Schedule s) {
+      final category = (s.category ?? '').trim();
+      var value = 0;
+      if (category == '데이트' || category == '약속' || category == '여행') {
+        value += 100;
+      }
+      if (s.ownerType == 'couple' || s.isDate) {
+        value += 40;
+      }
+      if ((s.location ?? '').trim().isNotEmpty) {
+        value += 20;
+      }
+      if (s.latitude != null && s.longitude != null) {
+        value += 30;
+      }
+      return value;
+    }
+
+    final candidates = all.where((s) {
+      final city = _extractCityFromLocation(s.location);
+      return (s.latitude != null && s.longitude != null) || city != null;
+    }).toList();
+
+    if (candidates.isEmpty) return null;
+
+    candidates.sort((a, b) {
+      final byScore = score(b).compareTo(score(a));
+      if (byScore != 0) return byScore;
+      final aTime = (a.startTime?.hour ?? 99) * 60 + (a.startTime?.minute ?? 99);
+      final bTime = (b.startTime?.hour ?? 99) * 60 + (b.startTime?.minute ?? 99);
+      return aTime.compareTo(bTime);
+    });
+
+    final picked = candidates.first;
+    final city = _extractCityFromLocation(picked.location);
+    final label = (picked.location ?? '').trim().isNotEmpty
+        ? picked.location!.trim()
+        : (city ?? '일정 지역');
+
+    return (
+      label: label,
+      city: city,
+      lat: picked.latitude,
+      lng: picked.longitude,
+    );
+  }
+
+  Future<void> _loadScheduleWeatherForDate(
+    CoupleProfile? profile,
+    DateTime date,
+  ) async {
+    final requestSeq = ++_weatherRequestSeq;
+    final targetDateKey = _dateKey(date);
+    if (profile == null) {
+      if (!mounted) return;
+      setState(() {
+        _myWeatherData = null;
+        _partnerWeatherData = null;
+        _schedulePlaceWeatherData = null;
+        _myWeatherStatusText = null;
+        _partnerWeatherStatusText = null;
+        _schedulePlaceStatusText = null;
+        _schedulePlaceLabel = null;
+        _schedulePlaceCityForDetail = null;
+        _isScheduleWeatherLoading = false;
+        _activeWeatherDateKey = null;
+      });
+      return;
+    }
+
+    final myCity = profile.myCity?.trim();
+    final partnerCity = profile.partnerCity?.trim();
+    final normalizedDate = DateTime(date.year, date.month, date.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (mounted) {
+      setState(() {
+        _isScheduleWeatherLoading = true;
+        _activeWeatherDateKey = targetDateKey;
+        _myWeatherData = null;
+        _partnerWeatherData = null;
+        _schedulePlaceWeatherData = null;
+        _myWeatherStatusText = null;
+        _partnerWeatherStatusText = null;
+        _schedulePlaceStatusText = null;
+        _schedulePlaceLabel = null;
+        _schedulePlaceCityForDetail = null;
+      });
+    }
+
+    Future<({WeatherData? data, String? status})> loadOne(String? city) async {
+      if (city == null || city.isEmpty) {
+        return (data: null, status: '지역 설정 필요');
+      }
+      if (!cityCoordinates.containsKey(city)) {
+        return (data: null, status: '도시 재선택 필요');
+      }
+
+      final dayDiff = normalizedDate.difference(today).inDays;
+      if (dayDiff > 15) {
+        return (data: null, status: '예보 범위 초과');
+      }
+
+      final forecast = await _weatherService.getWeatherForDate(city, normalizedDate);
+      return forecast != null
+          ? (data: forecast, status: null)
+          : (data: null, status: '날씨 정보 없음');
+    }
+
+    final scheduleSource = _pickScheduleWeatherSource(normalizedDate);
+    if (scheduleSource != null) {
+      final dayDiff = normalizedDate.difference(today).inDays;
+      if (dayDiff > 15) {
+        if (!mounted || requestSeq != _weatherRequestSeq) return;
+        setState(() {
+          _schedulePlaceWeatherData = null;
+          _schedulePlaceStatusText = '예보 범위 초과';
+          _schedulePlaceLabel = '일정';
+          _schedulePlaceCityForDetail = null;
+          _isScheduleWeatherLoading = false;
+          _activeWeatherDateKey = targetDateKey;
+        });
+        return;
+      }
+
+      WeatherData? scheduleData;
+      if (scheduleSource.lat != null && scheduleSource.lng != null) {
+        scheduleData = await _weatherService.getWeatherForDateByCoordinates(
+          label: scheduleSource.label,
+          latitude: scheduleSource.lat!,
+          longitude: scheduleSource.lng!,
+          date: normalizedDate,
+        );
+      } else if (scheduleSource.city != null) {
+        scheduleData = await _weatherService.getWeatherForDate(
+          scheduleSource.city!,
+          normalizedDate,
+        );
+      }
+
+      if (!mounted || requestSeq != _weatherRequestSeq) return;
+      setState(() {
+        _schedulePlaceWeatherData = scheduleData;
+        _schedulePlaceStatusText = scheduleData == null ? '날씨 정보 없음' : null;
+        _schedulePlaceLabel = '일정';
+        _schedulePlaceCityForDetail = scheduleSource.city;
+        _isScheduleWeatherLoading = false;
+        _activeWeatherDateKey = targetDateKey;
+      });
+      return;
+    }
+
+    final myResult = await loadOne(myCity);
+    final partnerResult =
+        (partnerCity != null && partnerCity.isNotEmpty && partnerCity != myCity)
+        ? await loadOne(partnerCity)
+        : (data: null, status: null);
+
+    if (!mounted || requestSeq != _weatherRequestSeq) return;
+    setState(() {
+      _myWeatherData = myResult.data;
+      _partnerWeatherData = partnerResult.data;
+      _myWeatherStatusText = myResult.status;
+      _partnerWeatherStatusText = partnerResult.status;
+      _schedulePlaceWeatherData = null;
+      _schedulePlaceStatusText = null;
+      _schedulePlaceLabel = null;
+      _schedulePlaceCityForDetail = null;
+      _isScheduleWeatherLoading = false;
+      _activeWeatherDateKey = targetDateKey;
+    });
+  }
+
+  String _weatherEmoji(int weatherCode) {
+    if (weatherCode == 0) return '☀';
+    if (weatherCode == 1 || weatherCode == 2) return '⛅';
+    if (weatherCode == 3) return '☁';
+    if (weatherCode >= 45 && weatherCode <= 48) return '🌫';
+    if (weatherCode >= 51 && weatherCode <= 67) return '🌧';
+    if (weatherCode >= 71 && weatherCode <= 77) return '❄';
+    if (weatherCode >= 80 && weatherCode <= 82) return '🌦';
+    if (weatherCode >= 85 && weatherCode <= 86) return '🌨';
+    if (weatherCode >= 95) return '⛈';
+    return '☁';
+  }
+
+  Widget _buildScheduleWeatherItem({
+    required String label,
+    required WeatherData? data,
+    required String? statusText,
+    required bool isLoading,
+    VoidCallback? onTap,
+    required Color chipColor,
+    required Color borderColor,
+    required Color textColor,
+  }) {
+    final weatherText = isLoading
+        ? '날씨 준비 중'
+        : (data != null
+        ? '${data.city} ${data.temperature.round()}° ${_weatherEmoji(data.weatherCode)}'
+        : (statusText ?? '날씨 정보 없음'));
+
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          decoration: BoxDecoration(
+            color: chipColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: textColor,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  weatherText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openWeatherDetail(
+    DateTime dateTime, {
+    required String city,
+    required String roleLabel,
+  }) {
+    final trimmedCity = city.trim();
+    if (trimmedCity.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('설정에서 지역을 먼저 입력해 주세요.')));
+      return;
+    }
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => WeatherDetailScreen(
+          date: dateTime,
+          city: trimmedCity,
+          roleLabel: roleLabel,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleWeatherRow({
+    required String partnerName,
+    required DateTime dateTime,
+  }) {
+    final showMy = _profile?.myCity != null && _profile!.myCity!.isNotEmpty;
+    final showPartner =
+        _profile?.partnerCity != null && _profile!.partnerCity!.isNotEmpty;
+
+    final dateKey = _dateKey(dateTime);
+    final todayKey = _dateKey(DateTime.now());
+    final isToday = dateKey == todayKey;
+    final hasRequested = _weatherRequestedDateKeys.contains(dateKey);
+
+    if (!showMy && !showPartner) {
+      return const SizedBox.shrink();
+    }
+
+    if (!isToday && !hasRequested) {
+      return SizedBox(
+        width: double.infinity,
+        child: OutlinedButton.icon(
+          onPressed: _isScheduleWeatherLoading
+              ? null
+              : () => _onTapScheduleWeatherFetch(dateTime),
+          icon: const Icon(Icons.cloud_outlined, size: 16),
+          label: const Text('날씨 조회'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppTheme.primary,
+            side: BorderSide(
+              color: AppTheme.primary.withValues(alpha: 0.35),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 8),
+          ),
+        ),
+      );
+    }
+
+    final chipColor = AppTheme.primary.withValues(alpha: 0.07);
+    final borderColor = AppTheme.primary.withValues(alpha: 0.16);
+
+    if (_schedulePlaceWeatherData != null || _schedulePlaceStatusText != null) {
+      return Row(
+        children: [
+          _buildScheduleWeatherItem(
+            label: _schedulePlaceLabel ?? '일정',
+            data: _schedulePlaceWeatherData,
+            statusText: _schedulePlaceStatusText,
+            isLoading:
+                _isScheduleWeatherLoading && _activeWeatherDateKey == dateKey,
+            onTap: _schedulePlaceCityForDetail != null
+                ? () => _openWeatherDetail(
+                      dateTime,
+                      city: _schedulePlaceCityForDetail!,
+                      roleLabel: _schedulePlaceLabel ?? '일정',
+                    )
+                : null,
+            chipColor: chipColor,
+            borderColor: borderColor,
+            textColor: AppTheme.primary,
+          ),
+        ],
+      );
+    }
+
+    if (showMy && showPartner && _profile!.myCity != _profile!.partnerCity) {
+      return Row(
+        children: [
+          _buildScheduleWeatherItem(
+            label: '나',
+            data: _myWeatherData,
+            statusText: _myWeatherStatusText,
+            isLoading: _isScheduleWeatherLoading && _activeWeatherDateKey == dateKey,
+            onTap: () => _openWeatherDetail(
+              dateTime,
+              city: _profile?.myCity ?? '',
+              roleLabel: '내',
+            ),
+            chipColor: chipColor,
+            borderColor: borderColor,
+            textColor: AppTheme.primary,
+          ),
+          const SizedBox(width: 8),
+          _buildScheduleWeatherItem(
+            label: partnerName,
+            data: _partnerWeatherData,
+            statusText: _partnerWeatherStatusText,
+            isLoading: _isScheduleWeatherLoading && _activeWeatherDateKey == dateKey,
+            onTap: () => _openWeatherDetail(
+              dateTime,
+              city: _profile?.partnerCity ?? '',
+              roleLabel: partnerName,
+            ),
+            chipColor: chipColor,
+            borderColor: borderColor,
+            textColor: AppTheme.primary,
+          ),
+        ],
+      );
+    }
+
+    final primaryData = _myWeatherData ?? _partnerWeatherData;
+    final primaryLabel = showMy ? '나' : partnerName;
+    final primaryCity = showMy ? (_profile?.myCity ?? '') : (_profile?.partnerCity ?? '');
+    return Row(
+      children: [
+        _buildScheduleWeatherItem(
+          label: primaryLabel,
+          data: primaryData,
+          statusText: primaryData == null ? (_myWeatherStatusText ?? _partnerWeatherStatusText) : null,
+          isLoading: _isScheduleWeatherLoading && _activeWeatherDateKey == dateKey,
+          onTap: () => _openWeatherDetail(
+            dateTime,
+            city: primaryCity,
+            roleLabel: primaryLabel == '나' ? '내' : partnerName,
+          ),
+          chipColor: chipColor,
+          borderColor: borderColor,
+          textColor: AppTheme.primary,
+        ),
+      ],
+    );
   }
 
   Future<void> _updateHomeWidget() async {
@@ -1227,6 +2028,24 @@ class _HomeScreenState extends State<HomeScreen> {
     return base.add(Duration(days: page - _kScheduleBasePage));
   }
 
+  String _getSchedulePageDateLabel() {
+    final date = _dateForPage(_schedulePage);
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    final tomorrow = todayDate.add(const Duration(days: 1));
+    
+    if (date == todayDate) {
+      return '오늘';
+    }
+    if (date == tomorrow) {
+      return '내일';
+    }
+    
+    final days = ['월', '화', '수', '목', '금', '토', '일'];
+    final dayOfWeek = days[date.weekday - 1];
+    return '${date.year}.${date.month}.${date.day}($dayOfWeek)';
+  }
+
   Future<void> _ensureSchedulesLoadedFor(DateTime date) async {
     if (_coupleId == null) return;
 
@@ -1244,6 +2063,11 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       if (!mounted) return;
       setState(() => _scheduleByDate[key] = schedules);
+
+      final activeDateKey = _dateKey(_dateForPage(_schedulePage));
+      if (activeDateKey == key) {
+        await _syncScheduleWeatherForDate(date);
+      }
     } catch (_) {
       // Keep UI stable when per-day query fails.
     } finally {
@@ -1276,24 +2100,41 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBody() {
     final topPad = MediaQuery.of(context).padding.top;
     final bottomPad = MediaQuery.of(context).padding.bottom;
+    final bgPhotoPath = _couplePhotoPath;
+    final bgPhotoFile = bgPhotoPath == null ? null : File(bgPhotoPath);
+    final hasCustomHeroPhoto = bgPhotoFile != null && bgPhotoFile.existsSync();
+    final safeDefaultIndex = (_defaultHeroPreset ?? 0).clamp(
+      0,
+      _kDefaultHeroPresetAssets.length - 1,
+    );
+    final defaultAssetPath = _hasDefaultHeroPreset
+        ? _kDefaultHeroPresetAssets[safeDefaultIndex]
+        : null;
+    final hasMainGlassBackground =
+        _useHeroPhotoAsMainBackground &&
+        (hasCustomHeroPhoto || _hasDefaultHeroPreset);
 
     return Stack(
       children: [
         Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.accentLight,
-                  AppTheme.background,
-                  const Color(0xFFFFF7F5),
-                ],
-                stops: const [0.0, 0.48, 1.0],
-              ),
-            ),
-          ),
+          child: hasMainGlassBackground
+              ? (hasCustomHeroPhoto
+                    ? _buildMainGlassBackground(bgPhotoFile)
+                : _buildMainGlassBackgroundAsset(defaultAssetPath!))
+              : Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppTheme.accentLight,
+                        AppTheme.background,
+                        const Color(0xFFFFF7F5),
+                      ],
+                      stops: const [0.0, 0.48, 1.0],
+                    ),
+                  ),
+                ),
         ),
         CustomScrollView(
           physics: const BouncingScrollPhysics(
@@ -1327,6 +2168,107 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool get _hasMainGlassBackgroundActive {
+    if (!_useHeroPhotoAsMainBackground) {
+      return false;
+    }
+    final path = _couplePhotoPath;
+    if (path != null && File(path).existsSync()) {
+      return true;
+    }
+    return _hasDefaultHeroPreset;
+  }
+
+  TextStyle _sectionEyebrowStyle({double letterSpacing = 2.2}) {
+    if (_hasMainGlassBackgroundActive) {
+      return GoogleFonts.gaegu(
+        fontSize: 11,
+        color: Colors.white,
+        fontWeight: FontWeight.w700,
+        letterSpacing: letterSpacing,
+        shadows: const [
+          Shadow(
+            color: Color(0x8A000000),
+            blurRadius: 4,
+            offset: Offset(0, 1),
+          ),
+        ],
+      );
+    }
+    return GoogleFonts.gaegu(
+      fontSize: 11,
+      color: AppTheme.textTertiary,
+      fontWeight: FontWeight.w700,
+      letterSpacing: letterSpacing,
+    );
+  }
+
+  Widget _buildHeadingTextShell(
+    String text, {
+    required TextStyle style,
+    EdgeInsetsGeometry? padding,
+  }) {
+    final label = Text(text, style: style);
+    if (!_hasMainGlassBackgroundActive) {
+      return label;
+    }
+    return Container(
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: label,
+    );
+  }
+
+  List<Color> _glassCardSurfaceGradient() {
+    if (!_hasMainGlassBackgroundActive) {
+      return const [Color(0xFFFFFEFC), Color(0xFFF7F1EA)];
+    }
+
+    final safeDefaultIndex = (_defaultHeroPreset ?? 0).clamp(
+      0,
+      _kDefaultHeroPresetAssets.length - 1,
+    );
+    final tint = safeDefaultIndex == 1
+        ? const Color(0xFFDDEBE1)
+        : const Color(0xFFF2E8D9);
+
+    return [
+      Color.lerp(const Color(0xFFFFFFFF), tint, 0.18)!
+          .withValues(alpha: 0.72),
+      Color.lerp(const Color(0xFFF8F3EA), tint, 0.12)!
+          .withValues(alpha: 0.54),
+    ];
+  }
+
+  Color _glassCardBorderColor({double alpha = 0.42}) =>
+      Colors.white.withValues(alpha: alpha);
+
+  List<BoxShadow> _glassCardShadows() {
+    return const <BoxShadow>[];
+  }
+
+  BoxDecoration? _glassCardSheenDecoration(double radius) {
+    if (!_hasMainGlassBackgroundActive) return null;
+    return BoxDecoration(
+      borderRadius: BorderRadius.circular(radius),
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(alpha: 0.26),
+          Colors.white.withValues(alpha: 0.06),
+          Colors.transparent,
+        ],
+        stops: const [0.0, 0.34, 0.82],
+      ),
+    );
+  }
+
   // ── Top Bar ─────────────────────────────────────────────────────────────────
 
   Widget _buildTopBar() {
@@ -1345,20 +2287,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'COUPLEDUTY',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textTertiary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 2.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '오늘도 같은 하루를 함께',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: _sectionEyebrowStyle(),
                 ),
               ],
             ),
@@ -1389,16 +2318,18 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 8),
           _TopBarIconButton(
-            icon: Icons.dashboard_customize_outlined,
-            onTap: _showQuickAccessSheet,
+            icon: Icons.calendar_month_rounded,
+            onTap: () => _openScreen(const CalendarScreen()),
           ),
           const SizedBox(width: 8),
           _TopBarIconButton(
-            icon: Icons.refresh_rounded,
-            onTap: () {
-              setState(() => _isLoading = true);
-              _loadData();
-            },
+            icon: Icons.notifications_rounded,
+            onTap: () => _openScreen(const NotificationHistoryScreen()),
+          ),
+          const SizedBox(width: 8),
+          _TopBarIconButton(
+            icon: Icons.settings_rounded,
+            onTap: () => _openScreen(const SettingsScreen()),
           ),
         ],
       ),
@@ -1409,78 +2340,6 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 
-  void _showQuickAccessSheet() {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) {
-        return SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      '빠른 이동',
-                      style: TextStyle(
-                        color: AppTheme.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () => Navigator.pop(ctx),
-                      icon: const Icon(
-                        Icons.close,
-                        color: AppTheme.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _QuickAccessAction(
-                  icon: Icons.calendar_month_rounded,
-                  title: '달력',
-                  subtitle: '일정 확인 · 일정 추가',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openScreen(const CalendarScreen());
-                  },
-                ),
-                _QuickAccessAction(
-                  icon: Icons.notifications_rounded,
-                  title: '알림',
-                  subtitle: '알림 내역 보기',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openScreen(const NotificationHistoryScreen());
-                  },
-                ),
-                _QuickAccessAction(
-                  icon: Icons.settings_rounded,
-                  title: '설정',
-                  subtitle: '프로필 · 근무패턴 · 연결관리',
-                  onTap: () {
-                    Navigator.pop(ctx);
-                    _openScreen(const SettingsScreen());
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   // ── Hero Section ────────────────────────────────────────────────────────────
 
   Widget _buildHeroSection() {
@@ -1489,12 +2348,32 @@ class _HomeScreenState extends State<HomeScreen> {
     final photoPath = _couplePhotoPath;
     final photoFile = photoPath == null ? null : File(photoPath);
     final hasHeroPhoto = photoFile != null && photoFile.existsSync();
-    final compactPhotoMode = hasHeroPhoto;
-    final titleColor = hasHeroPhoto ? Colors.white : AppTheme.textPrimary;
-    final bodyColor = hasHeroPhoto
+    final hasDefaultHeroBackground = !hasHeroPhoto && _hasDefaultHeroPreset;
+    final hasHeroVisual = hasHeroPhoto || hasDefaultHeroBackground;
+    final isPaperTicketMode = !hasHeroVisual;
+    // 배경 없음에서도 컴팩트 레이아웃은 유지하되, 티켓 카피를 추가해 비어 보임을 줄임
+    final compactPhotoMode = hasHeroVisual || _coupleId != null;
+    final heroPaperGradient = isPaperTicketMode
+        ? const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFFCF8), Color(0xFFF6EFE6)],
+            stops: [0.0, 1.0],
+          )
+        : null;
+    final heroSurfaceColor = _hasMainGlassBackgroundActive && !hasHeroPhoto
+      ? AppTheme.surface.withValues(alpha: 0.76)
+      : AppTheme.surface;
+    final heroBorderColor = isPaperTicketMode
+        ? const Color(0xFFE5D8CB)
+        : _hasMainGlassBackgroundActive
+        ? Colors.white.withValues(alpha: 0.30)
+        : AppTheme.border;
+    final titleColor = hasHeroVisual ? Colors.white : AppTheme.textPrimary;
+    final bodyColor = hasHeroVisual
         ? Colors.white.withValues(alpha: 0.92)
         : AppTheme.textSecondary;
-    final captionColor = hasHeroPhoto
+    final captionColor = hasHeroVisual
         ? Colors.white.withValues(alpha: 0.9)
         : AppTheme.textSecondary;
 
@@ -1525,10 +2404,11 @@ class _HomeScreenState extends State<HomeScreen> {
             aspectRatio: _kHeroAspectRatio,
             child: Container(
               decoration: BoxDecoration(
-                color: AppTheme.surface,
+                color: heroSurfaceColor,
+                gradient: heroPaperGradient,
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: AppTheme.border),
-                boxShadow: const [AppTheme.cardShadow],
+                border: Border.all(color: heroBorderColor),
+                boxShadow: const [],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(28),
@@ -1536,22 +2416,39 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     if (hasHeroPhoto)
                       Positioned.fill(child: _buildHeroBackgroundImage(photoFile)),
+                    if (hasDefaultHeroBackground)
+                      Positioned.fill(child: _buildDefaultHeroBackdrop()),
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          gradient: hasHeroPhoto
+                          gradient: hasHeroVisual
                               ? LinearGradient(
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                   colors: [
-                                    Colors.black.withValues(alpha: 0.08),
-                                    Colors.black.withValues(alpha: 0.44),
+                                    Colors.black.withValues(alpha: 0.06),
+                                    Colors.black.withValues(alpha: 0.36),
                                   ],
                                 )
                               : null,
                         ),
                       ),
                     ),
+                    if (_hasMainGlassBackgroundActive)
+                      Positioned.fill(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(alpha: 0.18),
+                                Colors.white.withValues(alpha: 0.08),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                     Container(
                       padding: const EdgeInsets.all(22),
                       child: Column(
@@ -1573,25 +2470,72 @@ class _HomeScreenState extends State<HomeScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: hasHeroPhoto
-                                            ? Colors.white.withValues(alpha: 0.32)
-                                            : AppTheme.primaryLight,
+                                        color: hasHeroVisual
+                                            ? Colors.black.withValues(alpha: 0.34)
+                                            : AppTheme.primary.withValues(alpha: 0.18),
                                         borderRadius: BorderRadius.circular(999),
+                                        border: Border.all(
+                                          color: hasHeroVisual
+                                              ? Colors.white.withValues(alpha: 0.26)
+                                              : AppTheme.primary.withValues(alpha: 0.34),
+                                        ),
                                       ),
                                       child: Text(
-                                        _partnerNickname != null
+                                        isPaperTicketMode
+                                          ? 'OUR DAY'
+                                            : _partnerNickname != null
                                             ? '${_partnerNickname!}${_selectKoreanParticle(text: _partnerNickname!, consonant: '과', vowel: '와')} 함께한 소중한 시간 🤍'
                                             : '우리가 함께한 소중한 시간 🤍',
                                         style: GoogleFonts.gaegu(
-                                          fontSize: 14,
-                                          color: hasHeroPhoto
+                                          fontSize: isPaperTicketMode ? 13 : 14,
+                                          color: hasHeroVisual
                                               ? Colors.white
                                               : AppTheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                          letterSpacing: 0.2,
+                                          fontWeight: isPaperTicketMode
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                          letterSpacing: isPaperTicketMode
+                                              ? 0.6
+                                              : 0.2,
                                         ),
                                       ),
                                     ),
+                                    if (isPaperTicketMode) ...[
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        _partnerNickname == null
+                                            ? '함께 쌓아온 시간, 오늘도 차곡차곡'
+                                            : '${_partnerNickname!}${_selectKoreanParticle(text: _partnerNickname!, consonant: '과', vowel: '와')} 함께 쌓아온 시간, 오늘도 차곡차곡',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.gaegu(
+                                          fontSize: 19,
+                                          color: const Color(0xFF5C4A3A),
+                                          fontWeight: FontWeight.w700,
+                                          height: 1.15,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        width: 132,
+                                        height: 1,
+                                        color: const Color(0xFFD9CCBE),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        startDateLabel.isNotEmpty
+                                            ? startDateLabel
+                                            : '연애 시작일을 기준으로 D+DAY를 계산하고 있어요.',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.gaegu(
+                                          fontSize: 12,
+                                          color: const Color(0xFF7A6755),
+                                          fontWeight: FontWeight.w600,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ],
                                     if (!compactPhotoMode) ...[
                                       const SizedBox(height: 16),
                                       Text(
@@ -1626,10 +2570,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                   ],
                                 ),
                               ),
-                              if (!hasHeroPhoto) ...[
-                                const SizedBox(width: 16),
-                                _buildHeroPhoto(),
-                              ],
                             ],
                           ),
                           SizedBox(height: compactPhotoMode ? 0 : 28),
@@ -1637,6 +2577,22 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisAlignment: MainAxisAlignment.end,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
+                              if (isPaperTicketMode)
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(bottom: 6),
+                                    child: Text(
+                                      '같은 하루를 바라본 지',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.gaegu(
+                                        fontSize: 13,
+                                        color: const Color(0xFF8A7765),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               if (!compactPhotoMode) ...[
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 6),
@@ -1678,25 +2634,29 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Material(
               color: hasHeroPhoto
                   ? Colors.black.withValues(alpha: 0.28)
-                  : AppTheme.surface,
+                  : hasDefaultHeroBackground
+                    ? Colors.black.withValues(alpha: 0.20)
+                    : AppTheme.surface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(999),
                 side: BorderSide(
-                  color: hasHeroPhoto
+                  color: hasHeroVisual
                       ? Colors.white.withValues(alpha: 0.28)
                       : AppTheme.border,
                 ),
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(999),
-                onTap: _editCurrentCouplePhoto,
+                onTap: hasHeroPhoto
+                    ? _editCurrentCouplePhoto
+                    : _showHeroBackgroundOptionsSheet,
                 child: SizedBox(
                   width: 34,
                   height: 34,
                   child: Icon(
                     Icons.settings,
                     size: 18,
-                    color: hasHeroPhoto ? Colors.white : AppTheme.textSecondary,
+                    color: hasHeroVisual ? Colors.white : AppTheme.textSecondary,
                   ),
                 ),
               ),
@@ -1736,40 +2696,146 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeroPhoto() {
-    final path = _couplePhotoPath;
-    final file = path == null ? null : File(path);
-    final hasPhoto = file != null && file.existsSync();
+  Widget _buildDefaultHeroBackdrop() {
+    final safeIndex = (_defaultHeroPreset ?? 0).clamp(
+      0,
+      _kDefaultHeroPresetAssets.length - 1,
+    );
+    final assetPath = _kDefaultHeroPresetAssets[safeIndex];
 
-    return Container(
-      width: 88,
-      height: 108,
-      decoration: BoxDecoration(
-        color: AppTheme.accentLight,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.border),
-        image: hasPhoto
-            ? DecorationImage(image: FileImage(file), fit: BoxFit.cover)
-            : null,
-      ),
-      child: hasPhoto
-          ? null
-          : Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.favorite_rounded, color: AppTheme.primary, size: 22),
-                SizedBox(height: 8),
-                Text(
-                  'PHOTO',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.4,
-                  ),
+    return Image.asset(
+      assetPath,
+      fit: BoxFit.cover,
+      alignment: Alignment.center,
+      filterQuality: FilterQuality.low,
+      errorBuilder: (_, __, ___) => const _DefaultHeroBackdrop(),
+    );
+  }
+
+  Widget _buildMainGlassBackground(File file) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final cacheWidth = width.isFinite ? width.round() * 2 : 1600;
+        final cacheHeight = height.isFinite ? height.round() * 2 : 3000;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Transform(
+              transform: Matrix4.identity()
+                ..translate(_heroPhotoOffset.dx, _heroPhotoOffset.dy)
+                ..translate(width / 2, height / 2)
+                ..scale(_heroPhotoScale)
+                ..translate(-width / 2, -height / 2),
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                child: Image.file(
+                  file,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.center,
+                  cacheWidth: cacheWidth,
+                  cacheHeight: cacheHeight,
+                  filterQuality: FilterQuality.low,
                 ),
-              ],
+              ),
             ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.accentLight.withValues(alpha: 0.34),
+                    AppTheme.background.withValues(alpha: 0.24),
+                    const Color(0xFFFFF7F5).withValues(alpha: 0.22),
+                  ],
+                  stops: const [0.0, 0.52, 1.0],
+                ),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.22),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.12),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildMainGlassBackgroundAsset(String assetPath) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+              child: Image.asset(
+                assetPath,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+                filterQuality: FilterQuality.low,
+                cacheWidth: width.isFinite ? width.round() * 2 : null,
+                cacheHeight: height.isFinite ? height.round() * 2 : null,
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppTheme.accentLight.withValues(alpha: 0.34),
+                    AppTheme.background.withValues(alpha: 0.24),
+                    const Color(0xFFFFF7F5).withValues(alpha: 0.22),
+                  ],
+                  stops: const [0.0, 0.52, 1.0],
+                ),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.22),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.12),
+                  ],
+                  stops: const [0.0, 0.45, 1.0],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1958,7 +3024,7 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         const SizedBox(height: 2),
         SizedBox(
-          height: 182,
+          height: 164,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -1973,56 +3039,31 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDateInsightCard(_DateInsightCardData card) {
+    final surfaceGradient = _glassCardSurfaceGradient();
+    final borderColor = _hasMainGlassBackgroundActive
+        ? _glassCardBorderColor()
+        : const Color(0xFFE7DCD1);
+
     return SizedBox(
       width: _kDateInsightCardWidth,
       child: GestureDetector(
         onTap: card.onTap,
         child: Stack(
-          clipBehavior: Clip.none,
           children: [
-            Positioned(
-              top: 72,
-              left: -7,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: const BoxDecoration(
-                  color: AppTheme.background,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 72,
-              right: -7,
-              child: Container(
-                width: 14,
-                height: 14,
-                decoration: const BoxDecoration(
-                  color: AppTheme.background,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
             Container(
               margin: const EdgeInsets.only(top: 8),
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFFEFC), Color(0xFFF7F1EA)],
+                  colors: surfaceGradient,
                 ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE7DCD1)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: borderColor),
+                boxShadow: _glassCardShadows(),
               ),
+              foregroundDecoration: _glassCardSheenDecoration(14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -2163,15 +3204,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _openTransportSearch() {
-    final from = _profile?.myStation;
-    final to = _profile?.partnerStation;
-    if (from == null || to == null || from.isEmpty || to.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('설정에서 출발역을 먼저 입력해 주세요.')));
-      return;
-    }
-    _openScreen(TransportSearchScreen(fromStation: from, toStation: to));
+    _openScreen(TransportSearchScreen(
+      fromStation: _profile?.myStation,
+      toStation: _profile?.partnerStation,
+    ));
   }
 
   void _openMidpointSearch() {
@@ -2193,23 +3229,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        _buildHeadingTextShell(
           'DATE TOOLS',
-          style: TextStyle(
-            fontSize: 11,
-            color: AppTheme.textTertiary,
+          style: _sectionEyebrowStyle().copyWith(
             fontWeight: FontWeight.w600,
-            letterSpacing: 2.2,
             height: 1.0,
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          '둘이서 움직이는 순간을 더 가볍게 준비해요.',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.w700,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         ),
         const SizedBox(height: 12),
         SizedBox(
@@ -2227,54 +3253,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFeatureCard(_HomeFeatureCardData feature) {
+    final surfaceGradient = _glassCardSurfaceGradient();
+    final borderColor = _hasMainGlassBackgroundActive
+        ? _glassCardBorderColor()
+        : const Color(0xFFE7DCD1);
+
     return GestureDetector(
       onTap: feature.onTap,
       child: SizedBox(
         width: 146,
         child: Stack(
-          clipBehavior: Clip.none,
           children: [
-            Positioned(
-              top: 56,
-              left: -6,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  color: AppTheme.background,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            Positioned(
-              top: 56,
-              right: -6,
-              child: Container(
-                width: 12,
-                height: 12,
-                decoration: const BoxDecoration(
-                  color: AppTheme.background,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
             Container(
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [Color(0xFFFFFEFC), Color(0xFFF7F1EA)],
+                  colors: surfaceGradient,
                 ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE7DCD1)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 10,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: borderColor),
+                boxShadow: _glassCardShadows(),
               ),
+              foregroundDecoration: _glassCardSheenDecoration(14),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
                 child: Column(
@@ -2359,26 +3360,12 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         Row(
           children: [
-            Text(
+            _buildHeadingTextShell(
               'SCHEDULE',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textTertiary,
-                letterSpacing: 1.4,
-              ),
+              style: _sectionEyebrowStyle(letterSpacing: 1.4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
             ),
             const Spacer(),
-            Text(
-              '우리의 일정',
-              style:
-                  Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ) ??
-                  const TextStyle(),
-            ),
-            const SizedBox(width: 12),
             GestureDetector(
               onTap: isTodayPage
                   ? null
@@ -2399,7 +3386,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  '오늘',
+                  _getSchedulePageDateLabel(),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -2411,13 +3398,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        SizedBox(
-          height: 216,
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          height: _scheduleCardHeight(),
           child: PageView.builder(
             controller: _schedulePageController,
             onPageChanged: (page) {
               setState(() => _schedulePage = page);
               _ensureSchedulesLoadedFor(_dateForPage(page + 1));
+              _syncScheduleWeatherForDate(_dateForPage(page));
             },
             itemBuilder: (context, pageIndex) {
               final date = _dateForPage(pageIndex);
@@ -2488,6 +3478,57 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  double _scheduleCardHeight() {
+    final date = _dateForPage(_schedulePage);
+    final dateKey = _dateKey(date);
+    final daySchedules = _scheduleByDate[dateKey];
+
+    final mySchedules =
+        (daySchedules?['mine'] ?? []).where((s) => s.ownerType != 'couple').toList();
+    final partnerSchedules =
+        (daySchedules?['partner'] ?? []).where((s) => s.ownerType != 'couple').toList();
+    final sharedSchedules = <String, Schedule>{};
+    for (final s in [
+      ...(daySchedules?['mine'] ?? []),
+      ...(daySchedules?['partner'] ?? []),
+    ]) {
+      if (s.ownerType == 'couple') sharedSchedules[s.id] = s;
+    }
+
+    final allSchedules = [
+      ...mySchedules,
+      ...partnerSchedules,
+      ...sharedSchedules.values,
+    ];
+
+    final hasAnniversaryOrOff =
+        (_getAnniversaryLabelFromSchedules(allSchedules) ??
+                _getSystemAnniversaryLabel(date)) !=
+            null ||
+        (_isOffDay([...mySchedules, ...sharedSchedules.values]) &&
+            _isOffDay([...partnerSchedules, ...sharedSchedules.values]));
+
+    final hasWeather = (_profile?.myCity?.isNotEmpty ?? false) ||
+        (_profile?.partnerCity?.isNotEmpty ?? false);
+
+    final hasShared = sharedSchedules.isNotEmpty;
+    final hasPersonal = mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
+
+    // 최대 콘텐츠 아이템 수로 높이 결정
+    final maxPersonalItems =
+        (mySchedules.length > partnerSchedules.length ? mySchedules.length : partnerSchedules.length)
+            .clamp(0, 4);
+    final sharedItems = sharedSchedules.length.clamp(0, 3);
+
+    double height = 248;
+    if (hasAnniversaryOrOff) height += 38; // 칩 영역
+    if (hasWeather && hasShared && hasPersonal) height += 24; // 여유 공간
+    if (hasShared && hasPersonal) height += (sharedItems - 1).clamp(0, 2) * 28.0;
+    if (hasPersonal) height += (maxPersonalItems - 1).clamp(0, 3) * 28.0;
+
+    return height.clamp(248, 420);
+  }
+
   Widget _buildScheduleDayPage({
     required DateTime date,
     required Map<String, List<Schedule>>? schedules,
@@ -2495,13 +3536,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final mySchedules = schedules?['mine'] ?? [];
     final partnerSchedules = schedules?['partner'] ?? [];
-    final allSchedules = [...mySchedules, ...partnerSchedules];
+
+    final sharedById = <String, Schedule>{};
+    for (final schedule in [...mySchedules, ...partnerSchedules]) {
+      if (schedule.ownerType == 'couple') {
+        sharedById[schedule.id] = schedule;
+      }
+    }
+
+    final sharedSchedules = sharedById.values.toList();
+    final myPersonalSchedules =
+        mySchedules.where((s) => s.ownerType != 'couple').toList();
+    final partnerPersonalSchedules =
+        partnerSchedules.where((s) => s.ownerType != 'couple').toList();
+
+    final allSchedules = [
+      ...myPersonalSchedules,
+      ...partnerPersonalSchedules,
+      ...sharedSchedules,
+    ];
     final partnerName = _partnerNickname ?? '애인';
     final anniversaryLabel = _getAnniversaryLabelFromSchedules(allSchedules) ??
         _getSystemAnniversaryLabel(date);
     final hasAnniversary = anniversaryLabel != null;
     // 디자인 우선순위는 기념일, 문구는 겹치면 함께 노출
-    final bothOff = _isOffDay(mySchedules) && _isOffDay(partnerSchedules);
+    final bothOff = _isOffDay([...myPersonalSchedules, ...sharedSchedules]) &&
+        _isOffDay([...partnerPersonalSchedules, ...sharedSchedules]);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
@@ -2514,8 +3574,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 : _buildUnifiedScheduleCard(
                     dateTime: date,
                     partnerName: partnerName,
-                    mySchedules: mySchedules,
-                    partnerSchedules: partnerSchedules,
+                    sharedSchedules: sharedSchedules,
+                    mySchedules: myPersonalSchedules,
+                    partnerSchedules: partnerPersonalSchedules,
                     showBothOffText: bothOff,
                     showAnniversaryText: hasAnniversary,
                     anniversaryLabel: anniversaryLabel,
@@ -2530,6 +3591,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return _buildUnifiedScheduleCard(
       dateTime: date,
       partnerName: _partnerNickname ?? '애인',
+      sharedSchedules: const [],
       mySchedules: const [],
       partnerSchedules: const [],
       isLoading: true,
@@ -2539,6 +3601,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildUnifiedScheduleCard({
     required DateTime dateTime,
     required String partnerName,
+    required List<Schedule> sharedSchedules,
     required List<Schedule> mySchedules,
     required List<Schedule> partnerSchedules,
     bool isLoading = false,
@@ -2546,9 +3609,6 @@ class _HomeScreenState extends State<HomeScreen> {
     bool showAnniversaryText = false,
     String? anniversaryLabel,
   }) {
-    const weekdays = ['월', '화', '수', '목', '금', '토', '일'];
-    final scheduleDateLabel =
-        '${dateTime.year}.${dateTime.month.toString().padLeft(2, '0')}.${dateTime.day.toString().padLeft(2, '0')} (${weekdays[dateTime.weekday - 1]})';
     final ticketColors = showAnniversaryText
         ? const [Color(0xFFFFFCF3), Color(0xFFFCEFD8)]
         : showBothOffText
@@ -2559,12 +3619,31 @@ class _HomeScreenState extends State<HomeScreen> {
         : showBothOffText
         ? const Color(0xFFECCED3)
         : const Color(0xFFE7DCD1);
+    final effectiveTicketColors = _hasMainGlassBackgroundActive
+      ? [
+          Color.lerp(ticketColors[0], Colors.white, 0.08)!
+              .withValues(alpha: 0.64),
+          Color.lerp(ticketColors[1], const Color(0xFFECE2D7), 0.10)!
+              .withValues(alpha: 0.54),
+        ]
+      : ticketColors;
+    final effectiveTicketBorderColor = _hasMainGlassBackgroundActive
+      ? _glassCardBorderColor(alpha: showAnniversaryText ? 0.44 : 0.40)
+      : ticketBorderColor;
     final dividerColor = showAnniversaryText
         ? const Color(0xFFE2CCA2)
         : showBothOffText
         ? const Color(0xFFE6D5D8)
         : const Color(0xFFDCCFC2);
-    final ticketShadows = showAnniversaryText
+    final effectiveDividerColor = _hasMainGlassBackgroundActive
+      ? Colors.white.withValues(alpha: 0.32)
+      : dividerColor;
+    final hasSharedSchedules = sharedSchedules.isNotEmpty;
+    final hasPersonalSchedules =
+        mySchedules.isNotEmpty || partnerSchedules.isNotEmpty;
+    final ticketShadows = !_hasMainGlassBackgroundActive
+        ? const <BoxShadow>[]
+        : showAnniversaryText
         ? const [
             BoxShadow(
               color: Color(0x20DDAA4F),
@@ -2597,6 +3676,9 @@ class _HomeScreenState extends State<HomeScreen> {
               offset: Offset(0, 4),
             ),
           ];
+    final effectiveTicketShadows = _hasMainGlassBackgroundActive
+        ? _glassCardShadows()
+        : ticketShadows;
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -2606,158 +3688,187 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Stack(
-        clipBehavior: Clip.none,
         children: [
-          Positioned(
-            top: 74,
-            left: -7,
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: const BoxDecoration(
-                color: AppTheme.background,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            top: 74,
-            right: -7,
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: const BoxDecoration(
-                color: AppTheme.background,
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
           Container(
             padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: ticketColors,
+                colors: effectiveTicketColors,
               ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ticketBorderColor),
-              boxShadow: ticketShadows,
+              border: Border.all(color: effectiveTicketBorderColor),
+              boxShadow: effectiveTicketShadows,
             ),
+            foregroundDecoration: _glassCardSheenDecoration(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(
-                          color: AppTheme.primary.withValues(alpha: 0.24),
-                        ),
-                      ),
-                      child: Text(
-                        scheduleDateLabel,
-                        style: TextStyle(
-                          fontSize: 10,
-                          letterSpacing: 0.6,
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    if (showAnniversaryText)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.celebration_rounded,
-                            size: 15,
-                            color: Color(0xFFC99A3A),
+                if (showAnniversaryText || showBothOffText) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      if (showAnniversaryText)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${anniversaryLabel ?? '기념일'} 축하해요',
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9EBCB),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: const Color(0xFFE2CCA2),
+                            ),
+                          ),
+                          child: Text(
+                            '🎉 ${anniversaryLabel ?? '기념일'}',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFB37C1F),
+                            ),
+                          ),
+                        ),
+                      if (showBothOffText)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: AppTheme.primary.withValues(alpha: 0.24),
+                            ),
+                          ),
+                          child: Text(
+                            '둘다 휴무',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w700,
-                              color: const Color(
-                                0xFFC08E2D,
-                              ).withValues(alpha: 0.95),
+                              color: AppTheme.primary.withValues(alpha: 0.92),
                             ),
                           ),
-                          if (showBothOffText) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              '· 둘다 쉬는날이에요',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.primary.withValues(alpha: 0.9),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    height: 1,
+                    color: effectiveDividerColor,
+                  ),
+                  const SizedBox(height: 6),
+                ],
+                _buildScheduleWeatherRow(
+                  partnerName: partnerName,
+                  dateTime: dateTime,
+                ),
+                if ((_profile?.myCity != null && _profile!.myCity!.isNotEmpty) ||
+                    (_profile?.partnerCity != null &&
+                        _profile!.partnerCity!.isNotEmpty)) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    height: 1,
+                    color: effectiveDividerColor,
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                Expanded(
+                  child: hasSharedSchedules
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Flexible(
+                              fit: FlexFit.loose,
+                              child: _buildScheduleSection(
+                                label: '우리',
+                                schedules: sharedSchedules,
+                                emptyText: isLoading
+                                    ? '불러오는 중...'
+                                    : (showAnniversaryText ? '기념일' : '쉬는날'),
+                              ),
+                            ),
+                            if (hasPersonalSchedules) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                width: double.infinity,
+                                height: 1,
+                                color: effectiveDividerColor,
+                              ),
+                              const SizedBox(height: 6),
+                              Expanded(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Expanded(
+                                      child: _buildScheduleSection(
+                                        label: '나',
+                                        schedules: mySchedules,
+                                        emptyText: isLoading
+                                            ? '불러오는 중...'
+                                            : (showAnniversaryText
+                                                  ? '기념일'
+                                                  : '일정 없음'),
+                                      ),
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      color: effectiveDividerColor,
+                                    ),
+                                    Expanded(
+                                      child: _buildScheduleSection(
+                                        label: partnerName,
+                                        schedules: partnerSchedules,
+                                        emptyText: isLoading
+                                            ? '불러오는 중...'
+                                            : (showAnniversaryText
+                                                  ? '기념일'
+                                                  : '일정 없음'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        )
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              child: _buildScheduleSection(
+                                label: '나',
+                                schedules: mySchedules,
+                                emptyText: isLoading
+                                    ? '불러오는 중...'
+                                    : (showAnniversaryText ? '기념일' : '쉬는날'),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              margin: const EdgeInsets.symmetric(horizontal: 12),
+                              color: effectiveDividerColor,
+                            ),
+                            Expanded(
+                              child: _buildScheduleSection(
+                                label: partnerName,
+                                schedules: partnerSchedules,
+                                emptyText: isLoading
+                                    ? '불러오는 중...'
+                                    : (showAnniversaryText ? '기념일' : '쉬는날'),
                               ),
                             ),
                           ],
-                        ],
-                      )
-                    else if (showBothOffText)
-                      Text(
-                        '둘다 쉬는날이에요',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.primary.withValues(alpha: 0.88),
                         ),
-                      )
-                    else
-                      const Icon(
-                        Icons.event_note_rounded,
-                        size: 18,
-                        color: AppTheme.textSecondary,
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  width: double.infinity,
-                  height: 1,
-                  color: dividerColor,
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: _buildScheduleSection(
-                          label: '나',
-                          schedules: mySchedules,
-                          emptyText: isLoading
-                              ? '불러오는 중...'
-                              : (showAnniversaryText ? '기념일' : '쉬는날'),
-                        ),
-                      ),
-                      Container(
-                        width: 1,
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                        color: dividerColor,
-                      ),
-                      Expanded(
-                        child: _buildScheduleSection(
-                          label: partnerName,
-                          schedules: partnerSchedules,
-                          emptyText: isLoading
-                              ? '불러오는 중...'
-                              : (showAnniversaryText ? '기념일' : '쉬는날'),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
@@ -2786,85 +3897,113 @@ class _HomeScreenState extends State<HomeScreen> {
           overflow: TextOverflow.ellipsis,
         ),
         const SizedBox(height: 9),
-        if (schedules.isEmpty)
-          Text(
-            emptyText,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppTheme.textSecondary,
-            ),
-          )
-        else
-          ...schedules.take(3).map((s) {
-            final timeStr = s.startTime != null
-                ? '${s.startTime!.hour.toString().padLeft(2, '0')}:${s.startTime!.minute.toString().padLeft(2, '0')}'
-                : '';
-            final isAnniversary = s.isAnniversary || s.category == '기념일';
-            final catColor = _categoryColor(s.category);
-            final displayTitle = s.title ?? s.category ?? '일정';
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    margin: const EdgeInsets.only(top: 6),
-                    decoration: BoxDecoration(
-                      color: catColor,
-                      shape: BoxShape.circle,
+        Expanded(
+          child: schedules.isEmpty
+              ? Align(
+                  alignment: Alignment.topLeft,
+                  child: Text(
+                    emptyText,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
                     ),
                   ),
-                  const SizedBox(width: 7),
-                  Expanded(
-                    child: Column(
+                )
+              : ListView.separated(
+                  primary: false,
+                  padding: EdgeInsets.zero,
+                  physics: const ClampingScrollPhysics(),
+                  itemCount: schedules.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final s = schedules[index];
+                    final timeStr = s.startTime != null
+                        ? '${s.startTime!.hour.toString().padLeft(2, '0')}:${s.startTime!.minute.toString().padLeft(2, '0')}'
+                        : '';
+                    final isAnniversary =
+                        s.isAnniversary || s.category == '기념일';
+                    final catColor = _categoryColor(s.category);
+                    final displayTitle = s.title ?? s.category ?? '일정';
+
+                    return Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          isAnniversary ? '🎉 $displayTitle' : displayTitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isAnniversary
-                                ? const Color(0xFFB4812E)
-                                : AppTheme.textPrimary,
-                            fontWeight: isAnniversary
-                                ? FontWeight.w700
-                                : FontWeight.w600,
-                            height: 1.35,
+                        Container(
+                          width: 7,
+                          height: 7,
+                          margin: const EdgeInsets.only(top: 6),
+                          decoration: BoxDecoration(
+                            color: catColor,
+                            shape: BoxShape.circle,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (s.category != null || timeStr.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 3),
-                            child: Text(
-                              [
-                                if (s.category != null) s.category!,
-                                if (timeStr.isNotEmpty) timeStr,
-                              ].join(' · '),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppTheme.textSecondary,
+                        const SizedBox(width: 7),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isAnniversary ? '🎉 $displayTitle' : displayTitle,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isAnniversary
+                                      ? const Color(0xFFB4812E)
+                                      : AppTheme.textPrimary,
+                                  fontWeight: isAnniversary
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
+                                  height: 1.35,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
+                              if (s.category != null || timeStr.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 3),
+                                  child: Text(
+                                    [
+                                      if (s.category != null) s.category!,
+                                      if (timeStr.isNotEmpty) timeStr,
+                                    ].join(' · '),
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                ),
+                              if (s.location != null && s.location!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.location_on_outlined,
+                                        size: 11,
+                                        color: AppTheme.textTertiary,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Expanded(
+                                        child: Text(
+                                          s.location!,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            color: AppTheme.textTertiary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
+                        ),
                       ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-        if (schedules.length > 3)
-          Text(
-            '+${schedules.length - 3}개 더',
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppTheme.textSecondary,
-            ),
-          ),
+                    );
+                  },
+                ),
+        ),
       ],
     );
   }
@@ -3113,6 +4252,7 @@ class _PhotoPreviewResult {
   final double viewportHeight;
   final bool cropToCard;
   final bool fillToCard;
+  final bool useAsMainBackground;
 
   const _PhotoPreviewResult({
     required this.confirmed,
@@ -3123,7 +4263,351 @@ class _PhotoPreviewResult {
     this.viewportHeight = 1,
     this.cropToCard = false,
     this.fillToCard = false,
+    this.useAsMainBackground = false,
   });
+}
+
+class _DefaultHeroBackdrop extends StatelessWidget {
+  const _DefaultHeroBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0xFF74C8FF), Color(0xFFBDE6FF), Color(0xFFF1E6B8)],
+              stops: [0.0, 0.56, 1.0],
+            ),
+          ),
+        ),
+        CustomPaint(painter: _DefaultHeroBackdropPainter()),
+      ],
+    );
+  }
+}
+
+class _DefaultHeroBackdropPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final skyCloudPaint = Paint()..color = Colors.white.withValues(alpha: 0.82);
+    final hazePaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0x00FFFFFF), Color(0x40FFFFFF)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height * 0.6));
+
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * 0.40, size.width, size.height * 0.20),
+      hazePaint,
+    );
+
+    for (final rect in <Rect>[
+      Rect.fromLTWH(size.width * 0.12, size.height * 0.14, 58, 18),
+      Rect.fromLTWH(size.width * 0.30, size.height * 0.08, 46, 14),
+      Rect.fromLTWH(size.width * 0.58, size.height * 0.12, 62, 20),
+      Rect.fromLTWH(size.width * 0.76, size.height * 0.18, 42, 14),
+    ]) {
+      final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(20));
+      canvas.drawRRect(rrect, skyCloudPaint);
+      canvas.drawCircle(
+        Offset(rect.left + rect.width * 0.22, rect.top + 2),
+        rect.height * 0.65,
+        skyCloudPaint,
+      );
+      canvas.drawCircle(
+        Offset(rect.left + rect.width * 0.58, rect.top),
+        rect.height * 0.75,
+        skyCloudPaint,
+      );
+    }
+
+    final farHill = Path()
+      ..moveTo(0, size.height * 0.50)
+      ..quadraticBezierTo(
+        size.width * 0.20,
+        size.height * 0.42,
+        size.width * 0.40,
+        size.height * 0.48,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.62,
+        size.height * 0.38,
+        size.width,
+        size.height * 0.50,
+      )
+      ..lineTo(size.width, size.height * 0.68)
+      ..lineTo(0, size.height * 0.68)
+      ..close();
+    canvas.drawPath(farHill, Paint()..color = const Color(0xFF7D9F74));
+
+    final valley = Path()
+      ..moveTo(0, size.height * 0.60)
+      ..quadraticBezierTo(
+        size.width * 0.24,
+        size.height * 0.52,
+        size.width * 0.45,
+        size.height * 0.62,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.68,
+        size.height * 0.50,
+        size.width,
+        size.height * 0.60,
+      )
+      ..lineTo(size.width, size.height * 0.80)
+      ..lineTo(0, size.height * 0.80)
+      ..close();
+    canvas.drawPath(valley, Paint()..color = const Color(0xFFB7C46C));
+
+    final river = Path()
+      ..moveTo(size.width * 0.52, size.height * 0.42)
+      ..quadraticBezierTo(
+        size.width * 0.44,
+        size.height * 0.56,
+        size.width * 0.38,
+        size.height * 0.72,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.34,
+        size.height * 0.82,
+        size.width * 0.26,
+        size.height,
+      );
+    canvas.drawPath(
+      river,
+      Paint()
+        ..color = const Color(0xFF7DC7E8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.045
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawPath(
+      river,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.28)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = size.width * 0.012
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final nearField = Path()
+      ..moveTo(0, size.height * 0.72)
+      ..quadraticBezierTo(
+        size.width * 0.25,
+        size.height * 0.62,
+        size.width * 0.50,
+        size.height * 0.76,
+      )
+      ..quadraticBezierTo(
+        size.width * 0.72,
+        size.height * 0.66,
+        size.width,
+        size.height * 0.74,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(nearField, Paint()..color = const Color(0xFF7E973B));
+
+    final wildGrassPaint = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          const Color(0xFFDFCC79).withValues(alpha: 0.55),
+          const Color(0xFF556819),
+        ],
+      ).createShader(Rect.fromLTWH(0, size.height * 0.70, size.width, size.height));
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * 0.78, size.width, size.height * 0.22),
+      wildGrassPaint,
+    );
+
+    final blanketRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(size.width * 0.46, size.height * 0.86),
+        width: size.width * 0.18,
+        height: size.height * 0.10,
+      ),
+      const Radius.circular(18),
+    );
+    canvas.drawRRect(blanketRect, Paint()..color = const Color(0xC49A7B5F));
+
+    final treePaint = Paint()..color = const Color(0xFF4A4021);
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.08, size.height * 0.52, 8, size.height * 0.18),
+      treePaint,
+    );
+    canvas.drawCircle(
+      Offset(size.width * 0.09, size.height * 0.48),
+      size.width * 0.07,
+      Paint()..color = const Color(0xFF4D6F2B),
+    );
+
+    final villagePaint = Paint()..color = const Color(0xFFEDE4D7);
+    for (final house in <Offset>[
+      Offset(size.width * 0.72, size.height * 0.56),
+      Offset(size.width * 0.77, size.height * 0.58),
+      Offset(size.width * 0.82, size.height * 0.55),
+      Offset(size.width * 0.87, size.height * 0.57),
+    ]) {
+      final rect = Rect.fromLTWH(house.dx, house.dy, 18, 12);
+      canvas.drawRect(rect, villagePaint);
+      final roof = Path()
+        ..moveTo(rect.left - 2, rect.top)
+        ..lineTo(rect.center.dx, rect.top - 7)
+        ..lineTo(rect.right + 2, rect.top)
+        ..close();
+      canvas.drawPath(roof, Paint()..color = const Color(0xFF815042));
+    }
+
+    canvas.drawRect(
+      Rect.fromLTWH(size.width * 0.88, size.height * 0.48, 9, size.height * 0.11),
+      Paint()..color = const Color(0xFFB9B4A1),
+    );
+    final steeple = Path()
+      ..moveTo(size.width * 0.875, size.height * 0.48)
+      ..lineTo(size.width * 0.895, size.height * 0.43)
+      ..lineTo(size.width * 0.915, size.height * 0.48)
+      ..close();
+    canvas.drawPath(steeple, Paint()..color = const Color(0xFF4A4E62));
+
+    final bodyPaint = Paint()..color = const Color(0xFF2D2A27);
+    final lightBodyPaint = Paint()..color = const Color(0xFFE7DDCF);
+    final center = Offset(size.width * 0.50, size.height * 0.68);
+
+    canvas.drawCircle(Offset(center.dx - 16, center.dy - 42), 10, bodyPaint);
+    canvas.drawCircle(Offset(center.dx + 18, center.dy - 40), 10, bodyPaint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(center.dx - 16, center.dy - 8),
+          width: 20,
+          height: 56,
+        ),
+        const Radius.circular(8),
+      ),
+      Paint()..color = const Color(0xFFA7A5A0),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(center.dx + 18, center.dy - 6),
+          width: 22,
+          height: 54,
+        ),
+        const Radius.circular(8),
+      ),
+      lightBodyPaint,
+    );
+
+    final limbPaint = Paint()
+      ..color = bodyPaint.color
+      ..strokeWidth = 4.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(center.dx - 21, center.dy + 18),
+      Offset(center.dx - 27, center.dy + 54),
+      limbPaint,
+    );
+    canvas.drawLine(
+      Offset(center.dx - 11, center.dy + 18),
+      Offset(center.dx - 2, center.dy + 54),
+      limbPaint,
+    );
+    canvas.drawLine(
+      Offset(center.dx + 11, center.dy + 20),
+      Offset(center.dx + 4, center.dy + 54),
+      limbPaint,
+    );
+    canvas.drawLine(
+      Offset(center.dx + 23, center.dy + 18),
+      Offset(center.dx + 30, center.dy + 52),
+      limbPaint,
+    );
+    canvas.drawLine(
+      Offset(center.dx - 8, center.dy - 12),
+      Offset(center.dx + 7, center.dy - 10),
+      limbPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _DefaultBgOptionTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _DefaultBgOptionTile({
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppTheme.primaryLight.withValues(alpha: 0.52)
+              : AppTheme.background,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? AppTheme.primary : AppTheme.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      color: AppTheme.textPrimary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: selected ? AppTheme.primary : AppTheme.textTertiary,
+              size: 20,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _CropFramePainter extends CustomPainter {
@@ -3355,82 +4839,6 @@ class _DashedRRectPainter extends CustomPainter {
         oldDelegate.dashLength != dashLength ||
         oldDelegate.gapLength != gapLength ||
         oldDelegate.radius != radius;
-  }
-}
-
-class _QuickAccessAction extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _QuickAccessAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: AppTheme.surface,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Ink(
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.border),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentLight,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: AppTheme.primary, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      Text(
-                        subtitle,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppTheme.textTertiary,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
 

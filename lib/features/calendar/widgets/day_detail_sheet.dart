@@ -168,13 +168,11 @@ class _DayDetailSheetState extends State<DayDetailSheet> {
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.add, size: 16, color: AppTheme.primary),
-                        SizedBox(width: 4),
                         Text(
                           '일정 추가',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppTheme.primary,
+                            color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
                         ),

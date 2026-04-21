@@ -4,6 +4,72 @@ const corsHeaders = {
     'authorization, x-client-info, apikey, content-type',
 }
 
+function parseClaudeJson(
+  raw: string,
+  targetYear: number,
+  targetMonth: number,
+): Record<string, unknown> {
+  const attempts: string[] = []
+  const trimmed = raw.trim()
+  attempts.push(trimmed)
+
+  const matched = trimmed.match(/\{[\s\S]*\}/)
+  if (matched) attempts.push(matched[0])
+
+  for (const attempt of attempts) {
+    if (!attempt) continue
+    try {
+      return JSON.parse(attempt)
+    } catch {
+      // continue to repair path
+    }
+
+    const repaired = attempt
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(
+        /"(start_date|end_date|start_time|end_time|work_type|color_hex)"\s*:\s*"([^"\n\r}]*)}/g,
+        '"$1": "$2"}',
+      )
+      .replace(
+        /"(start_date|end_date|start_time|end_time|work_type|color_hex)"\s*:\s*"([^"\n\r,]*),/g,
+        '"$1": "$2",',
+      )
+
+    try {
+      return JSON.parse(repaired)
+    } catch {
+      // fall through to next attempt
+    }
+  }
+
+  const objectChunks = trimmed.match(/\{[^{}]*\}/g) ?? []
+  const schedules: Record<string, unknown>[] = []
+
+  for (const chunk of objectChunks) {
+    if (!chunk.includes('"start_date"')) continue
+    const start = chunk.match(/"start_date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/)?.[1]
+    const end = chunk.match(/"end_date"\s*:\s*"(\d{4}-\d{2}-\d{2})"/)?.[1]
+    const workType = chunk.match(/"work_type"\s*:\s*"([^"]*)"/)?.[1]
+    const color = chunk.match(/"color_hex"\s*:\s*"(#[0-9A-Fa-f]{6})"/)?.[1]
+    if (!start || !end || !workType || !color) continue
+
+    schedules.push({
+      start_date: start,
+      end_date: end,
+      work_type: workType,
+      color_hex: color,
+    })
+  }
+
+  if (schedules.length > 0) {
+    const year = Number(trimmed.match(/"year"\s*:\s*(\d{4})/)?.[1] ?? targetYear)
+    const month = Number(trimmed.match(/"month"\s*:\s*(\d{1,2})/)?.[1] ?? targetMonth)
+    return { year, month, schedules }
+  }
+
+  throw new Error(`Claude JSON 파싱 실패: ${trimmed.slice(0, 240)}`)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -94,7 +160,7 @@ JSON만 출력 (코드블록 없이):
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 2000,
+        max_tokens: 3000,
         system: systemMessage,
         messages: [
           {
@@ -121,21 +187,17 @@ JSON만 출력 (코드블록 없이):
     }
 
     const data = await response.json()
-    const content = data.content?.[0]?.text ?? '{}'
+    const content = data.content?.[0]?.text ?? ''
+
+    if (!content.trim()) {
+      throw new Error('Claude 응답 본문이 비어 있습니다')
+    }
 
     const cleaned = content
       .replace(/```json\s*/gi, '')
       .replace(/```\s*/g, '')
       .trim()
-    const match = cleaned.match(/\{[\s\S]*\}/)
-    let resultJson: Record<string, unknown>
-    try {
-      resultJson = match
-        ? JSON.parse(match[0])
-        : { year: targetYear, month: targetMonth, schedules: [] }
-    } catch {
-      resultJson = { year: targetYear, month: targetMonth, schedules: [] }
-    }
+    const resultJson = parseClaudeJson(cleaned, targetYear, targetMonth)
 
     resultJson.year = resultJson.year ?? targetYear
     resultJson.month = resultJson.month ?? targetMonth

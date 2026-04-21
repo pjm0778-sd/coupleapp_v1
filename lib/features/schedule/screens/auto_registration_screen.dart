@@ -4,9 +4,9 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/theme.dart';
 import '../../../core/supabase_client.dart';
 import '../../calendar/services/schedule_service.dart';
+import '../../calendar/screens/calendar_settings_screen.dart';
 import '../../profile/models/shift_time.dart';
 import '../../profile/services/profile_service.dart';
-import '../../settings/screens/settings_screen.dart';
 import 'ocr_review_screen.dart';
 import 'google_calendar_screen.dart';
 import 'excel_import_screen.dart';
@@ -43,43 +43,96 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     super.dispose();
   }
 
-  void _showShiftTimeWarning() {
-    showDialog(
+  Future<bool> _showOcrPreNotice() async {
+    final shiftSummary = _shiftTimes.isEmpty
+        ? '미설정'
+        : _shiftTimes.map((s) => s.shiftType).join(', ');
+
+    final action = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
-          children: [
-            Icon(Icons.info_outline, color: Color(0xFFCBA258)),
-            SizedBox(width: 8),
-            Text('근무 시간 설정을 확인하세요', style: TextStyle(fontSize: 16)),
-          ],
-        ),
-        content: const Text(
-          '설정에서 근무 형태(근무 시간)를 등록하면\nOCR로 가져온 일정에 출근·퇴근 시간이\n자동으로 입력됩니다.\n\n아직 설정하지 않았다면 설정 화면에서\n먼저 근무 형태를 등록해 주세요.',
-          style: TextStyle(fontSize: 13, height: 1.6),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('나중에'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.info_outline, color: Color(0xFFCBA258), size: 18),
+                  SizedBox(width: 6),
+                  Text(
+                    '사진 분석 전 확인',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '현재 설정된 근무유형($shiftSummary)에 따라\nOCR 일정의 시작/종료시간이 자동 반영됩니다.\n근무유형이 다르면 먼저 변경해 주세요.',
+                style: const TextStyle(fontSize: 13, height: 1.55),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context, 'continue'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('사진 선택'),
+                ),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context, 'settings'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text('근무유형 변경하기'),
+                ),
+              ),
+              Align(
+                alignment: Alignment.center,
+                child: TextButton(
+                  onPressed: () => Navigator.pop(context, 'cancel'),
+                  child: const Text(
+                    '취소',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SettingsScreen()),
-              );
-            },
-            child: const Text(
-              '설정하러 가기',
-              style: TextStyle(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
+        ),
       ),
     );
+
+    if (action == 'settings') {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CalendarSettingsScreen()),
+      );
+      if (!mounted) return false;
+      final profile = await ProfileService().loadMyProfile();
+      if (profile != null && mounted) {
+        setState(() => _shiftTimes = profile.shiftTimes);
+      }
+      return false;
+    }
+
+    return action == 'continue';
   }
 
   Future<void> _init() async {
@@ -87,11 +140,6 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
     final profile = await ProfileService().loadMyProfile();
     if (profile != null && mounted) {
       setState(() => _shiftTimes = profile.shiftTimes);
-      if (profile.shiftTimes.isEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _showShiftTimeWarning();
-        });
-      }
     }
 
     _coupleId = await ScheduleService().getCoupleId();
@@ -123,46 +171,63 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
   }
 
   /// OCR 결과에 교대 시간 설정 적용
-  /// work_type이 ShiftTime의 shiftType 또는 label과 일치하거나
+  /// work_type이 ShiftTime의 shiftType과 일치하거나
   /// D*/E*/N* 접두어이면 해당 교대 시간 적용 (DC, EC, NC 등 포함)
   /// 매칭된 항목은 category를 '출근'으로 설정
   List<Map<String, dynamic>> _applyShiftTimes(
     List<Map<String, dynamic>> schedules,
   ) {
     if (_shiftTimes.isEmpty) return schedules;
+
+    String normalize(String value) => value
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^0-9a-z\u3131-\uD79D]'), '');
+
     return schedules.map((s) {
       final existing = s['start_time'] as String?;
       if (existing != null && existing.isNotEmpty) return s;
 
       final workType = (s['work_type'] as String? ?? '').trim();
       if (workType.isEmpty) return s;
-      final workTypeLower = workType.toLowerCase();
+      final workTypeNorm = normalize(workType);
+      if (workTypeNorm.isEmpty) return s;
 
       ShiftTime? matched;
 
-      // 1단계: 정확히 일치 (shiftType or label)
+      // 1단계: 정확히 일치 (shiftType)
       for (final shift in _shiftTimes) {
-        if (shift.shiftType.toLowerCase() == workTypeLower ||
-            shift.label.toLowerCase() == workTypeLower) {
+        final codeNorm = normalize(shift.shiftType);
+        if (codeNorm == workTypeNorm) {
           matched = shift;
           break;
         }
       }
 
-      // 2단계: 접두어 매칭 D*/E*/N* (3교대: D→D, E→E, N→N / 2교대: D→day, N→night)
-      if (matched == null && workTypeLower.isNotEmpty) {
-        final first = workTypeLower[0];
+      // 2단계: 레거시 접두어 매칭 (DC/EC/NC 등)
+      if (matched == null && workTypeNorm.isNotEmpty) {
+        final first = workTypeNorm[0];
         if (first == 'd') {
           final candidates = _shiftTimes.where(
-            (sh) => sh.shiftType == 'D' || sh.shiftType == 'day',
+            (sh) =>
+                normalize(sh.shiftType) == 'd' || normalize(sh.shiftType) == 'day',
           );
           if (candidates.isNotEmpty) matched = candidates.first;
         } else if (first == 'e') {
-          final candidates = _shiftTimes.where((sh) => sh.shiftType == 'E');
+          final candidates = _shiftTimes.where(
+            (sh) => normalize(sh.shiftType) == 'e',
+          );
+          if (candidates.isNotEmpty) matched = candidates.first;
+        } else if (first == 'm') {
+          final candidates = _shiftTimes.where(
+            (sh) => normalize(sh.shiftType) == 'm',
+          );
           if (candidates.isNotEmpty) matched = candidates.first;
         } else if (first == 'n') {
           final candidates = _shiftTimes.where(
-            (sh) => sh.shiftType == 'N' || sh.shiftType == 'night',
+            (sh) =>
+                normalize(sh.shiftType) == 'n' ||
+                normalize(sh.shiftType) == 'night',
           );
           if (candidates.isNotEmpty) matched = candidates.first;
         }
@@ -172,9 +237,15 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
 
       String pad(int v) => v.toString().padLeft(2, '0');
       final updated = Map<String, dynamic>.from(s);
-      updated['start_time'] =
-          '${pad(matched.startHour)}:${pad(matched.startMinute)}';
-      updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
+      if (matched.isAllDay) {
+        updated['start_time'] = null;
+        updated['end_time'] = null;
+      } else {
+        updated['start_time'] =
+            '${pad(matched.startHour)}:${pad(matched.startMinute)}';
+        updated['end_time'] = '${pad(matched.endHour)}:${pad(matched.endMinute)}';
+      }
+      updated['work_type'] = matched.shiftType;
       updated['category'] = '출근';
       return updated;
     }).toList();
@@ -211,6 +282,9 @@ class _AutoRegistrationScreenState extends State<AutoRegistrationScreen>
 
   Future<void> _onOcrPressed() async {
     try {
+      final proceed = await _showOcrPreNotice();
+      if (!proceed || !mounted) return;
+
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 75,
